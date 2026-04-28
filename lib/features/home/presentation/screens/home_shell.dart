@@ -72,7 +72,7 @@ class _BottomBar extends StatelessWidget {
       color: AppColors.black,
       elevation: 0,
       shape: const CircularNotchedRectangle(),
-      notchMargin: 8,
+      notchMargin: 10,
       padding: EdgeInsets.zero,
       child: SizedBox(
         height: 64,
@@ -80,16 +80,16 @@ class _BottomBar extends StatelessWidget {
           children: [
             Expanded(
               child: _NavItem(
-                icon: Icons.home_outlined,
+                icon: Icons.home_rounded,
                 label: 'Home',
                 selected: index == 0,
                 onTap: () => onTap(0),
               ),
             ),
-            const SizedBox(width: 72), // notch gap for the FAB
+            const SizedBox(width: 96), // notch gap for the oversized FAB
             Expanded(
               child: _NavItem(
-                icon: Icons.swap_horiz_rounded,
+                icon: Icons.receipt_long_rounded,
                 label: 'Transactions',
                 selected: index == 1,
                 onTap: () => onTap(1),

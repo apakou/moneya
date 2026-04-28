@@ -6,6 +6,8 @@
 	<string>Use Face ID to quickly and securely log in to MoneyA.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>MoneyA uses the camera to capture your ID document and selfie for identity verification.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>MoneyA uses your contacts so you can pick a recipient by name when sending money.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

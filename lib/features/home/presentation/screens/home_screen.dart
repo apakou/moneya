@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../transfer/presentation/screens/transfer_money_screen.dart';
 import '../../domain/supported_currency.dart';
 import '../widgets/currency_picker_sheet.dart';
 
@@ -92,7 +93,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _toggleBalance() => setState(() => _balanceVisible = !_balanceVisible);
-  void _onSend() => debugPrint('Send tapped');
+  void _onSend() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => TransferMoneyScreen(currency: _currency),
+      ),
+    );
+  }
+
   void _onReceive() => debugPrint('Receive tapped');
   void _onSmartRate() => debugPrint('Smart Rate tapped');
   void _onTrustScore() => debugPrint('Trust Score tapped');
@@ -149,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 28),
             _SectionHeader(
-              icon: Icons.groups_rounded,
+              icon: Icons.favorite_rounded,
               title: 'Your Favorites',
               trailing: _ViewAllButton(onTap: _onFavoritesViewAll),
             ),
@@ -157,7 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _FavoritesStrip(favorites: _favorites, onTap: _onFavoriteTap),
             const SizedBox(height: 28),
             _SectionHeader(
-              icon: Icons.description_outlined,
+              icon: Icons.history_rounded,
               title: 'Recent transactions',
               trailing: _ViewAllButton(onTap: _onTransactionsViewAll),
             ),
@@ -320,7 +328,7 @@ class _CurrencyPill extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               const Icon(
-                Icons.keyboard_arrow_down_rounded,
+                Icons.expand_more_rounded,
                 color: AppColors.onBrand,
                 size: 22,
               ),
@@ -370,8 +378,8 @@ class _Balance extends StatelessWidget {
               radius: 20,
               child: Icon(
                 visible
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
+                    ? Icons.visibility_off_rounded
+                    : Icons.visibility_rounded,
                 color: AppColors.onBrandMuted,
                 size: 20,
               ),
@@ -428,7 +436,7 @@ class _PrimaryActions extends StatelessWidget {
         Expanded(
           child: _PrimaryActionButton(
             label: 'Send',
-            icon: Icons.arrow_upward_rounded,
+            icon: Icons.north_east_rounded,
             background: Colors.white,
             foreground: AppColors.actionPurple,
             onTap: onSend,
@@ -438,7 +446,7 @@ class _PrimaryActions extends StatelessWidget {
         Expanded(
           child: _PrimaryActionButton(
             label: 'Receive',
-            icon: Icons.arrow_downward_rounded,
+            icon: Icons.south_west_rounded,
             background: AppColors.actionPurple,
             foreground: Colors.white,
             onTap: onReceive,
@@ -564,7 +572,7 @@ class _ViewAllButton extends StatelessWidget {
             ),
             SizedBox(width: 4),
             Icon(
-              Icons.chevron_right_rounded,
+              Icons.arrow_forward_rounded,
               color: AppColors.onBrandMuted,
               size: 18,
             ),
@@ -664,7 +672,7 @@ class _InsightsStrip extends StatelessWidget {
         title: 'Trust Score',
         body: 'Unlock micro-loans up to $currencyCode 5,000.',
         metric: '750',
-        icon: Icons.shield_outlined,
+        icon: Icons.verified_user_rounded,
         accent: AppColors.actionPurple,
         onTap: onTrustScore,
       ),
@@ -674,7 +682,7 @@ class _InsightsStrip extends StatelessWidget {
         title: 'Spending pulse',
         body: 'You spent 18% less than last week.',
         metric: '-18%',
-        icon: Icons.bolt_rounded,
+        icon: Icons.insights_rounded,
         accent: _amberAccent,
         onTap: () => debugPrint('Spending pulse tapped'),
       ),
@@ -1010,15 +1018,9 @@ class _TransactionTile extends StatelessWidget {
   ({IconData icon, Color color}) get _glyph {
     switch (txn.kind) {
       case _TxnKind.received:
-        return (
-          icon: Icons.arrow_downward_rounded,
-          color: const Color(0xFF22C55E),
-        );
+        return (icon: Icons.south_west_rounded, color: const Color(0xFF22C55E));
       case _TxnKind.sent:
-        return (
-          icon: Icons.arrow_upward_rounded,
-          color: const Color(0xFFF97316),
-        );
+        return (icon: Icons.north_east_rounded, color: const Color(0xFFF97316));
       case _TxnKind.payed:
         return (
           icon: Icons.credit_card_rounded,
