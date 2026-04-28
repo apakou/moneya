@@ -21,7 +21,7 @@ class MoneyaApp extends StatelessWidget {
           seedColor: AppColors.brandPurple,
           brightness: Brightness.dark,
         ),
-        scaffoldBackgroundColor: AppColors.black, 
+        scaffoldBackgroundColor: AppColors.black,
         fontFamily: 'Satoshi',
       ),
       home: const SplashScreen(),

@@ -39,6 +39,9 @@ dependencies:
   flutter_svg: ^2.0.10
   phone_numbers_parser: ^9.0.21
   country_flags: ^4.1.2
+  local_auth: ^2.3.0
+  camera: ^0.11.0+2
+  permission_handler: ^11.3.1
 
 dev_dependencies:
   flutter_test:

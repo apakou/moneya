@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:local_auth/local_auth.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/passcode_policy.dart';
+import 'choose_kyc_document_screen.dart';
 
 /// Whether the screen is asking the user to set a new passcode or to
 /// re-enter it for confirmation.
@@ -136,7 +138,43 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
       _clearAndRefocus();
       return;
     }
-    // TODO: hash with Argon2id and POST to backend, then advance.
+    // TODO: hash with Argon2id and POST to backend.
+    _enrollBiometricThenAdvance();
+  }
+
+  /// Offers to enroll biometric login. Silently skips if unavailable; treats
+  /// success and user-cancel both as "advance" since biometric is optional.
+  Future<void> _enrollBiometricThenAdvance() async {
+    final auth = LocalAuthentication();
+    var enabled = false;
+    try {
+      final supported =
+          await auth.isDeviceSupported() && await auth.canCheckBiometrics;
+      if (supported) {
+        final available = await auth.getAvailableBiometrics();
+        if (available.isNotEmpty) {
+          enabled = await auth.authenticate(
+            localizedReason: 'Enable login with biometric',
+            options: const AuthenticationOptions(
+              biometricOnly: true,
+              stickyAuth: true,
+            ),
+          );
+        }
+      }
+    } catch (_) {
+      // Hardware/plugin error — treat as unavailable, just advance.
+      enabled = false;
+    }
+
+    if (!mounted) return;
+    // TODO: persist `enabled` flag to flutter_secure_storage.
+    debugPrint('Biometric enrolled: $enabled');
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => const ChooseKycDocumentScreen(),
+      ),
+    );
   }
 
   void _clearAndRefocus() {
