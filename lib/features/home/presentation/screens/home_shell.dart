@@ -17,12 +17,34 @@ class HomeShell extends StatefulWidget {
 
   static const String routePath = '/home';
 
+  /// Looks up the nearest enclosing [HomeShell] state so children
+  /// (e.g. the Home tab's "View all" button) can switch tabs without
+  /// pushing a new route.
+  static HomeShellController? of(BuildContext context) =>
+      context.findAncestorStateOfType<_HomeShellState>();
+
   @override
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+/// Public capability surface exposed by [HomeShell.of] so that callers
+/// outside this library can switch tabs without depending on the
+/// private `_HomeShellState` type.
+abstract class HomeShellController {
+  /// Switch the visible tab (0 = Home, 1 = Transactions).
+  void selectTab(int index);
+}
+
+class _HomeShellState extends State<HomeShell>
+    implements HomeShellController {
   int _index = 0;
+
+  /// Programmatic tab switch — used by `View all` actions on the Home tab.
+  @override
+  void selectTab(int index) {
+    if (index == _index) return;
+    setState(() => _index = index);
+  }
 
   static const List<Widget> _tabs = [
     HomeScreen(),

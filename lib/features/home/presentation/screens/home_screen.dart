@@ -4,6 +4,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../transfer/presentation/screens/transfer_money_screen.dart';
 import '../../domain/supported_currency.dart';
 import '../widgets/currency_picker_sheet.dart';
+import '../widgets/home_header.dart';
+import 'home_shell.dart';
 
 /// Post-onboarding home / dashboard.
 ///
@@ -21,7 +23,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _balanceVisible = true;
-  _UiLanguage _currentLanguage = _UiLanguage.en;
+  UiLanguage _currentLanguage = UiLanguage.en;
   // Default to Ghanaian Cedi to match the mock; the picker lets the
   // user switch to any of the SupportedCurrency entries.
   SupportedCurrency _currency = SupportedCurrency.ghs;
@@ -72,9 +74,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onLanguageTap() {
     // Visible toggle for now; real i18n wiring lands later.
     setState(() {
-      _currentLanguage = _currentLanguage == _UiLanguage.en
-          ? _UiLanguage.fr
-          : _UiLanguage.en;
+      _currentLanguage = _currentLanguage == UiLanguage.en
+          ? UiLanguage.fr
+          : UiLanguage.en;
     });
     debugPrint('Language tapped → ${_currentLanguage.name}');
   }
@@ -106,8 +108,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onTrustScore() => debugPrint('Trust Score tapped');
   void _onFavoritesViewAll() => debugPrint('Favorites view all tapped');
   void _onFavoriteTap(String name) => debugPrint('Favorite tapped: $name');
-  void _onTransactionsViewAll() =>
-      debugPrint('Recent transactions view all tapped');
+  void _onTransactionsViewAll() {
+    // Switch the parent HomeShell to the Transactions tab (index 1)
+    // rather than pushing a new route — keeps the bottom-nav state
+    // selection in sync with what's on screen.
+    HomeShell.of(context)?.selectTab(1);
+  }
   void _onTransactionTap(_Txn t) => debugPrint(
     'Transaction tapped: ${t.label} ${_currency.code} ${t.amount}',
   );
@@ -121,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 120),
           children: [
-            _TopRow(
+            HomeHeader(
               userName: _userName,
               language: _currentLanguage,
               onProfileTap: _onProfileTap,
@@ -184,116 +190,11 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 // ---------------------------------------------------------------------------
-// Top row
+// Top row — moved to widgets/home_header.dart and shared with the
+// transactions tab; the previous private _TopRow / _UiLanguage /
+// _SquareIconButton trio lived here. See HomeHeader for the
+// canonical implementation.
 // ---------------------------------------------------------------------------
-
-class _TopRow extends StatelessWidget {
-  const _TopRow({
-    required this.userName,
-    required this.language,
-    required this.onProfileTap,
-    required this.onLanguageTap,
-    required this.onNotificationsTap,
-  });
-
-  final String userName;
-  final _UiLanguage language;
-  final VoidCallback onProfileTap;
-  final VoidCallback onLanguageTap;
-  final VoidCallback onNotificationsTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        InkResponse(
-          onTap: onProfileTap,
-          radius: 32,
-          child: const CircleAvatar(
-            radius: 26,
-            backgroundColor: Color(0xFF3D2817),
-            child: Icon(Icons.person_rounded, color: Colors.white, size: 28),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            userName,
-            style: const TextStyle(
-              color: AppColors.onBrand,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        _SquareIconButton(
-          tooltip: 'Language',
-          onTap: onLanguageTap,
-          // Round flag PNG for the active language. Clipped to a circle so
-          // the rectangular asset reads as a flag chip.
-          child: ClipOval(
-            child: Image.asset(
-              language.flagAssetPath,
-              width: 28,
-              height: 28,
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        _SquareIconButton(
-          tooltip: 'Notifications',
-          onTap: onNotificationsTap,
-          child: Image.asset(
-            'assets/images/Notification.png',
-            width: 22,
-            height: 22,
-            fit: BoxFit.contain,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Languages exposed in the top-right pill. Internal to home until real
-/// i18n / locale wiring lands.
-enum _UiLanguage {
-  en('assets/images/Great Britain.png'),
-  fr('assets/images/France.png');
-
-  const _UiLanguage(this.flagAssetPath);
-
-  final String flagAssetPath;
-}
-
-class _SquareIconButton extends StatelessWidget {
-  const _SquareIconButton({
-    required this.child,
-    required this.onTap,
-    required this.tooltip,
-  });
-
-  final Widget child;
-  final VoidCallback onTap;
-  final String tooltip;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: AppColors.surfaceDark,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: SizedBox(width: 40, height: 40, child: Center(child: child)),
-        ),
-      ),
-    );
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Currency pill

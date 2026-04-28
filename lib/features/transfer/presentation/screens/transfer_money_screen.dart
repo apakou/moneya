@@ -14,6 +14,7 @@ import '../../domain/recipient_lookup.dart';
 import '../widgets/amount_keypad_sheet.dart';
 import '../widgets/country_picker_sheet.dart';
 import '../widgets/funding_provider_picker_sheet.dart';
+import 'payment_confirm_screen.dart';
 
 /// Send Money / Transfer Money screen.
 ///
@@ -400,9 +401,24 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
       '(${_recipientNameController.text.trim()}) '
       '${isInvite ? "[SMS invite + escrow]" : "[direct]"}',
     );
-    // TODO: open the confirm/review screen, then call the transfer
-    // backend with an idempotency key (see fintech-security skill).
-    Navigator.of(context).pop();
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PaymentConfirmScreen(
+          amount: _amount,
+          currency: widget.currency,
+          feeAmount: _feeValue,
+          netAmount: _payoutValue,
+          provider: _provider,
+          senderCountry: _senderCountry,
+          senderPhoneLocal: _senderPhoneController.text.trim(),
+          recipientCountry: _recipientCountry,
+          recipientPhoneLocal: _recipientPhoneController.text.trim(),
+          recipientName: _recipientNameController.text.trim(),
+          lookupResult: _lookupResult,
+          purpose: _purposeController.text.trim(),
+        ),
+      ),
+    );
   }
 
   // -- Build ------------------------------------------------------------------
