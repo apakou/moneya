@@ -1,0 +1,171 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
+import '../../../../core/theme/app_colors.dart';
+import '../widgets/onboarding_hero.dart';
+
+/// Onboarding step 2 — "Send money faster and cheaper".
+///
+/// Reuses [OnboardingHero] as the frosted base and decorates it with coin
+/// sprites positioned on / around the rings.
+class SendMoneyPage extends StatelessWidget {
+  const SendMoneyPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final mediaWidth = MediaQuery.of(context).size.width;
+    final heroSide = mediaWidth * 0.82;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Spacer(flex: 3),
+          Center(
+            child: SizedBox(
+              width: heroSide,
+              height: heroSide,
+              child: const _SendMoneyHero(
+                walletAsset: 'assets/images/Coin Wallet.png',
+                goldCoinAsset: 'assets/images/Coin.png',
+                usdcCoinAsset: 'assets/images/USD Coin_3D.png',
+              ),
+            ),
+          ),
+          const Spacer(flex: 3),
+          const Text(
+            'Send money faster and cheaper',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.onBrand,
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              height: 1.25,
+            ),
+          ),
+          const Spacer(flex: 6),
+        ],
+      ),
+    );
+  }
+}
+
+/// Composition: the base ringed hero with a central wallet icon, plus coins
+/// scattered on the outer and middle rings.
+class _SendMoneyHero extends StatelessWidget {
+  const _SendMoneyHero({
+    required this.walletAsset,
+    required this.goldCoinAsset,
+    required this.usdcCoinAsset,
+  });
+
+  final String walletAsset;
+  final String goldCoinAsset;
+  final String usdcCoinAsset;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final side = constraints.maxWidth;
+        // Coin sizes relative to hero side for consistent scaling.
+        final smallCoin = side * 0.11;
+        final mediumCoin = side * 0.14;
+
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            // Base hero (rings + frosted disc + central wallet icon).
+            OnboardingHero(iconAsset: walletAsset, iconSize: side * 0.3),
+
+            // Orbit coins. Alignment values are fractions of the hero box
+            // (-1..1). Gold coins sit on the outer ring (radius ≈ 0.82 in
+            // Alignment units, since OnboardingHero's outer ring has diameter
+            // side * 0.82).
+            // Top-left gold (on outer ring).
+            _OrbitCoin(
+              alignment: const Alignment(-0.60, -0.75),
+              size: mediumCoin,
+              asset: goldCoinAsset,
+            ),
+            // Upper-inner USDC (small, on outer ring).
+            _OrbitCoin(
+              alignment: const Alignment(0.22, -0.62),
+              size: smallCoin,
+              asset: usdcCoinAsset,
+            ),
+            // Right gold (on outer ring).
+            _OrbitCoin(
+              alignment: const Alignment(0.92, -0.07),
+              size: mediumCoin,
+              asset: goldCoinAsset,
+            ),
+            // Left-inner USDC (small, on inner ring).
+            _OrbitCoin(
+              alignment: const Alignment(-0.72, 0.10),
+              size: smallCoin,
+              asset: usdcCoinAsset,
+            ),
+            // Lower-right USDC (medium, on outer ring).
+            _OrbitCoin(
+              alignment: const Alignment(0.52, 0.46),
+              size: mediumCoin,
+              asset: usdcCoinAsset,
+            ),
+            // Bottom gold (on outer ring, slightly left of center).
+            _OrbitCoin(
+              alignment: const Alignment(-0.17, 0.93),
+              size: mediumCoin,
+              asset: goldCoinAsset,
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _OrbitCoin extends StatelessWidget {
+  const _OrbitCoin({
+    required this.alignment,
+    required this.size,
+    required this.asset,
+  });
+
+  final Alignment alignment;
+  final double size;
+  final String asset;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: alignment,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: _CoinImage(asset: asset),
+      ),
+    );
+  }
+}
+
+/// Loads either an SVG or a raster coin sprite depending on file extension.
+class _CoinImage extends StatelessWidget {
+  const _CoinImage({required this.asset});
+
+  final String asset;
+
+  @override
+  Widget build(BuildContext context) {
+    final isSvg = asset.toLowerCase().endsWith('.svg');
+    if (isSvg) {
+      return SvgPicture.asset(asset, fit: BoxFit.contain);
+    }
+    return Image.asset(
+      asset,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.high,
+    );
+  }
+}

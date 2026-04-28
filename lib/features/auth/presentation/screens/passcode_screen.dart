@@ -1,0 +1,417 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../../../../core/theme/app_colors.dart';
+import '../../domain/passcode_policy.dart';
+
+/// Whether the screen is asking the user to set a new passcode or to
+/// re-enter it for confirmation.
+enum PasscodeMode { set, confirm }
+
+/// Set / confirm passcode screen.
+///
+/// Renders 6 masked digit boxes and a white "Next" pill. Validates the
+/// passcode against [PasscodePolicy] (set mode) or against the originally
+/// entered code (confirm mode).
+class PasscodeScreen extends StatefulWidget {
+  const PasscodeScreen({
+    super.key,
+    required this.mode,
+    this.expectedCode,
+  });
+
+  static const String setRoutePath = '/auth/set-passcode';
+  static const String confirmRoutePath = '/auth/confirm-passcode';
+
+  final PasscodeMode mode;
+
+  /// Required when [mode] is [PasscodeMode.confirm]; the passcode the user
+  /// chose on the previous screen.
+  final String? expectedCode;
+
+  @override
+  State<PasscodeScreen> createState() => _PasscodeScreenState();
+}
+
+class _PasscodeScreenState extends State<PasscodeScreen> {
+  late final List<TextEditingController> _controllers;
+  late final List<FocusNode> _focusNodes;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    assert(
+      widget.mode == PasscodeMode.set || widget.expectedCode != null,
+      'expectedCode is required in confirm mode',
+    );
+    _controllers = List.generate(
+      PasscodePolicy.length,
+      (_) => TextEditingController(),
+    );
+    _focusNodes = List.generate(
+      PasscodePolicy.length,
+      (_) => FocusNode(),
+    );
+    for (final c in _controllers) {
+      c.addListener(_onAnyChange);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNodes.first.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers) {
+      c.removeListener(_onAnyChange);
+      c.dispose();
+    }
+    for (final f in _focusNodes) {
+      f.dispose();
+    }
+    super.dispose();
+  }
+
+  void _onAnyChange() {
+    if (_error != null) setState(() => _error = null);
+    setState(() {}); // refresh Next button enabled state
+  }
+
+  String get _code => _controllers.map((c) => c.text).join();
+
+  bool get _isComplete => _code.length == PasscodePolicy.length;
+
+  void _onDigitChanged(int index, String value) {
+    if (value.isEmpty) return;
+    final digit = value.characters.last;
+    _controllers[index].text = digit;
+    _controllers[index].selection = TextSelection.collapsed(offset: 1);
+
+    if (index < PasscodePolicy.length - 1) {
+      _focusNodes[index + 1].requestFocus();
+    } else {
+      _focusNodes[index].unfocus();
+    }
+  }
+
+  KeyEventResult _onKey(int index, FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (event.logicalKey == LogicalKeyboardKey.backspace &&
+        _controllers[index].text.isEmpty &&
+        index > 0) {
+      _focusNodes[index - 1].requestFocus();
+      _controllers[index - 1].clear();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  void _onNext() {
+    if (!_isComplete) return;
+    final code = _code;
+
+    if (widget.mode == PasscodeMode.set) {
+      final reason = PasscodePolicy.validate(code);
+      if (reason != null) {
+        setState(() => _error = reason);
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PasscodeScreen(
+            mode: PasscodeMode.confirm,
+            expectedCode: code,
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Confirm mode.
+    if (code != widget.expectedCode) {
+      setState(() {
+        _error = "Passcodes don't match.";
+      });
+      _clearAndRefocus();
+      return;
+    }
+    // TODO: hash with Argon2id and POST to backend, then advance.
+  }
+
+  void _clearAndRefocus() {
+    for (final c in _controllers) {
+      c.clear();
+    }
+    _focusNodes.first.requestFocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isSet = widget.mode == PasscodeMode.set;
+    final title = isSet ? 'Set a passcode' : 'Confirm the passcode';
+    final subtitle = isSet
+        ? 'create a ${PasscodePolicy.length} digit passcode'
+        : 'Repeat the ${PasscodePolicy.length} digit passcode';
+    final ctaLabel = isSet ? 'Next' : 'Save';
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: AppColors.black,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        // TODO(security): set FLAG_SECURE on this screen so it doesn't appear
+        // in screenshots / recent-apps previews. Requires a native plugin
+        // (e.g. flutter_windowmanager or secure_application).
+        resizeToAvoidBottomInset: true,
+        body: Container(
+          decoration: const BoxDecoration(gradient: AppColors.brandGradient),
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 4,
+                  left: 4,
+                  child: IconButton(
+                    tooltip: 'Back',
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: AppColors.onBrand,
+                      size: 20,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Spacer(flex: 4),
+                      Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppColors.onBrand,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        subtitle,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppColors.onBrandMuted,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      _PasscodeBoxes(
+                        controllers: _controllers,
+                        focusNodes: _focusNodes,
+                        onChanged: _onDigitChanged,
+                        onKey: _onKey,
+                      ),
+                      const SizedBox(height: 16),
+                      // Reserve a fixed slot for the inline error so the
+                      // CTA doesn't jump when it appears.
+                      SizedBox(
+                        height: 20,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 150),
+                          child: _error == null
+                              ? const SizedBox.shrink()
+                              : Text(
+                                  _error!,
+                                  key: ValueKey<String>(_error!),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Color(0xFFFF6B6B),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const Spacer(flex: 1),
+                      _NextButton(
+                        label: ctaLabel,
+                        enabled: _isComplete,
+                        onPressed: _onNext,
+                      ),
+                      const Spacer(flex: 6),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Pieces
+// ---------------------------------------------------------------------------
+
+/// Centered row of 6 small square passcode boxes (48dp, 8dp gaps).
+class _PasscodeBoxes extends StatelessWidget {
+  const _PasscodeBoxes({
+    required this.controllers,
+    required this.focusNodes,
+    required this.onChanged,
+    required this.onKey,
+  });
+
+  final List<TextEditingController> controllers;
+  final List<FocusNode> focusNodes;
+  final void Function(int index, String value) onChanged;
+  final KeyEventResult Function(int index, FocusNode node, KeyEvent event)
+      onKey;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(PasscodePolicy.length, (i) {
+        return Padding(
+          padding: EdgeInsets.only(
+            right: i == PasscodePolicy.length - 1 ? 0 : 8,
+          ),
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: _PasscodeBox(
+              controller: controllers[i],
+              focusNode: focusNodes[i],
+              onChanged: (v) => onChanged(i, v),
+              onKey: (node, event) => onKey(i, node, event),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _PasscodeBox extends StatelessWidget {
+  const _PasscodeBox({
+    required this.controller,
+    required this.focusNode,
+    required this.onChanged,
+    required this.onKey,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final ValueChanged<String> onChanged;
+  final KeyEventResult Function(FocusNode node, KeyEvent event) onKey;
+
+  @override
+  Widget build(BuildContext context) {
+    return Focus(
+      onKeyEvent: onKey,
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        textAlign: TextAlign.center,
+        keyboardType: TextInputType.number,
+        maxLength: 1,
+        obscureText: true,
+        obscuringCharacter: '*',
+        cursorColor: AppColors.onBrand,
+        // Disable accessibility overlays on passcode entry per
+        // fintech-security guidance (prevents malicious keyboards / overlays
+        // from inspecting input).
+        enableIMEPersonalizedLearning: false,
+        enableSuggestions: false,
+        autocorrect: false,
+        style: const TextStyle(
+          color: AppColors.onBrand,
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+        ),
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+        ],
+        onChanged: onChanged,
+        decoration: InputDecoration(
+          counterText: '',
+          hintText: '*',
+          hintStyle: TextStyle(
+            color: Colors.white.withValues(alpha: 0.40),
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+          ),
+          filled: true,
+          fillColor: Colors.white.withValues(alpha: 0.06),
+          contentPadding: EdgeInsets.zero,
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide:
+                BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide:
+                BorderSide(color: Colors.white.withValues(alpha: 0.32)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// White pill primary CTA with a purple label; dims when disabled.
+class _NextButton extends StatelessWidget {
+  const _NextButton({
+    required this.label,
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = enabled ? Colors.white : Colors.white.withValues(alpha: 0.50);
+    final fg = enabled
+        ? AppColors.actionPurple
+        : AppColors.actionPurple.withValues(alpha: 0.55);
+
+    return SizedBox(
+      height: 56,
+      child: Material(
+        color: bg,
+        shape: const StadiumBorder(),
+        elevation: 0,
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: enabled ? onPressed : null,
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: fg,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
