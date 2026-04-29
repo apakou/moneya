@@ -4,6 +4,8 @@ import 'package:flutter/rendering.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/transaction.dart';
 import '../widgets/home_header.dart';
+import '../widgets/notifications_sheet.dart';
+import 'profile_screen.dart';
 import 'transaction_detail_screen.dart';
 
 /// Transactions tab — full history view reached from the bottom-nav
@@ -327,9 +329,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     });
   }
 
-  void _onProfileTap() => debugPrint('TODO: open profile');
+  void _onProfileTap() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+    );
+  }
   void _onLanguageTap() => debugPrint('TODO: open language picker');
-  void _onNotificationsTap() => debugPrint('TODO: open notifications');
+  void _onNotificationsTap() => showNotificationsSheet(context);
   void _onExportTap() => debugPrint('TODO: export transactions CSV');
   void _onTxnTap(Transaction t) {
     Navigator.of(context).push(

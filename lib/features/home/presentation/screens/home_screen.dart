@@ -5,7 +5,9 @@ import '../../../transfer/presentation/screens/transfer_money_screen.dart';
 import '../../domain/supported_currency.dart';
 import '../widgets/currency_picker_sheet.dart';
 import '../widgets/home_header.dart';
+import '../widgets/notifications_sheet.dart';
 import 'home_shell.dart';
+import 'profile_screen.dart';
 
 /// Post-onboarding home / dashboard.
 ///
@@ -70,7 +72,11 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   // Tap handlers (all stubs). ---------------------------------------------
-  void _onProfileTap() => debugPrint('Profile tapped');
+  void _onProfileTap() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+    );
+  }
   void _onLanguageTap() {
     // Visible toggle for now; real i18n wiring lands later.
     setState(() {
@@ -81,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
     debugPrint('Language tapped → ${_currentLanguage.name}');
   }
 
-  void _onNotificationsTap() => debugPrint('Notifications tapped');
+  void _onNotificationsTap() => showNotificationsSheet(context);
   Future<void> _onCurrencyTap() async {
     final picked = await showCurrencyPickerSheet(
       context: context,
