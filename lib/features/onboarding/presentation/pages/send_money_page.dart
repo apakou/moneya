@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../widgets/onboarding_hero.dart';
 
 /// Onboarding step 2 — "Send money faster and cheaper".
@@ -37,12 +37,7 @@ class SendMoneyPage extends StatelessWidget {
           const Text(
             'Send money faster and cheaper',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.onBrand,
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
-              height: 1.25,
-            ),
+            style: AppTextStyles.heroOnboarding,
           ),
           const Spacer(flex: 6),
         ],

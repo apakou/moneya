@@ -5,7 +5,9 @@ import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../auth/domain/supported_country.dart';
 import '../../../home/domain/supported_currency.dart';
 import '../../data/recipient_lookup_service.dart';
@@ -610,13 +612,7 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
 // Subcomponents
 // ---------------------------------------------------------------------------
 
-String _formatAmount(double value) {
-  // Drop trailing .0 for whole numbers; otherwise show 2 decimals.
-  if (value == value.roundToDouble()) {
-    return value.toInt().toString();
-  }
-  return value.toStringAsFixed(2);
-}
+String _formatAmount(double value) => MoneyFormat.fromNum(value);
 
 class _Header extends StatelessWidget {
   const _Header({required this.onBack});
@@ -640,11 +636,7 @@ class _Header extends StatelessWidget {
           ),
           const Text(
             'Transfer',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-            ),
+            style: AppTextStyles.screenTitle,
           ),
         ],
       ),
@@ -694,13 +686,10 @@ class _AmountCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                Text(
-                  amount,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 48,
-                    fontWeight: FontWeight.w700,
-                    height: 1.0,
+                HeroTextScaleClamp(
+                  child: Text(
+                    amount,
+                    style: AppTextStyles.heroAmount,
                   ),
                 ),
               ],
@@ -1200,19 +1189,11 @@ class _FeeRow extends StatelessWidget {
       children: [
         Text(
           '$label : ',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.65),
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-          ),
+          style: AppTextStyles.bodyMuted,
         ),
         Text(
           value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-          ),
+          style: AppTextStyles.numeric(AppTextStyles.pillLabel),
         ),
       ],
     );

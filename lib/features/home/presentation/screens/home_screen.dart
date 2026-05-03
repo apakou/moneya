@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../transfer/presentation/screens/transfer_money_screen.dart';
+import '../../../receive/presentation/screens/receive_screen.dart';
 import '../../domain/supported_currency.dart';
 import '../widgets/currency_picker_sheet.dart';
 import '../widgets/home_header.dart';
@@ -109,7 +111,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _onReceive() => debugPrint('Receive tapped');
+  void _onReceive() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ReceiveScreen(currency: _currency),
+      ),
+    );
+  }
   void _onSmartRate() => debugPrint('Smart Rate tapped');
   void _onTrustScore() => debugPrint('Trust Score tapped');
   void _onFavoritesViewAll() => debugPrint('Favorites view all tapped');
@@ -310,13 +318,10 @@ class _Balance extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            Text(
-              visible ? amount : '•••',
-              style: const TextStyle(
-                color: AppColors.onBrand,
-                fontSize: 48,
-                fontWeight: FontWeight.w700,
-                height: 1.0,
+            HeroTextScaleClamp(
+              child: Text(
+                visible ? amount : '•••',
+                style: AppTextStyles.heroAmount,
               ),
             ),
           ],
@@ -441,11 +446,7 @@ class _SectionHeader extends StatelessWidget {
         const SizedBox(width: 10),
         Text(
           title,
-          style: const TextStyle(
-            color: AppColors.onBrand,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
+          style: AppTextStyles.subsectionTitle,
         ),
         const Spacer(),
         ?trailing,
@@ -970,20 +971,12 @@ class _TransactionTile extends StatelessWidget {
                 children: [
                   Text(
                     txn.label,
-                    style: const TextStyle(
-                      color: AppColors.onBrand,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: AppTextStyles.listTitle,
                   ),
                   const SizedBox(height: 2),
                   Text(
                     txn.timestamp,
-                    style: const TextStyle(
-                      color: AppColors.onBrandMuted,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w400,
-                    ),
+                    style: AppTextStyles.microNumeric,
                   ),
                 ],
               ),
@@ -994,11 +987,7 @@ class _TransactionTile extends StatelessWidget {
               children: [
                 Text(
                   '$currencyCode ${txn.amount}',
-                  style: const TextStyle(
-                    color: AppColors.onBrand,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: AppTextStyles.numeric(AppTextStyles.listTitle),
                 ),
                 const SizedBox(height: 2),
                 Text(

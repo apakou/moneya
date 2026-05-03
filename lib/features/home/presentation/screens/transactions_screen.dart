@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/transaction.dart';
 import '../widgets/home_header.dart';
 import '../widgets/notifications_sheet.dart';
@@ -517,11 +518,7 @@ class _TitleRow extends StatelessWidget {
       children: [
         const Text(
           'Your Transactions',
-          style: TextStyle(
-            color: AppColors.onBrand,
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-          ),
+          style: AppTextStyles.sectionTitle,
         ),
         Align(
           alignment: Alignment.centerRight,
@@ -769,20 +766,12 @@ class _TransactionTile extends StatelessWidget {
                 children: [
                   Text(
                     txn.directionLabel,
-                    style: const TextStyle(
-                      color: AppColors.onBrand,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: AppTextStyles.listTitle,
                   ),
                   const SizedBox(height: 2),
                   Text(
                     txn.timestamp,
-                    style: const TextStyle(
-                      color: AppColors.onBrandMuted,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w400,
-                    ),
+                    style: AppTextStyles.microNumeric,
                   ),
                 ],
               ),
@@ -793,11 +782,7 @@ class _TransactionTile extends StatelessWidget {
               children: [
                 Text(
                   '$currencyCode ${txn.amount}',
-                  style: const TextStyle(
-                    color: AppColors.onBrand,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: AppTextStyles.numeric(AppTextStyles.listTitle),
                 ),
                 const SizedBox(height: 2),
                 Text(

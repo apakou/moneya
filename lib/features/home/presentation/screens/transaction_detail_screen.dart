@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/transaction.dart';
 
 /// Read-only detail screen for one [Transaction], rendered as a
@@ -74,18 +76,10 @@ class TransactionDetailScreen extends StatelessWidget {
         TxnKind.received => '+',
       };
 
-  /// Inserts thousands separators ("13000" -> "13,000"). Cheap mock
-  /// helper; once amount becomes numeric we'll swap in `intl`.
-  String _withCommas(String s) {
-    final buf = StringBuffer();
-    final n = s.length;
-    for (var i = 0; i < n; i++) {
-      buf.write(s[i]);
-      final remaining = n - i - 1;
-      if (remaining > 0 && remaining % 3 == 0) buf.write(',');
-    }
-    return buf.toString();
-  }
+  /// Inserts locale-aware thousands separators via [MoneyFormat]. Once the
+  /// backend lands and amounts become numeric (Decimal/num) we'll call
+  /// [MoneyFormat.fromNum] directly and drop this shim.
+  String _withCommas(String s) => MoneyFormat.fromString(s);
 
   void _copy(BuildContext context, {required String label, required String value}) {
     Clipboard.setData(ClipboardData(text: value));
@@ -236,11 +230,7 @@ class _Header extends StatelessWidget {
           ),
           const Text(
             'Transaction Details',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-            ),
+            style: AppTextStyles.screenTitle,
           ),
         ],
       ),
@@ -353,16 +343,13 @@ class _ReceiptCard extends StatelessWidget {
             const SizedBox(height: 24),
             // Giant signed amount
             Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  amountText,
-                  style: TextStyle(
-                    color: amountColor,
-                    fontSize: 40,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
-                    fontFeatures: const [FontFeature.tabularFigures()],
+              child: HeroTextScaleClamp(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    amountText,
+                    style: AppTextStyles.heroAmountReceipt
+                        .copyWith(color: amountColor),
                   ),
                 ),
               ),
@@ -529,6 +516,7 @@ class _ReceiptRow extends StatelessWidget {
         fontWeight: data.emphasize ? FontWeight.w700 : FontWeight.w600,
         fontFamily: data.monospace ? 'monospace' : null,
         letterSpacing: data.monospace ? 0.5 : 0,
+        fontFeatures: data.monospace ? AppTextStyles.tabular : null,
       ),
     );
 

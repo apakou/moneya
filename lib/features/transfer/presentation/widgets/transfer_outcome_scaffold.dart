@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 
 /// Shared scaffold for the three terminal states of the Send Money
 /// flow — success, pending, and failed.
@@ -71,11 +72,7 @@ class TransferOutcomeScaffold extends StatelessWidget {
                   Text(
                     title,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: AppTextStyles.sectionTitle,
                   ),
                   const SizedBox(height: 12),
                   Padding(
@@ -114,7 +111,7 @@ class TransferOutcomeBody extends StatelessWidget {
   static TextSpan bold(String text) => TextSpan(
     text: text,
     style: const TextStyle(
-      color: Colors.white,
+      color: AppColors.onBrand,
       fontWeight: FontWeight.w700,
     ),
   );
@@ -123,11 +120,7 @@ class TransferOutcomeBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text.rich(
       TextSpan(
-        style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.65),
-          fontSize: 14,
-          height: 1.45,
-        ),
+        style: AppTextStyles.bodyMuted,
         children: spans,
       ),
       textAlign: TextAlign.center,
@@ -217,10 +210,10 @@ class _PrimaryCta extends StatelessWidget {
           child: Center(
             child: Text(
               label,
-              style: const TextStyle(
-                color: AppColors.actionPurple,
+              style: AppTextStyles.pillLabel.copyWith(
                 fontSize: 16,
-                fontWeight: FontWeight.w700,
+                color: AppColors.actionPurple,
+                letterSpacing: 0,
               ),
             ),
           ),
@@ -258,11 +251,7 @@ class _SecondaryCta extends StatelessWidget {
           child: Center(
             child: Text(
               label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+              style: AppTextStyles.listTitle,
             ),
           ),
         ),

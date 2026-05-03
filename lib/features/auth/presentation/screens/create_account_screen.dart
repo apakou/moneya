@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/supported_country.dart';
 import 'verify_phone_screen.dart';
 
@@ -148,13 +149,10 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   const Spacer(flex: 4),
 
                   // --- Header ---
-                  const Text(
+                  Text(
                     'Create New Account',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: AppColors.onBrand,
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
+                    style: AppTextStyles.heroAuth.copyWith(
                       letterSpacing: 0.2,
                     ),
                   ),
@@ -372,10 +370,8 @@ class _InlineLink extends StatelessWidget {
       onTap: onTap,
       child: Text(
         label,
-        style: const TextStyle(
+        style: AppTextStyles.bodyLink.copyWith(
           color: AppColors.actionPurple,
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -415,10 +411,8 @@ class _PrimaryPillButton extends StatelessWidget {
           child: Center(
             child: Text(
               label,
-              style: TextStyle(
+              style: AppTextStyles.subsectionTitle.copyWith(
                 color: fg,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
                 letterSpacing: 0.2,
               ),
             ),
@@ -460,11 +454,7 @@ class _CountryPickerSheet extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'Select country',
-                  style: TextStyle(
-                    color: AppColors.onBrand,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: AppTextStyles.subsectionTitle,
                 ),
               ),
             ),
@@ -495,12 +485,11 @@ class _CountryPickerSheet extends StatelessWidget {
                     ),
                     trailing: Text(
                       '+${c.dialCode}',
-                      style: TextStyle(
+                      style: AppTextStyles.body.copyWith(
                         color: isSelected
                             ? AppColors.actionPurple
                             : AppColors.onBrandMuted,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                        fontFeatures: AppTextStyles.tabular,
                       ),
                     ),
                     onTap: () => Navigator.of(context).pop(c),
@@ -550,13 +539,10 @@ class _ConfirmNumberSheet extends StatelessWidget {
                 ),
               ),
             ),
-            const Text(
+            Text(
               'Confirm the phone number',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.onBrand,
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
+              style: AppTextStyles.sectionTitle.copyWith(
                 letterSpacing: 0.2,
               ),
             ),
@@ -597,11 +583,9 @@ class _ConfirmNumberSheet extends StatelessWidget {
                   Expanded(
                     child: Text(
                       formattedNumber,
-                      style: const TextStyle(
-                        color: AppColors.onBrand,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                      style: AppTextStyles.subsectionTitle.copyWith(
                         letterSpacing: 0.3,
+                        fontFeatures: AppTextStyles.tabular,
                       ),
                     ),
                   ),
@@ -631,13 +615,10 @@ class _ConfirmNumberSheet extends StatelessWidget {
                 child: InkWell(
                   customBorder: const StadiumBorder(),
                   onTap: () => Navigator.of(context).pop(false),
-                  child: const Center(
+                  child: Center(
                     child: Text(
                       'Go back',
-                      style: TextStyle(
-                        color: AppColors.onBrand,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                      style: AppTextStyles.subsectionTitle.copyWith(
                         letterSpacing: 0.2,
                       ),
                     ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/app_language.dart';
 import '../widgets/onboarding_dropdown.dart';
 import '../widgets/onboarding_hero.dart';
@@ -41,12 +42,7 @@ class _LanguagePageState extends State<LanguagePage> {
           const Text(
             'Which language are you speaking ?',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.onBrand,
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
-              height: 1.25,
-            ),
+            style: AppTextStyles.heroOnboarding,
           ),
           const SizedBox(height: 28),
           OnboardingDropdown<AppLanguage>(

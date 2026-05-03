@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/document_side.dart';
 import '../../domain/kyc_document_type.dart';
 import 'capture_document_screen.dart';
@@ -72,14 +73,10 @@ class _ChooseKycDocumentScreenState extends State<ChooseKycDocumentScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const Spacer(flex: 4),
-                      const Text(
+                      Text(
                         'Pick a document to verify\nyour identity',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppColors.onBrand,
-                          fontSize: 26,
-                          fontWeight: FontWeight.w700,
-                          height: 1.2,
+                        style: AppTextStyles.heroOnboarding.copyWith(
                           letterSpacing: 0.2,
                         ),
                       ),
@@ -87,11 +84,7 @@ class _ChooseKycDocumentScreenState extends State<ChooseKycDocumentScreen> {
                       const Text(
                         "We don't accept scans or copies.",
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppColors.onBrandMuted,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                        ),
+                        style: AppTextStyles.bodyOnboardingMuted,
                       ),
                       const SizedBox(height: 28),
                       _DocumentChoiceCard(
@@ -192,11 +185,7 @@ class _DocumentOptionTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   type.label,
-                  style: const TextStyle(
-                    color: AppColors.onBrand,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: AppTextStyles.inputText,
                 ),
               ),
             ],
@@ -285,13 +274,11 @@ class _ContinueButton extends StatelessWidget {
         child: InkWell(
           customBorder: const StadiumBorder(),
           onTap: onPressed,
-          child: const Center(
+          child: Center(
             child: Text(
               'Continue',
-              style: TextStyle(
+              style: AppTextStyles.subsectionTitle.copyWith(
                 color: AppColors.actionPurple,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
                 letterSpacing: 0.2,
               ),
             ),

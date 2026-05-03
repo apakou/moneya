@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/user_profile.dart';
 import 'settings_screen.dart';
 
@@ -133,11 +134,7 @@ class _Header extends StatelessWidget {
           ),
           const Text(
             'Profile Details',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-            ),
+            style: AppTextStyles.screenTitle,
           ),
         ],
       ),
@@ -230,9 +227,7 @@ class _AvatarBlock extends StatelessWidget {
         const SizedBox(height: 16),
         Text(
           fullName,
-          style: const TextStyle(
-            color: AppColors.onBrand,
-            fontSize: 17,
+          style: AppTextStyles.screenTitle.copyWith(
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -289,11 +284,9 @@ class _KycCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'KYC',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
+                  style: AppTextStyles.screenTitle.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -404,11 +397,7 @@ class _InfoRow extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: AppTextStyles.listTitleStrong,
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -531,11 +520,9 @@ class _ActionRow extends StatelessWidget {
             const SizedBox(width: 16),
             Text(
               label,
-              style: TextStyle(
-                color: labelColor ?? Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
+              style: labelColor != null
+                  ? AppTextStyles.label.copyWith(color: labelColor)
+                  : AppTextStyles.label,
             ),
           ],
         ),

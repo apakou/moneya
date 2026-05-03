@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import 'create_account_screen.dart';
 
 /// Auth landing screen shown after the onboarding flow finishes.
@@ -124,10 +125,8 @@ class _AuthPillButton extends StatelessWidget {
           child: Center(
             child: Text(
               label,
-              style: TextStyle(
+              style: AppTextStyles.subsectionTitle.copyWith(
                 color: foreground,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
                 letterSpacing: 0.2,
               ),
             ),

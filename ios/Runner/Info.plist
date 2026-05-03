@@ -8,6 +8,8 @@
 	<string>MoneyA uses the camera to capture your ID document and selfie for identity verification.</string>
 	<key>NSContactsUsageDescription</key>
 	<string>MoneyA uses your contacts so you can pick a recipient by name when sending money.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>MoneyA saves your QR code to your photos so you can share it later.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

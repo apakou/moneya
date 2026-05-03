@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/funding_provider.dart';
 
 /// Bottom sheet that lets the user pick which rail funds the transfer
@@ -60,11 +61,7 @@ class _FundingProviderPickerSheet extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Select funding source',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: AppTextStyles.screenTitle,
                   ),
                 ),
               ),
@@ -123,11 +120,7 @@ class _ProviderRow extends StatelessWidget {
               Expanded(
                 child: Text(
                   provider.label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: AppTextStyles.actionLabel.copyWith(letterSpacing: 0),
                 ),
               ),
               if (selected)
@@ -187,11 +180,7 @@ class _InitialBadge extends StatelessWidget {
       alignment: Alignment.center,
       child: Text(
         label.isEmpty ? '?' : label.characters.first.toUpperCase(),
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-        ),
+        style: AppTextStyles.pillLabel.copyWith(letterSpacing: 0),
       ),
     );
   }

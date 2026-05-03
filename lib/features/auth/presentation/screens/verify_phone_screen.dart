@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import 'passcode_screen.dart';
 
 /// OTP verification screen.
@@ -211,13 +212,10 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> {
                       const Spacer(flex: 4),
 
                       // --- Header ---
-                      const Text(
+                      Text(
                         'Enter The Code',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppColors.onBrand,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
+                        style: AppTextStyles.heroAuth.copyWith(
                           letterSpacing: 0.2,
                         ),
                       ),
@@ -337,20 +335,14 @@ class _OtpBox extends StatelessWidget {
         obscureText: true,
         obscuringCharacter: '*',
         cursorColor: AppColors.onBrand,
-        style: const TextStyle(
-          color: AppColors.onBrand,
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-        ),
+        style: AppTextStyles.numeric(AppTextStyles.identityName),
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         onChanged: onChanged,
         decoration: InputDecoration(
           counterText: '',
           hintText: '*',
-          hintStyle: TextStyle(
+          hintStyle: AppTextStyles.identityName.copyWith(
             color: Colors.white.withValues(alpha: 0.40),
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
           ),
           filled: true,
           fillColor: Colors.white.withValues(alpha: 0.06),
@@ -389,10 +381,8 @@ class _ResendRow extends StatelessWidget {
       fontWeight: FontWeight.w400,
       height: 1.5,
     );
-    final linkStyle = TextStyle(
+    final linkStyle = AppTextStyles.bodyLink.copyWith(
       color: canResend ? AppColors.actionPurple : AppColors.onBrandMuted,
-      fontSize: 14,
-      fontWeight: FontWeight.w600,
     );
 
     return Column(
@@ -414,10 +404,9 @@ class _ResendRow extends StatelessWidget {
                   const TextSpan(text: ' ', style: muted),
                   TextSpan(
                     text: timerText,
-                    style: const TextStyle(
-                      color: AppColors.onBrand,
-                      fontSize: 14,
+                    style: AppTextStyles.bodyLink.copyWith(
                       fontWeight: FontWeight.w700,
+                      fontFeatures: AppTextStyles.tabular,
                     ),
                   ),
                 ],
@@ -467,13 +456,10 @@ class _IncorrectCodeSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Incorrect code entered',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.onBrand,
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
+              style: AppTextStyles.sectionTitle.copyWith(
                 letterSpacing: 0.2,
               ),
             ),
@@ -514,13 +500,11 @@ class _GotItButton extends StatelessWidget {
         child: InkWell(
           customBorder: const StadiumBorder(),
           onTap: onPressed,
-          child: const Center(
+          child: Center(
             child: Text(
               'Got it',
-              style: TextStyle(
+              style: AppTextStyles.subsectionTitle.copyWith(
                 color: AppColors.actionPurple,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
                 letterSpacing: 0.2,
               ),
             ),

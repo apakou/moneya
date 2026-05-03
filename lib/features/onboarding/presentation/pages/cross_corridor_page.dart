@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 
 /// Onboarding step 3 — "Between African francophone and anglophone countries".
 ///
@@ -31,12 +31,7 @@ class CrossCorridorPage extends StatelessWidget {
           const Text(
             'Between African francophone\nand anglophone countries',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.onBrand,
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
-              height: 1.25,
-            ),
+            style: AppTextStyles.heroOnboarding,
           ),
           const Spacer(flex: 6),
         ],

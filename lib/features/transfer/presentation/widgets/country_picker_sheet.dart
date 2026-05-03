@@ -2,6 +2,7 @@ import 'package:country_flags/country_flags.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../auth/domain/supported_country.dart';
 
 /// Bottom sheet that lets the user pick the sending corridor (a country
@@ -60,11 +61,7 @@ class _TransferCountryPickerSheet extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Select sending country',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: AppTextStyles.screenTitle,
                   ),
                 ),
               ),
@@ -133,19 +130,16 @@ class _CountryRow extends StatelessWidget {
                   children: [
                     Text(
                       country.label,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
+                      style: AppTextStyles.actionLabel.copyWith(
+                        letterSpacing: 0,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       '+${country.dialCode}',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.65),
+                      style: AppTextStyles.dataValue.copyWith(
                         fontSize: 13,
-                        fontWeight: FontWeight.w400,
+                        fontFeatures: AppTextStyles.tabular,
                       ),
                     ),
                   ],

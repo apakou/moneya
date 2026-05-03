@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../auth/domain/supported_country.dart';
 import '../../../home/domain/supported_currency.dart';
 import '../../data/transaction_auth_service.dart';
@@ -212,37 +213,23 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
                             padding: EdgeInsets.only(top: 4, bottom: 24),
                             child: Text(
                               'Confirm Your Payment',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w700,
-                              ),
+                              style: AppTextStyles.sectionTitle,
                             ),
                           ),
                         ),
-                        Text(
+                        const Text(
                           'Payment Details',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: AppTextStyles.subsectionTitle,
                         ),
                         const SizedBox(height: 4),
-                        Text(
+                        const Text(
                           'Check payment details and swipe to pay!',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.55),
-                            fontSize: 14,
-                          ),
+                          style: AppTextStyles.bodyMuted,
                         ),
                         const SizedBox(height: 28),
-                        Text(
+                        const Text(
                           'Amount',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.55),
-                            fontSize: 14,
-                          ),
+                          style: AppTextStyles.bodyMuted,
                         ),
                         const SizedBox(height: 8),
                         _AmountCard(
@@ -318,11 +305,7 @@ class _Header extends StatelessWidget {
           ),
           const Text(
             'Confirm',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-            ),
+            style: AppTextStyles.screenTitle,
           ),
         ],
       ),
@@ -353,12 +336,10 @@ class _AmountCard extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              '$currencyCode $amount',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
+            child: HeroTextScaleClamp(
+              child: Text(
+                '$currencyCode $amount',
+                style: AppTextStyles.heroAmountConfirm,
               ),
             ),
           ),
@@ -409,19 +390,12 @@ class _FromToCard extends StatelessWidget {
                         children: [
                           const TextSpan(
                             text: 'From your ',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w400,
-                            ),
+                            style: AppTextStyles.label,
                           ),
                           TextSpan(
                             text: provider.label,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
+                            style: AppTextStyles.label
+                                .copyWith(fontWeight: FontWeight.w700),
                           ),
                         ],
                       ),
@@ -429,10 +403,7 @@ class _FromToCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       senderLine,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.65),
-                        fontSize: 13,
-                      ),
+                      style: AppTextStyles.captionMuted,
                     ),
                   ],
                 ),
@@ -468,21 +439,14 @@ class _FromToCard extends StatelessWidget {
                         children: [
                           const TextSpan(
                             text: 'To ',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w400,
-                            ),
+                            style: AppTextStyles.label,
                           ),
                           TextSpan(
                             text: recipientName.isEmpty
                                 ? 'Recipient'
                                 : recipientName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
+                            style: AppTextStyles.label
+                                .copyWith(fontWeight: FontWeight.w700),
                           ),
                         ],
                       ),
@@ -490,10 +454,7 @@ class _FromToCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       recipientLine,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.65),
-                        fontSize: 13,
-                      ),
+                      style: AppTextStyles.captionMuted,
                     ),
                   ],
                 ),
@@ -625,18 +586,11 @@ class _FeeRow extends StatelessWidget {
       children: [
         Text(
           '$label : ',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.65),
-            fontSize: 14,
-          ),
+          style: AppTextStyles.bodyMuted,
         ),
         Text(
           value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-          ),
+          style: AppTextStyles.numeric(AppTextStyles.pillLabel),
         ),
       ],
     );

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/passcode_policy.dart';
 import 'choose_kyc_document_screen.dart';
 
@@ -233,10 +234,7 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
                       Text(
                         title,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: AppColors.onBrand,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
+                        style: AppTextStyles.heroAuth.copyWith(
                           letterSpacing: 0.2,
                         ),
                       ),
@@ -270,10 +268,8 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
                                   _error!,
                                   key: ValueKey<String>(_error!),
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Color(0xFFFF6B6B),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: const Color(0xFFFF6B6B),
                                   ),
                                 ),
                         ),
@@ -373,11 +369,7 @@ class _PasscodeBox extends StatelessWidget {
         enableIMEPersonalizedLearning: false,
         enableSuggestions: false,
         autocorrect: false,
-        style: const TextStyle(
-          color: AppColors.onBrand,
-          fontSize: 22,
-          fontWeight: FontWeight.w700,
-        ),
+        style: AppTextStyles.numeric(AppTextStyles.sectionTitle),
         inputFormatters: [
           FilteringTextInputFormatter.digitsOnly,
         ],
@@ -385,10 +377,8 @@ class _PasscodeBox extends StatelessWidget {
         decoration: InputDecoration(
           counterText: '',
           hintText: '*',
-          hintStyle: TextStyle(
+          hintStyle: AppTextStyles.sectionTitle.copyWith(
             color: Colors.white.withValues(alpha: 0.40),
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
           ),
           filled: true,
           fillColor: Colors.white.withValues(alpha: 0.06),
@@ -440,10 +430,8 @@ class _NextButton extends StatelessWidget {
           child: Center(
             child: Text(
               label,
-              style: TextStyle(
+              style: AppTextStyles.subsectionTitle.copyWith(
                 color: fg,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
                 letterSpacing: 0.2,
               ),
             ),

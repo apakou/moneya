@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 
 /// Cash App / Wise-style numeric keypad for entering a transfer amount.
 ///
@@ -147,12 +148,7 @@ class _AmountKeypadSheetState extends State<_AmountKeypadSheet> {
                       fit: BoxFit.scaleDown,
                       child: Text(
                         _value,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 56,
-                          fontWeight: FontWeight.w700,
-                          height: 1.0,
-                        ),
+                        style: AppTextStyles.heroAmountKeypad,
                       ),
                     ),
                   ),

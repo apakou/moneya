@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/document_side.dart';
 import '../../domain/kyc_document_type.dart';
 import '../widgets/camera_shutter_button.dart';
@@ -302,12 +303,7 @@ class _CameraLayer extends StatelessWidget {
                   ? 'Processing\u2026'
                   : instruction,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.onBrand,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                height: 1.3,
-              ),
+              style: AppTextStyles.subsectionTitle.copyWith(height: 1.3),
             ),
             const Spacer(flex: 4),
           ],
@@ -405,11 +401,7 @@ class _CameraMessage extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: AppColors.onBrand,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
+            style: AppTextStyles.body,
           ),
           const SizedBox(height: 12),
           TextButton(

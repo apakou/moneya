@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 
 /// App settings — reached from the Profile screen's Actions list.
 ///
@@ -46,11 +47,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         title: const Text(
           'Delete account?',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-          ),
+          style: AppTextStyles.screenTitle,
         ),
         content: Text(
           'This permanently removes your MoneyA account, balances, and '
@@ -200,11 +197,7 @@ class _Header extends StatelessWidget {
           ),
           const Text(
             'Settings',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-            ),
+            style: AppTextStyles.screenTitle,
           ),
         ],
       ),
@@ -310,11 +303,9 @@ class _SettingsRow extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: TextStyle(
-                  color: labelColor ?? Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: labelColor != null
+                    ? AppTextStyles.label.copyWith(color: labelColor)
+                    : AppTextStyles.label,
               ),
             ),
             if (showChevron)
@@ -359,11 +350,7 @@ class _SettingsToggleRow extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: AppTextStyles.label,
                 ),
                 const SizedBox(height: 2),
                 Text(

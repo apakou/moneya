@@ -1,0 +1,1892 @@
+openapi: 3.1.0
+info:
+  title: MoneyA API
+  version: 1.0.0
+  description: |
+    REST + WebSocket API for MoneyA — custodial Solana-USDC remittance for West
+    & Central Africa. See `docs/backend/architecture.md` for system design.
+
+    ## Conventions
+
+    ### Versioning
+    All routes are prefixed with `/v1`. Breaking changes ship a new major prefix
+    (`/v2`) and run side-by-side for ≥ 90 days.
+
+    ### Authentication
+    Most endpoints require `Authorization: Bearer <access_token>` (RS256 JWT,
+    15-min TTL). Refresh via `POST /v1/auth/refresh`. Webhook endpoints use
+    per-provider signature schemes — see `docs/backend/webhooks.md`.
+
+    ### Idempotency
+    Every state-mutating money endpoint **requires** `Idempotency-Key`:
+    a client-generated UUIDv4. The server stores `(user_id, route, key) → response`
+    for 24 hours. Replays return the original response with the same status.
+
+    ### Step-up (`txn_token`)
+    Every endpoint that moves money requires a `X-Txn-Token` header containing
+    a single-use, 60-second token obtained from `POST /v1/auth/step-up`. The
+    token is bound to `user_id + device_id` and consumed on first use.
+
+    ### Money amounts
+    All amounts are JSON **strings** with up to 6 decimal places (USDC is 6-dp
+    natively). Never floats. Currencies are ISO 4217 (`USDC`, `XOF`, `NGN`,
+    `GHS`, `KES`, `XAF`).
+
+    ### Errors
+    All errors follow RFC 7807 Problem Details (`application/problem+json`).
+    See `#/components/schemas/Problem`.
+
+    ### Pagination
+    Cursor-based. Responses include `next_cursor` (opaque base64) when more
+    results exist. Page size: `limit` query param, max 50, default 20.
+
+    ### Tracing
+    `traceparent` (W3C) is accepted on every request and propagated to all
+    downstream calls (Privy, Yellow Card, Solana RPC, Smile ID).
+
+servers:
+  - url: https://api.moneya.app
+    description: Production
+  - url: https://api.staging.moneya.app
+    description: Staging
+  - url: http://localhost:3000
+    description: Local dev
+
+tags:
+  - name: Auth
+    description: Phone OTP, JWT issue, passcode, step-up
+  - name: Users
+    description: User profile
+  - name: KYC
+    description: Identity verification (tier 1)
+  - name: Wallet
+    description: USDC balance + address
+  - name: Recipients
+    description: Lookup + address book
+  - name: Onramp
+    description: Mobile money → USDC
+  - name: Offramp
+    description: USDC → mobile money
+  - name: Transfers
+    description: P2P USDC transfers
+  - name: PaymentRequests
+    description: Request money from another user
+  - name: Claims
+    description: Unclaimed-transfer landing for non-MoneyA recipients
+  - name: Devices
+    description: FCM/APNs token registration
+  - name: Notifications
+    description: In-app notification feed
+  - name: Realtime
+    description: WebSocket live transfer status
+  - name: Webhooks
+    description: Inbound webhooks from third parties
+
+# ============================================================================
+# Paths
+# ============================================================================
+paths:
+
+  # ----- Auth ---------------------------------------------------------------
+
+  /v1/auth/otp:
+    post:
+      tags: [Auth]
+      summary: Request a phone OTP
+      description: |
+        Sends a 6-digit OTP to the supplied E.164 phone number via Twilio
+        Verify (fallback Africa's Talking on 5xx). Rate-limited to 3
+        requests / phone / 10 min.
+      operationId: requestOtp
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpRequest'
+      responses:
+        '202':
+          description: OTP dispatched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OtpRequestResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /v1/auth/otp/verify:
+    post:
+      tags: [Auth]
+      summary: Verify OTP and obtain tokens
+      description: |
+        Verifies the OTP code. On success returns access + refresh tokens
+        and the user's current KYC tier. If the user does not yet exist,
+        a row is created with `kyc_tier = 0`.
+      operationId: verifyOtp
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpVerifyRequest'
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokens'
+        '401':
+          description: Invalid or expired OTP
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /v1/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      operationId: refreshTokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        '200':
+          description: New tokens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokens'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/auth/passcode:
+    post:
+      tags: [Auth]
+      summary: Set or change passcode
+      description: |
+        Hashed server-side with Argon2id (`m=64MiB, t=3, p=1`, salt per user).
+        Changing requires the current passcode in `current_passcode`.
+      operationId: setPasscode
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPasscodeRequest'
+      responses:
+        '204':
+          description: Passcode set
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/auth/step-up:
+    post:
+      tags: [Auth]
+      summary: Verify passcode and mint a transaction token
+      description: |
+        Verifies the user's passcode server-side and returns a single-use,
+        60-second `txn_token` bound to `user_id + device_id`. Required
+        on every money-moving endpoint.
+      operationId: stepUp
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [passcode]
+              properties:
+                passcode:
+                  type: string
+                  pattern: '^[0-9]{6}$'
+      responses:
+        '200':
+          description: Step-up succeeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TxnTokenResponse'
+        '401':
+          description: Wrong passcode
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '423':
+          description: Account locked (5+ failed attempts in 15 min)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  # ----- Users --------------------------------------------------------------
+
+  /v1/users/me:
+    get:
+      tags: [Users]
+      summary: Get current user
+      operationId: getMe
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: [Users]
+      summary: Update profile (name, photo)
+      operationId: updateMe
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+    delete:
+      tags: [Users]
+      summary: Request account deletion
+      description: |
+        Soft-deletes the user. Wallet must have zero USDC. Deletion
+        completes after a 30-day cooling-off period (regulatory).
+      operationId: deleteMe
+      security: [{ bearerAuth: [] }]
+      responses:
+        '202':
+          description: Deletion scheduled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scheduled_for: { type: string, format: date-time }
+        '409':
+          description: Wallet not empty
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  # ----- KYC ---------------------------------------------------------------
+
+  /v1/kyc/status:
+    get:
+      tags: [KYC]
+      summary: Get current KYC tier and submission status
+      operationId: getKycStatus
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: KYC status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KycStatus'
+
+  /v1/kyc/submissions:
+    post:
+      tags: [KYC]
+      summary: Submit KYC documents (tier 1)
+      description: |
+        Multipart upload of an ID document and a selfie. Backend uploads
+        to Supabase Storage with per-user RLS prefix and submits to Smile
+        ID asynchronously. Result arrives via webhook within ~30–90s.
+      operationId: createKycSubmission
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [document_type, id_front, selfie]
+              properties:
+                document_type:
+                  type: string
+                  enum: [NATIONAL_ID, PASSPORT, DRIVERS_LICENSE, VOTER_CARD]
+                id_country:
+                  type: string
+                  pattern: '^[A-Z]{2}$'
+                id_front:
+                  type: string
+                  format: binary
+                id_back:
+                  type: string
+                  format: binary
+                selfie:
+                  type: string
+                  format: binary
+      responses:
+        '202':
+          description: Submission accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KycSubmission'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          description: File too large (max 10MB per file)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  # ----- Wallet ------------------------------------------------------------
+
+  /v1/wallet:
+    get:
+      tags: [Wallet]
+      summary: Get wallet balance and address
+      description: |
+        Returns the user's custodial Solana wallet. Balance is read from
+        Solana RPC (cached 30s server-side). If the wallet hasn't been
+        provisioned yet (KYC tier 0), `address` is null.
+      operationId: getWallet
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Wallet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+
+  # ----- Recipients --------------------------------------------------------
+
+  /v1/recipients/lookup:
+    get:
+      tags: [Recipients]
+      summary: Look up a recipient by phone
+      description: |
+        Resolves an E.164 phone to a MoneyA user (in-network) or returns
+        `found: false` (sender will trigger an unclaimed transfer with
+        SMS claim link).
+      operationId: lookupRecipient
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: phone
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: '^\+[1-9][0-9]{6,14}$'
+      responses:
+        '200':
+          description: Lookup result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipientLookup'
+
+  /v1/recipients/saved:
+    get:
+      tags: [Recipients]
+      summary: List saved recipients (address book)
+      operationId: listSavedRecipients
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Saved recipients
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedRecipientsPage'
+    post:
+      tags: [Recipients]
+      summary: Save a recipient
+      operationId: saveRecipient
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveRecipientRequest'
+      responses:
+        '201':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedRecipient'
+
+  /v1/recipients/saved/{id}:
+    delete:
+      tags: [Recipients]
+      summary: Remove a saved recipient
+      operationId: deleteSavedRecipient
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204':
+          description: Removed
+
+  # ----- Onramp ------------------------------------------------------------
+
+  /v1/onramp/quote:
+    post:
+      tags: [Onramp]
+      summary: Quote a fiat → USDC conversion
+      description: |
+        Returns the USDC amount the user will receive for a given fiat
+        amount via Yellow Card. Quote is locked for 60 seconds.
+      operationId: quoteOnramp
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnrampQuoteRequest'
+      responses:
+        '200':
+          description: Quote
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quote'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          description: Yellow Card unavailable
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /v1/onramp/orders:
+    post:
+      tags: [Onramp]
+      summary: Create an onramp order
+      description: |
+        Locks the quote, creates a Yellow Card collection request, returns
+        the checkout URL (mobile-money push or USSD instructions).
+        Settles asynchronously via webhook.
+      operationId: createOnrampOrder
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/TxnToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnrampOrderRequest'
+      responses:
+        '202':
+          description: Order accepted, awaiting payment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnrampOrder'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          description: Compliance blocked (BLOCK or REVIEW)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Quote expired
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /v1/onramp/orders/{id}:
+    get:
+      tags: [Onramp]
+      summary: Get an onramp order
+      operationId: getOnrampOrder
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnrampOrder'
+
+  # ----- Offramp -----------------------------------------------------------
+
+  /v1/offramp/quote:
+    post:
+      tags: [Offramp]
+      summary: Quote a USDC → fiat conversion
+      operationId: quoteOfframp
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OfframpQuoteRequest'
+      responses:
+        '200':
+          description: Quote
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quote'
+
+  /v1/offramp/orders:
+    post:
+      tags: [Offramp]
+      summary: Create an offramp order
+      description: |
+        1. Locks the quote (60s).
+        2. Compliance pre-flight.
+        3. Signs SPL transfer from user wallet → MoneyA hot wallet.
+        4. Calls Yellow Card payout.
+        5. Returns `PROCESSING`. Settlement event arrives via webhook.
+
+        Failure of step 4 reverses step 3 automatically.
+      operationId: createOfframpOrder
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/TxnToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OfframpOrderRequest'
+      responses:
+        '202':
+          description: Order accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfframpOrder'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '402':
+          description: Insufficient USDC balance
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Compliance blocked
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Quote expired
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /v1/offramp/orders/{id}:
+    get:
+      tags: [Offramp]
+      summary: Get an offramp order
+      operationId: getOfframpOrder
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfframpOrder'
+
+  # ----- Transfers ---------------------------------------------------------
+
+  /v1/transfers:
+    get:
+      tags: [Transfers]
+      summary: List transfers (sent + received)
+      operationId: listTransfers
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PROCESSING, COMPLETED, FAILED, AWAITING_CLAIM, EXPIRED_REFUNDED]
+        - name: kind
+          in: query
+          schema:
+            type: string
+            enum: [SENT, RECEIVED, ONRAMP, OFFRAMP]
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Page of transfers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransfersPage'
+
+    post:
+      tags: [Transfers]
+      summary: Create a P2P transfer
+      description: |
+        Sends USDC from the caller's wallet to a recipient identified by
+        E.164 phone. If the recipient is a MoneyA user (in-network), the
+        transfer settles in seconds. Otherwise an unclaimed transfer is
+        created: USDC moves to a server-managed escrow wallet, and an
+        SMS claim link is sent to the recipient (TTL 7 days).
+      operationId: createTransfer
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/TxnToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferRequest'
+      responses:
+        '202':
+          description: Transfer accepted, processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transfer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '402':
+          description: Insufficient USDC balance
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Compliance blocked
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Daily/velocity limit exceeded
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /v1/transfers/{id}:
+    get:
+      tags: [Transfers]
+      summary: Get a transfer
+      operationId: getTransfer
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Transfer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transfer'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/transfers/{id}/cancel:
+    post:
+      tags: [Transfers]
+      summary: Cancel an unclaimed transfer
+      description: |
+        Only valid when status is `AWAITING_CLAIM`. Reverses the SPL
+        leg back to the sender's wallet, marks the claim link revoked.
+      operationId: cancelTransfer
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transfer'
+        '409':
+          description: Transfer not in cancellable state
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  # ----- Payment requests --------------------------------------------------
+
+  /v1/payment-requests:
+    get:
+      tags: [PaymentRequests]
+      summary: List payment requests (sent + received)
+      operationId: listPaymentRequests
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [SENT, RECEIVED]
+      responses:
+        '200':
+          description: Page of payment requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentRequestsPage'
+    post:
+      tags: [PaymentRequests]
+      summary: Create a payment request
+      description: |
+        Asks another MoneyA user (or non-user via SMS) to send USDC.
+        Recipient gets a push (or SMS) with a deep link that prefills
+        the transfer screen with the requested amount.
+      operationId: createPaymentRequest
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRequestCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentRequest'
+
+  /v1/payment-requests/{id}:
+    get:
+      tags: [PaymentRequests]
+      summary: Get a payment request
+      operationId: getPaymentRequest
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Payment request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentRequest'
+    delete:
+      tags: [PaymentRequests]
+      summary: Cancel a payment request
+      operationId: cancelPaymentRequest
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204':
+          description: Cancelled
+
+  # ----- Claims (unclaimed transfer redemption) ----------------------------
+
+  /v1/claims/{token}:
+    get:
+      tags: [Claims]
+      summary: Inspect an unclaimed transfer
+      description: |
+        No auth required. Used by the deep-link landing page so a non-user
+        recipient can see who sent how much before installing the app.
+      operationId: inspectClaim
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Claim summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimSummary'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          description: Claim expired or already redeemed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /v1/claims/{token}/redeem:
+    post:
+      tags: [Claims]
+      summary: Redeem an unclaimed transfer
+      description: |
+        Caller must be authenticated as a MoneyA user with KYC tier ≥ 1.
+        The phone on the claim must match the caller's verified phone.
+        Server moves USDC from escrow → caller's wallet.
+      operationId: redeemClaim
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Redeemed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transfer'
+        '403':
+          description: Phone mismatch or KYC tier insufficient
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '410':
+          description: Expired or already redeemed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  # ----- Devices -----------------------------------------------------------
+
+  /v1/devices:
+    post:
+      tags: [Devices]
+      summary: Register or refresh a push token
+      operationId: registerDevice
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceRegistration'
+      responses:
+        '201':
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+
+  /v1/devices/{id}:
+    delete:
+      tags: [Devices]
+      summary: Unregister a device (logout)
+      operationId: deleteDevice
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204':
+          description: Unregistered
+
+  # ----- Notifications -----------------------------------------------------
+
+  /v1/notifications:
+    get:
+      tags: [Notifications]
+      summary: List in-app notifications
+      operationId: listNotifications
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: unread_only
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Page of notifications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationsPage'
+
+  /v1/notifications/read:
+    post:
+      tags: [Notifications]
+      summary: Mark notifications read
+      operationId: markNotificationsRead
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  items: { type: string, format: uuid }
+                  description: Empty array marks all as read.
+      responses:
+        '204':
+          description: Marked
+
+  # ----- Webhooks ----------------------------------------------------------
+
+  /webhooks/yellow-card:
+    post:
+      tags: [Webhooks]
+      summary: Yellow Card settlement events
+      description: |
+        Receives onramp/offramp settlement events. HMAC-SHA256 signature
+        in `X-YC-Signature` over the raw body. Dedupe key = `event_id`.
+        See `docs/backend/webhooks.md`.
+      operationId: ycWebhook
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/YellowCardEvent'
+      parameters:
+        - name: X-YC-Signature
+          in: header
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Accepted (we always reply 200 after enqueue)
+        '400':
+          description: Signature invalid
+
+  /webhooks/smile-id:
+    post:
+      tags: [Webhooks]
+      summary: Smile ID verification result
+      operationId: smileWebhook
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SmileIdEvent'
+      parameters:
+        - name: X-Smile-Signature
+          in: header
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Accepted
+
+  /webhooks/privy:
+    post:
+      tags: [Webhooks]
+      summary: Privy wallet events
+      operationId: privyWebhook
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrivyEvent'
+      parameters:
+        - name: Privy-Signature
+          in: header
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Accepted
+
+  # ----- Realtime (WSS) — documented here, served outside HTTP -------------
+
+  /v1/realtime:
+    get:
+      tags: [Realtime]
+      summary: WebSocket subscription for live events
+      description: |
+        Upgrade to WSS. Auth via `?token=<accessToken>` query param. Server
+        emits JSON frames matching `#/components/schemas/RealtimeEvent`.
+        Heartbeat: server pings every 25s; client must reply pong within
+        10s or be disconnected.
+
+        Channels (auto-subscribed for the authenticated user):
+        - `transfer.*`     — transfers where user is sender or recipient
+        - `onramp.*`       — caller's onramp orders
+        - `offramp.*`      — caller's offramp orders
+        - `kyc.*`          — caller's KYC status changes
+        - `notification.*` — new in-app notification
+      operationId: realtimeConnect
+      security: []
+      responses:
+        '101':
+          description: Switching protocols (WSS)
+
+# ============================================================================
+# Components
+# ============================================================================
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+      description: Opaque pagination cursor returned by the previous page.
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: |
+        Client-generated UUIDv4. Stored 24h. Replays return the original
+        response with the same status.
+    TxnToken:
+      name: X-Txn-Token
+      in: header
+      required: true
+      schema: { type: string }
+      description: |
+        Single-use, 60-second token from `POST /v1/auth/step-up`. Bound to
+        `user_id + device_id`. Required on every money-moving endpoint.
+
+  responses:
+    BadRequest:
+      description: Validation failure
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: Missing or invalid token
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    RateLimited:
+      description: Too many requests
+      headers:
+        Retry-After:
+          schema: { type: integer }
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+  schemas:
+
+    # ---- Common -----------------------------------------------------------
+
+    Problem:
+      type: object
+      description: RFC 7807 Problem Details
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          example: 'https://api.moneya.app/problems/insufficient-funds'
+        title: { type: string, example: 'Insufficient funds' }
+        status: { type: integer, example: 402 }
+        detail: { type: string }
+        instance: { type: string }
+        code:
+          type: string
+          description: Machine-readable error code (stable across versions)
+          example: 'WALLET_INSUFFICIENT_FUNDS'
+        trace_id: { type: string }
+
+    Money:
+      type: string
+      pattern: '^[0-9]+(\.[0-9]{1,6})?$'
+      description: Decimal money amount, up to 6 decimal places, as a string.
+      example: '12345.67'
+
+    Currency:
+      type: string
+      enum: [USDC, XOF, XAF, NGN, GHS, KES]
+
+    Phone:
+      type: string
+      pattern: '^\+[1-9][0-9]{6,14}$'
+      description: E.164 international format
+      example: '+22890123456'
+
+    KycTier:
+      type: string
+      enum: [TIER_0, TIER_1, TIER_2]
+
+    Page:
+      type: object
+      properties:
+        next_cursor:
+          type: [string, "null"]
+        has_more: { type: boolean }
+
+    # ---- Auth -------------------------------------------------------------
+
+    OtpRequest:
+      type: object
+      required: [phone]
+      properties:
+        phone: { $ref: '#/components/schemas/Phone' }
+        device_id:
+          type: string
+          format: uuid
+          description: Stable client-generated device id
+        device_kind:
+          type: string
+          enum: [IOS, ANDROID]
+        device_name:
+          type: string
+          description: Human-readable, e.g. "Pixel 8"
+
+    OtpRequestResponse:
+      type: object
+      required: [retry_after_seconds]
+      properties:
+        retry_after_seconds: { type: integer }
+        masked_destination:
+          type: string
+          example: '+228 90 ** ** 56'
+
+    OtpVerifyRequest:
+      type: object
+      required: [phone, code, device_id]
+      properties:
+        phone: { $ref: '#/components/schemas/Phone' }
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+        device_id:
+          type: string
+          format: uuid
+
+    AuthTokens:
+      type: object
+      required: [access_token, refresh_token, expires_in, user]
+      properties:
+        access_token: { type: string }
+        refresh_token: { type: string }
+        expires_in: { type: integer, description: 'Access token TTL in seconds' }
+        user: { $ref: '#/components/schemas/User' }
+
+    SetPasscodeRequest:
+      type: object
+      required: [passcode]
+      properties:
+        passcode:
+          type: string
+          pattern: '^[0-9]{6}$'
+        current_passcode:
+          type: string
+          pattern: '^[0-9]{6}$'
+          description: Required when changing an existing passcode.
+
+    TxnTokenResponse:
+      type: object
+      required: [txn_token, expires_at]
+      properties:
+        txn_token: { type: string }
+        expires_at: { type: string, format: date-time }
+
+    # ---- Users ------------------------------------------------------------
+
+    User:
+      type: object
+      required: [id, phone, country, kyc_tier, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        phone: { $ref: '#/components/schemas/Phone' }
+        country:
+          type: string
+          pattern: '^[A-Z]{2}$'
+        full_name:
+          type: [string, "null"]
+        photo_url:
+          type: [string, "null"]
+          format: uri
+        kyc_tier: { $ref: '#/components/schemas/KycTier' }
+        created_at: { type: string, format: date-time }
+
+    UserUpdate:
+      type: object
+      properties:
+        full_name: { type: string, maxLength: 80 }
+        photo_url: { type: string, format: uri }
+
+    # ---- KYC --------------------------------------------------------------
+
+    KycStatus:
+      type: object
+      required: [tier]
+      properties:
+        tier: { $ref: '#/components/schemas/KycTier' }
+        latest_submission:
+          $ref: '#/components/schemas/KycSubmission'
+
+    KycSubmission:
+      type: object
+      required: [id, status, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        status:
+          type: string
+          enum: [PENDING, IN_REVIEW, APPROVED, REJECTED]
+        rejection_reason:
+          type: [string, "null"]
+          enum:
+            - DOC_BLURRY
+            - DOC_EXPIRED
+            - SELFIE_MISMATCH
+            - LIVENESS_FAILED
+            - DOC_TYPE_UNSUPPORTED
+            - MANUAL_REVIEW
+            - null
+        document_type:
+          type: string
+          enum: [NATIONAL_ID, PASSPORT, DRIVERS_LICENSE, VOTER_CARD]
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    # ---- Wallet -----------------------------------------------------------
+
+    Wallet:
+      type: object
+      required: [provisioned, balance_usdc, currency]
+      properties:
+        provisioned: { type: boolean }
+        address:
+          type: [string, "null"]
+          description: Solana base58 public key
+        chain:
+          type: string
+          enum: [SOLANA]
+          default: SOLANA
+        balance_usdc: { $ref: '#/components/schemas/Money' }
+        balance_cached_at:
+          type: string
+          format: date-time
+
+    # ---- Recipients -------------------------------------------------------
+
+    RecipientLookup:
+      type: object
+      required: [phone, found]
+      properties:
+        phone: { $ref: '#/components/schemas/Phone' }
+        found: { type: boolean }
+        display_name:
+          type: [string, "null"]
+        photo_url:
+          type: [string, "null"]
+          format: uri
+
+    SaveRecipientRequest:
+      type: object
+      required: [phone]
+      properties:
+        phone: { $ref: '#/components/schemas/Phone' }
+        nickname: { type: string, maxLength: 40 }
+
+    SavedRecipient:
+      type: object
+      required: [id, phone, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        phone: { $ref: '#/components/schemas/Phone' }
+        nickname:
+          type: [string, "null"]
+        display_name:
+          type: [string, "null"]
+          description: Resolved name when the recipient is in-network
+        is_in_network: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    SavedRecipientsPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/SavedRecipient' }
+
+    # ---- Quotes / orders --------------------------------------------------
+
+    Quote:
+      type: object
+      required: [id, kind, fiat_currency, fiat_amount, usdc_amount, rate, fee_usdc, expires_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind:
+          type: string
+          enum: [ONRAMP, OFFRAMP]
+        fiat_currency: { $ref: '#/components/schemas/Currency' }
+        fiat_amount: { $ref: '#/components/schemas/Money' }
+        usdc_amount: { $ref: '#/components/schemas/Money' }
+        rate:
+          type: string
+          description: 'fiat per 1 USDC, decimal string'
+        fee_usdc: { $ref: '#/components/schemas/Money' }
+        expires_at: { type: string, format: date-time }
+
+    OnrampQuoteRequest:
+      type: object
+      required: [fiat_currency, fiat_amount]
+      properties:
+        fiat_currency: { $ref: '#/components/schemas/Currency' }
+        fiat_amount: { $ref: '#/components/schemas/Money' }
+
+    OnrampOrderRequest:
+      type: object
+      required: [quote_id, payment_method, payer_msisdn]
+      properties:
+        quote_id: { type: string, format: uuid }
+        payment_method:
+          type: string
+          enum:
+            - WAVE
+            - MTN_MOMO
+            - ORANGE_MONEY
+            - MOOV_MONEY
+            - AIRTEL_MONEY
+            - MPESA
+            - BANK_TRANSFER
+        payer_msisdn: { $ref: '#/components/schemas/Phone' }
+
+    OnrampOrder:
+      type: object
+      required: [id, status, quote, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        status:
+          type: string
+          enum:
+            - AWAITING_PAYMENT
+            - COLLECTED
+            - CREDITING_WALLET
+            - COMPLETED
+            - FAILED
+            - EXPIRED
+        quote: { $ref: '#/components/schemas/Quote' }
+        checkout_url:
+          type: [string, "null"]
+          format: uri
+          description: For methods that need a redirect (rare on mobile money).
+        ussd_instructions:
+          type: [string, "null"]
+        provider_reference: { type: [string, "null"] }
+        failure_reason:
+          type: [string, "null"]
+          enum:
+            - PAYER_DECLINED
+            - PROVIDER_TIMEOUT
+            - PROVIDER_ERROR
+            - COMPLIANCE_BLOCK
+            - WALLET_PROVISION_FAILED
+            - null
+        created_at: { type: string, format: date-time }
+        completed_at: { type: [string, "null"], format: date-time }
+
+    OfframpQuoteRequest:
+      type: object
+      required: [usdc_amount, fiat_currency]
+      properties:
+        usdc_amount: { $ref: '#/components/schemas/Money' }
+        fiat_currency: { $ref: '#/components/schemas/Currency' }
+
+    OfframpOrderRequest:
+      type: object
+      required: [quote_id, payout_method, payee_msisdn]
+      properties:
+        quote_id: { type: string, format: uuid }
+        payout_method:
+          type: string
+          enum:
+            - WAVE
+            - MTN_MOMO
+            - ORANGE_MONEY
+            - MOOV_MONEY
+            - AIRTEL_MONEY
+            - MPESA
+            - BANK_TRANSFER
+        payee_msisdn: { $ref: '#/components/schemas/Phone' }
+        payee_name: { type: string, maxLength: 80 }
+
+    OfframpOrder:
+      type: object
+      required: [id, status, quote, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        status:
+          type: string
+          enum:
+            - PROCESSING
+            - SETTLED
+            - FAILED
+            - REFUNDED
+        quote: { $ref: '#/components/schemas/Quote' }
+        provider_reference: { type: [string, "null"] }
+        solana_signature:
+          type: [string, "null"]
+          description: SPL signature for the user → hot-wallet leg
+        failure_reason:
+          type: [string, "null"]
+          enum:
+            - PAYEE_INVALID
+            - PROVIDER_REJECTED
+            - PROVIDER_TIMEOUT
+            - INSUFFICIENT_LIQUIDITY
+            - COMPLIANCE_BLOCK
+            - null
+        created_at: { type: string, format: date-time }
+        settled_at: { type: [string, "null"], format: date-time }
+
+    # ---- Transfers --------------------------------------------------------
+
+    TransferRequest:
+      type: object
+      required: [recipient_phone, amount_usdc]
+      properties:
+        recipient_phone: { $ref: '#/components/schemas/Phone' }
+        amount_usdc: { $ref: '#/components/schemas/Money' }
+        note:
+          type: string
+          maxLength: 140
+          description: User-supplied memo. Stored, not on-chain.
+        save_recipient:
+          type: boolean
+          default: false
+
+    Transfer:
+      type: object
+      required: [id, kind, status, amount_usdc, fee_usdc, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind:
+          type: string
+          enum: [SENT, RECEIVED, ONRAMP, OFFRAMP]
+        status:
+          type: string
+          enum:
+            - PROCESSING
+            - COMPLETED
+            - FAILED
+            - AWAITING_CLAIM
+            - EXPIRED_REFUNDED
+            - CANCELLED
+        sender:
+          $ref: '#/components/schemas/TransferParty'
+        recipient:
+          $ref: '#/components/schemas/TransferParty'
+        amount_usdc: { $ref: '#/components/schemas/Money' }
+        fee_usdc: { $ref: '#/components/schemas/Money' }
+        note:
+          type: [string, "null"]
+        solana_signature:
+          type: [string, "null"]
+        failure_reason:
+          type: [string, "null"]
+          enum:
+            - INSUFFICIENT_FUNDS
+            - COMPLIANCE_BLOCK
+            - SIGNING_FAILED
+            - RPC_FAILED
+            - PROVIDER_REJECTED
+            - QUOTE_EXPIRED
+            - VELOCITY_LIMIT
+            - null
+        created_at: { type: string, format: date-time }
+        completed_at: { type: [string, "null"], format: date-time }
+        claim:
+          $ref: '#/components/schemas/ClaimSummary'
+
+    TransferParty:
+      type: object
+      properties:
+        user_id:
+          type: [string, "null"]
+          format: uuid
+        phone: { $ref: '#/components/schemas/Phone' }
+        display_name:
+          type: [string, "null"]
+        photo_url:
+          type: [string, "null"]
+          format: uri
+
+    TransfersPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Transfer' }
+
+    # ---- Payment requests -------------------------------------------------
+
+    PaymentRequestCreate:
+      type: object
+      required: [from_phone, amount_usdc]
+      properties:
+        from_phone: { $ref: '#/components/schemas/Phone' }
+        amount_usdc: { $ref: '#/components/schemas/Money' }
+        note:
+          type: string
+          maxLength: 140
+        expires_in_hours:
+          type: integer
+          minimum: 1
+          maximum: 168
+          default: 72
+
+    PaymentRequest:
+      type: object
+      required: [id, direction, status, from, to, amount_usdc, created_at, expires_at]
+      properties:
+        id: { type: string, format: uuid }
+        direction:
+          type: string
+          enum: [SENT, RECEIVED]
+        status:
+          type: string
+          enum: [PENDING, PAID, DECLINED, CANCELLED, EXPIRED]
+        from: { $ref: '#/components/schemas/TransferParty' }
+        to: { $ref: '#/components/schemas/TransferParty' }
+        amount_usdc: { $ref: '#/components/schemas/Money' }
+        note:
+          type: [string, "null"]
+        transfer_id:
+          type: [string, "null"]
+          format: uuid
+          description: Set once the request has been paid.
+        created_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+
+    PaymentRequestsPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/PaymentRequest' }
+
+    # ---- Claims -----------------------------------------------------------
+
+    ClaimSummary:
+      type: object
+      required: [token, status, amount_usdc, expires_at]
+      properties:
+        token: { type: string }
+        status:
+          type: string
+          enum: [PENDING, REDEEMED, EXPIRED, CANCELLED]
+        amount_usdc: { $ref: '#/components/schemas/Money' }
+        sender:
+          $ref: '#/components/schemas/TransferParty'
+        note:
+          type: [string, "null"]
+        expires_at: { type: string, format: date-time }
+
+    # ---- Devices ----------------------------------------------------------
+
+    DeviceRegistration:
+      type: object
+      required: [device_id, kind, push_token]
+      properties:
+        device_id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [IOS, ANDROID]
+        push_token: { type: string }
+        app_version: { type: string }
+        os_version: { type: string }
+
+    Device:
+      type: object
+      required: [id, kind, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind:
+          type: string
+          enum: [IOS, ANDROID]
+        last_seen_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+
+    # ---- Notifications ----------------------------------------------------
+
+    Notification:
+      type: object
+      required: [id, kind, title, body, created_at, read]
+      properties:
+        id: { type: string, format: uuid }
+        kind:
+          type: string
+          enum:
+            - TRANSFER_RECEIVED
+            - TRANSFER_SENT
+            - TRANSFER_FAILED
+            - TRANSFER_EXPIRED_REFUNDED
+            - ONRAMP_COMPLETED
+            - OFFRAMP_COMPLETED
+            - OFFRAMP_FAILED
+            - PAYMENT_REQUEST_RECEIVED
+            - PAYMENT_REQUEST_PAID
+            - KYC_APPROVED
+            - KYC_REJECTED
+            - SECURITY_NEW_DEVICE
+        title: { type: string }
+        body: { type: string }
+        deep_link:
+          type: [string, "null"]
+          format: uri
+        ref_type:
+          type: [string, "null"]
+          enum: [TRANSFER, ONRAMP_ORDER, OFFRAMP_ORDER, PAYMENT_REQUEST, KYC_SUBMISSION, null]
+        ref_id:
+          type: [string, "null"]
+          format: uuid
+        read: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    NotificationsPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Notification' }
+
+    # ---- Realtime (WSS frames) -------------------------------------------
+
+    RealtimeEvent:
+      oneOf:
+        - $ref: '#/components/schemas/RealtimeTransferEvent'
+        - $ref: '#/components/schemas/RealtimeOnrampEvent'
+        - $ref: '#/components/schemas/RealtimeOfframpEvent'
+        - $ref: '#/components/schemas/RealtimeKycEvent'
+        - $ref: '#/components/schemas/RealtimeNotificationEvent'
+        - $ref: '#/components/schemas/RealtimeHeartbeat'
+      discriminator:
+        propertyName: type
+
+    RealtimeTransferEvent:
+      type: object
+      required: [type, transfer_id, status, at]
+      properties:
+        type:
+          type: string
+          enum: [transfer.processing, transfer.completed, transfer.failed, transfer.awaiting_claim, transfer.expired_refunded]
+        transfer_id: { type: string, format: uuid }
+        status:
+          type: string
+        amount_usdc: { $ref: '#/components/schemas/Money' }
+        counterparty:
+          $ref: '#/components/schemas/TransferParty'
+        at: { type: string, format: date-time }
+
+    RealtimeOnrampEvent:
+      type: object
+      required: [type, order_id, status, at]
+      properties:
+        type:
+          type: string
+          enum: [onramp.awaiting_payment, onramp.collected, onramp.completed, onramp.failed]
+        order_id: { type: string, format: uuid }
+        status: { type: string }
+        at: { type: string, format: date-time }
+
+    RealtimeOfframpEvent:
+      type: object
+      required: [type, order_id, status, at]
+      properties:
+        type:
+          type: string
+          enum: [offramp.processing, offramp.settled, offramp.failed, offramp.refunded]
+        order_id: { type: string, format: uuid }
+        status: { type: string }
+        at: { type: string, format: date-time }
+
+    RealtimeKycEvent:
+      type: object
+      required: [type, submission_id, status, at]
+      properties:
+        type:
+          type: string
+          enum: [kyc.approved, kyc.rejected]
+        submission_id: { type: string, format: uuid }
+        status: { type: string }
+        at: { type: string, format: date-time }
+
+    RealtimeNotificationEvent:
+      type: object
+      required: [type, notification, at]
+      properties:
+        type:
+          type: string
+          enum: [notification.new]
+        notification: { $ref: '#/components/schemas/Notification' }
+        at: { type: string, format: date-time }
+
+    RealtimeHeartbeat:
+      type: object
+      required: [type, at]
+      properties:
+        type:
+          type: string
+          enum: [heartbeat]
+        at: { type: string, format: date-time }
+
+    # ---- Webhook payloads -------------------------------------------------
+
+    YellowCardEvent:
+      type: object
+      required: [event_id, event_type, occurred_at, data]
+      properties:
+        event_id: { type: string }
+        event_type:
+          type: string
+          enum:
+            - collection.completed
+            - collection.failed
+            - payout.processing
+            - payout.settled
+            - payout.failed
+        occurred_at: { type: string, format: date-time }
+        data:
+          type: object
+          required: [order_id]
+          properties:
+            order_id: { type: string }
+            provider_reference: { type: string }
+            failure_reason: { type: [string, "null"] }
+            settled_amount_fiat: { type: string }
+            settled_currency: { $ref: '#/components/schemas/Currency' }
+
+    SmileIdEvent:
+      type: object
+      required: [event_id, job_id, result, occurred_at]
+      properties:
+        event_id: { type: string }
+        job_id: { type: string }
+        result:
+          type: string
+          enum: [APPROVED, REJECTED, MANUAL_REVIEW]
+        rejection_reason:
+          type: [string, "null"]
+        occurred_at: { type: string, format: date-time }
+
+    PrivyEvent:
+      type: object
+      required: [event_id, event_type, wallet_id, occurred_at]
+      properties:
+        event_id: { type: string }
+        event_type:
+          type: string
+          enum:
+            - wallet.created
+            - wallet.transaction_signed
+            - wallet.policy_violation
+        wallet_id: { type: string }
+        occurred_at: { type: string, format: date-time }
+        data:
+          type: object

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../../../core/theme/app_colors.dart';
-
 /// Concentric translucent circles with a centered SVG icon.
 ///
 /// Reused across all onboarding pages; only the icon changes.

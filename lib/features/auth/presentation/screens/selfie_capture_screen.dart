@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../home/presentation/screens/home_shell.dart';
 import '../widgets/camera_shutter_button.dart';
 
@@ -317,12 +318,7 @@ class _OvalMaskOverlay extends StatelessWidget {
               child: Text(
                 instruction,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.onBrand,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  height: 1.3,
-                ),
+                style: AppTextStyles.subsectionTitle.copyWith(height: 1.3),
               ),
             ),
           ],
@@ -389,11 +385,7 @@ class _ProcessingOverlay extends StatelessWidget {
             SizedBox(height: 16),
             Text(
               'Processing\u2026',
-              style: TextStyle(
-                color: AppColors.onBrand,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
+              style: AppTextStyles.subsectionTitle,
             ),
           ],
         ),
@@ -433,11 +425,7 @@ class _CameraMessage extends StatelessWidget {
                   ? 'Camera access is required to verify your identity.'
                   : 'Camera is not available on this device.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.onBrand,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+              style: AppTextStyles.body,
             ),
             const SizedBox(height: 12),
             TextButton(

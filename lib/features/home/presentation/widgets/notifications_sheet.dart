@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/app_notification.dart';
 
 /// Entry point — opens the notifications bottom-sheet.
@@ -276,11 +277,9 @@ class _Header extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 8, 12, 12),
       child: Row(
         children: [
-          const Text(
+          Text(
             'Notifications',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
+            style: AppTextStyles.subsectionTitle.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -315,10 +314,7 @@ class _Header extends StatelessWidget {
             ),
             child: const Text(
               'Mark all as read',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
+              style: AppTextStyles.captionStrong,
             ),
           ),
         ],
@@ -438,10 +434,8 @@ class _NotificationTile extends StatelessWidget {
                         const SizedBox(width: 8),
                         Text(
                           _relativeTime(notification.when),
-                          style: TextStyle(
+                          style: AppTextStyles.microNumeric.copyWith(
                             color: Colors.white.withValues(alpha: 0.55),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
