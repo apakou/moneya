@@ -1,18 +1,22 @@
-// This is a basic Flutter widget test.
+// Smoke test: verify the app boots to a Scaffold.
 //
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// Replace with proper feature-level widget tests once Riverpod +
+// freezed migration lands and we have testable view-models.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:moneya/core/locale/locale_controller.dart';
 import 'package:moneya/main.dart';
 
 void main() {
-  testWidgets('App boots to the splash screen', (tester) async {
-    await tester.pumpWidget(const MoneyaApp());
+  testWidgets('App boots to a Scaffold', (tester) async {
+    // LocaleController is normally hydrated from SharedPreferences in
+    // main(). The default constructor is sufficient for a smoke test
+    // — no persisted locale read happens unless we call load().
+    await tester.pumpWidget(
+      MoneyaApp(localeController: LocaleController()),
+    );
     expect(find.byType(Scaffold), findsOneWidget);
   });
 }

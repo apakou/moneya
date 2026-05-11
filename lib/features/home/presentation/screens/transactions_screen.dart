@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:intl/intl.dart';
 
+import '../../../../core/locale/locale_controller.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../l10n/generated/app_localizations.dart';
+import '../../../../main.dart' show LocaleScope;
 import '../../domain/transaction.dart';
 import '../widgets/home_header.dart';
 import '../widgets/notifications_sheet.dart';
@@ -335,7 +339,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       MaterialPageRoute(builder: (_) => const ProfileScreen()),
     );
   }
-  void _onLanguageTap() => debugPrint('TODO: open language picker');
+  void _onLanguageTap() {
+    // Flip app-wide locale; the InheritedNotifier surfaces the
+    // change to every screen that reads from LocaleScope. Fire-and-
+    // forget — persistence happens inside the controller.
+    LocaleScope.of(context, listen: false).toggle();
+  }
   void _onNotificationsTap() => showNotificationsSheet(context);
   void _onExportTap() => debugPrint('TODO: export transactions CSV');
   void _onTxnTap(Transaction t) {
@@ -351,6 +360,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Active locale tag drives `intl`'s month-name table (en/fr).
+    // Reading via LocaleScope ensures the screen rebuilds on toggle.
+    final localeTag = LocaleScope.of(context).current.tag;
     final groups = _groups;
     final currentYear = DateTime.now().year;
     final hasGroups = groups.isNotEmpty;
@@ -377,12 +389,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             children: [
               HomeHeader(
                 userName: _userName,
-                // Hardcoded for now — once a real locale provider
-                // lands, both this screen and HomeScreen should read
-                // from it instead of holding their own copies. Until
-                // then, the transactions tab doesn't expose a
-                // language toggle (the home tab does).
-                language: UiLanguage.en,
+                // Mirror the app-wide locale so the flag pill matches
+                // the home tab without each tab keeping its own copy
+                // of the language state.
+                language: LocaleScope.of(context).current == AppLocale.fr
+                    ? UiLanguage.fr
+                    : UiLanguage.en,
                 onProfileTap: _onProfileTap,
                 onLanguageTap: _onLanguageTap,
                 onNotificationsTap: _onNotificationsTap,
@@ -409,6 +421,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     groups[safeIndex].year,
                     groups[safeIndex].month,
                     currentYear,
+                    localeTag,
                   ),
                 ),
               ],
@@ -473,29 +486,25 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 // Header label formatting
 // ---------------------------------------------------------------------------
 
-const List<String> _monthNames = [
-  '', // 1-indexed
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
-/// `June` for months in [currentYear], `June 2024` for older months.
+/// `June` for months in [currentYear], `June 2024` for older months —
+/// localised via `intl`'s `DateFormat`. The [localeTag] ('en', 'fr',
+/// …) is threaded down from the active app locale so French UI shows
+/// `juin` / `juin 2024`, English shows `June` / `June 2024`.
+///
 /// Lives at the top level (not in `_TransactionsScreenState`) so the
 /// `SliverPersistentHeader` delegate can build labels without needing
 /// a back-reference to the state object.
-String _formatHeader(int year, int month, int currentYear) {
-  final name = _monthNames[month];
-  return year == currentYear ? name : '$name $year';
+String _formatHeader(int year, int month, int currentYear, String localeTag) {
+  // Use day=1 because the day-of-month doesn't matter for a month
+  // header; only the month + year segments are read.
+  final date = DateTime(year, month);
+  if (year == currentYear) {
+    // 'LLLL' = stand-alone full month name (correct nominative case
+    // in languages that distinguish — e.g. Russian; harmless in
+    // English/French where it matches 'MMMM').
+    return DateFormat.MMMM(localeTag).format(date);
+  }
+  return DateFormat.yMMMM(localeTag).format(date);
 }
 
 // ---------------------------------------------------------------------------
@@ -513,17 +522,18 @@ class _TitleRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Stack(
       alignment: Alignment.center,
       children: [
-        const Text(
-          'Your Transactions',
+        Text(
+          l10n.transactionsTitle,
           style: AppTextStyles.sectionTitle,
         ),
         Align(
           alignment: Alignment.centerRight,
           child: HomeIconButton(
-            tooltip: 'Export',
+            tooltip: l10n.transactionsExportTooltip,
             onTap: onExportTap,
             child: const Icon(
               Icons.file_download_outlined,
@@ -543,20 +553,24 @@ class _TitleRow extends StatelessWidget {
 
 enum _TxnFilter { sent, received, succeeded, pending, failed }
 
-extension on _TxnFilter {
-  String get label {
-    switch (this) {
-      case _TxnFilter.sent:
-        return 'Sent';
-      case _TxnFilter.received:
-        return 'Received';
-      case _TxnFilter.succeeded:
-        return 'Succeeded';
-      case _TxnFilter.pending:
-        return 'Pending';
-      case _TxnFilter.failed:
-        return 'Failed';
-    }
+/// Localised label for a [_TxnFilter] chip.
+///
+/// Implemented as a free function (not an extension getter) because
+/// it needs the [AppLocalizations] handle and extensions can't accept
+/// a `BuildContext`. Callers pass the resolved `l10n` object so we
+/// only do the lookup once per build.
+String _txnFilterLabel(_TxnFilter f, AppLocalizations l10n) {
+  switch (f) {
+    case _TxnFilter.sent:
+      return l10n.txnFilterSent;
+    case _TxnFilter.received:
+      return l10n.txnFilterReceived;
+    case _TxnFilter.succeeded:
+      return l10n.txnFilterSucceeded;
+    case _TxnFilter.pending:
+      return l10n.txnFilterPending;
+    case _TxnFilter.failed:
+      return l10n.txnFilterFailed;
   }
 }
 
@@ -568,6 +582,7 @@ class _FilterRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Wrap(
       spacing: 10,
       runSpacing: 10,
@@ -575,7 +590,7 @@ class _FilterRow extends StatelessWidget {
       children: [
         for (final f in _TxnFilter.values)
           _FilterChip(
-            label: f.label,
+            label: _txnFilterLabel(f, l10n),
             selected: active == f,
             onTap: () => onToggle(f),
           ),
@@ -725,21 +740,39 @@ class _TransactionTile extends StatelessWidget {
     }
   }
 
-  ({Color color, String label}) get _statusBadge {
+  ({Color color, String label}) _statusBadge(AppLocalizations l10n) {
     switch (txn.status) {
       case TxnStatus.success:
-        return (color: const Color(0xFF22C55E), label: 'Success');
+        return (
+          color: const Color(0xFF22C55E),
+          label: l10n.txnStatusSuccess,
+        );
       case TxnStatus.pending:
-        return (color: const Color(0xFFF5A524), label: 'Pending');
+        return (
+          color: const Color(0xFFF5A524),
+          label: l10n.txnStatusPending,
+        );
       case TxnStatus.failed:
-        return (color: const Color(0xFFEF4444), label: 'Failed');
+        return (
+          color: const Color(0xFFEF4444),
+          label: l10n.txnStatusFailed,
+        );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final g = _glyph;
-    final s = _statusBadge;
+    final s = _statusBadge(l10n);
+    // Direction label is resolved from the kind enum at render time
+    // (rather than reading `txn.directionLabel` from the model) so
+    // the tile follows the active locale. The model getter is still
+    // used by debug logs and the detail screen until that is migrated.
+    final directionLabel = switch (txn.kind) {
+      TxnKind.sent => l10n.txnLabelSent,
+      TxnKind.received => l10n.txnLabelReceived,
+    };
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -765,7 +798,7 @@ class _TransactionTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    txn.directionLabel,
+                    directionLabel,
                     style: AppTextStyles.listTitle,
                   ),
                   const SizedBox(height: 2),
@@ -807,11 +840,12 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Text(
-          'No transactions match this filter.',
+          l10n.transactionsEmpty,
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.55),

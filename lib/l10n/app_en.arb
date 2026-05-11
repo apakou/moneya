@@ -1,0 +1,1141 @@
+{
+  "@@locale": "en",
+
+  "appName": "MoneyA",
+  "@appName": {
+    "description": "Brand name shown in the OS task switcher and the splash screen."
+  },
+
+  "languageTooltip": "Language",
+  "@languageTooltip": {
+    "description": "Tooltip on the language flag pill in the home header."
+  },
+  "notificationsTooltip": "Notifications",
+  "@notificationsTooltip": {
+    "description": "Tooltip on the bell pill in the home header."
+  },
+  "languageEnglish": "English",
+  "@languageEnglish": {
+    "description": "Display name of the English locale, used in the language picker."
+  },
+  "languageFrench": "Français",
+  "@languageFrench": {
+    "description": "Display name of the French locale, used in the language picker."
+  },
+
+  "homeTotalBalance": "Total Balance",
+  "@homeTotalBalance": {
+    "description": "Caption above the big balance figure on the home screen."
+  },
+  "homeBalanceShow": "Show balance",
+  "@homeBalanceShow": {
+    "description": "Accessibility/tooltip for the eye icon when the balance is hidden."
+  },
+  "homeBalanceHide": "Hide balance",
+  "@homeBalanceHide": {
+    "description": "Accessibility/tooltip for the eye icon when the balance is visible."
+  },
+
+  "homeActionSend": "Send",
+  "@homeActionSend": {
+    "description": "Primary action button label for the outbound transfer flow."
+  },
+  "homeActionReceive": "Receive",
+  "@homeActionReceive": {
+    "description": "Primary action button label for the receive flow."
+  },
+
+  "homeSectionAiInsights": "AI Insights",
+  "@homeSectionAiInsights": {
+    "description": "Section header above the AI insights card carousel."
+  },
+  "homeSectionFavorites": "Your Favorites",
+  "@homeSectionFavorites": {
+    "description": "Section header above the favorite contacts strip."
+  },
+  "homeSectionRecentTransactions": "Recent transactions",
+  "@homeSectionRecentTransactions": {
+    "description": "Section header above the recent transactions list."
+  },
+  "homeViewAll": "View all",
+  "@homeViewAll": {
+    "description": "Trailing button in section headers; navigates to the full list."
+  },
+
+  "insightSmartRateTitle": "Smart Rate",
+  "@insightSmartRateTitle": {
+    "description": "Title of the FX-savings insight card."
+  },
+  "insightSmartRateBody": "Save on your next cross-border transfer.",
+  "@insightSmartRateBody": {
+    "description": "Body copy of the Smart Rate insight card."
+  },
+  "insightTrustScoreTitle": "Trust Score",
+  "@insightTrustScoreTitle": {
+    "description": "Title of the trust-score insight card."
+  },
+  "insightTrustScoreBody": "Unlock micro-loans up to {currency} {limit}.",
+  "@insightTrustScoreBody": {
+    "description": "Body of the trust-score insight card. Includes the active currency code and a formatted credit limit.",
+    "placeholders": {
+      "currency": { "type": "String", "example": "GHS" },
+      "limit": { "type": "String", "example": "5,000" }
+    }
+  },
+  "insightSpendingPulseTitle": "Spending pulse",
+  "@insightSpendingPulseTitle": {
+    "description": "Title of the spending-trend insight card."
+  },
+  "insightSpendingPulseBody": "You spent 18% less than last week.",
+  "@insightSpendingPulseBody": {
+    "description": "Body copy of the Spending pulse insight card. Hardcoded percentage in v1; will be backend-driven."
+  },
+
+  "txnLabelReceived": "Received",
+  "@txnLabelReceived": {
+    "description": "Label on a transaction tile when funds were credited to the user."
+  },
+  "txnLabelSent": "Sent",
+  "@txnLabelSent": {
+    "description": "Label on a transaction tile for an outbound transfer."
+  },
+  "txnLabelPayed": "Payed",
+  "@txnLabelPayed": {
+    "description": "Label on a transaction tile for a merchant payment. Note: 'Payed' (not 'Paid') matches the design mock and the legacy backend tag."
+  },
+  "txnStatusSuccess": "Success",
+  "@txnStatusSuccess": {
+    "description": "Status pill on a transaction tile when the transaction completed."
+  },
+  "txnStatusFailed": "Failed",
+  "@txnStatusFailed": {
+    "description": "Status pill on a transaction tile when the transaction failed."
+  },
+
+  "transactionsTitle": "Your Transactions",
+  "@transactionsTitle": {
+    "description": "Title at the top of the Transactions tab."
+  },
+  "transactionsExportTooltip": "Export",
+  "@transactionsExportTooltip": {
+    "description": "Tooltip on the download/export pill on the Transactions tab."
+  },
+  "transactionsEmpty": "No transactions match this filter.",
+  "@transactionsEmpty": {
+    "description": "Empty-state copy shown when an active filter excludes every transaction."
+  },
+
+  "txnFilterSent": "Sent",
+  "@txnFilterSent": {
+    "description": "Filter chip label — outbound transfers."
+  },
+  "txnFilterReceived": "Received",
+  "@txnFilterReceived": {
+    "description": "Filter chip label — inbound transfers."
+  },
+  "txnFilterSucceeded": "Succeeded",
+  "@txnFilterSucceeded": {
+    "description": "Filter chip label — completed transactions."
+  },
+  "txnFilterPending": "Pending",
+  "@txnFilterPending": {
+    "description": "Filter chip label — in-flight transactions."
+  },
+  "txnFilterFailed": "Failed",
+  "@txnFilterFailed": {
+    "description": "Filter chip label — failed transactions."
+  },
+
+  "txnStatusPending": "Pending",
+  "@txnStatusPending": {
+    "description": "Status pill on a transaction tile when the transaction is still in flight."
+  },
+
+  "settingsTitle": "Settings",
+  "@settingsTitle": {
+    "description": "Screen title for the Settings screen (also used in nav)."
+  },
+  "navHome": "Home",
+  "@navHome": {
+    "description": "Bottom-nav label for the Home tab."
+  },
+  "navTransactions": "Transactions",
+  "@navTransactions": {
+    "description": "Bottom-nav label for the Transactions tab."
+  },
+  "navSettings": "Settings",
+  "@navSettings": {
+    "description": "Bottom-nav label for the Settings tab."
+  },
+  "commonBack": "Back",
+  "@commonBack": {
+    "description": "Tooltip on the chevron-left back button across screens."
+  },
+  "commonCancel": "Cancel",
+  "@commonCancel": {
+    "description": "Cancel button label in confirmation dialogs."
+  },
+  "commonDelete": "Delete",
+  "@commonDelete": {
+    "description": "Destructive confirm button in confirmation dialogs."
+  },
+
+  "settingsSectionSecurity": "Security & Privacy",
+  "@settingsSectionSecurity": {
+    "description": "Header above the security/privacy settings card."
+  },
+  "settingsSectionTransactions": "Transactions",
+  "@settingsSectionTransactions": {
+    "description": "Header above the transactions settings card."
+  },
+  "settingsSectionActions": "Actions",
+  "@settingsSectionActions": {
+    "description": "Header above the destructive-actions settings card."
+  },
+
+  "settingsRowChangePassword": "Change Password",
+  "@settingsRowChangePassword": {
+    "description": "Settings row that opens the change-password flow."
+  },
+  "settingsRowLoginOptions": "Login Options",
+  "@settingsRowLoginOptions": {
+    "description": "Settings row that opens login-method preferences."
+  },
+  "settingsRowBiometricsLabel": "Biometrics for transactions",
+  "@settingsRowBiometricsLabel": {
+    "description": "Toggle row label for biometric transaction approval."
+  },
+  "settingsRowBiometricsSubtitle": "Authenticate transactions with biometrics",
+  "@settingsRowBiometricsSubtitle": {
+    "description": "Helper copy under the biometrics toggle."
+  },
+  "settingsRowPhoneNumberAccount": "Phone Number Account",
+  "@settingsRowPhoneNumberAccount": {
+    "description": "Settings row showing the user's phone-number-based account number."
+  },
+  "settingsRowUssdBanking": "USSD Banking",
+  "@settingsRowUssdBanking": {
+    "description": "Settings row that opens USSD short-code banking preferences."
+  },
+  "settingsRowDeleteAccount": "Delete Account",
+  "@settingsRowDeleteAccount": {
+    "description": "Destructive settings row that initiates account deletion."
+  },
+
+  "deleteAccountDialogTitle": "Delete account?",
+  "@deleteAccountDialogTitle": {
+    "description": "Title of the delete-account confirmation dialog."
+  },
+  "deleteAccountDialogBody": "This permanently removes your MoneyA account, balances, and transaction history. This action cannot be undone.",
+  "@deleteAccountDialogBody": {
+    "description": "Body copy of the delete-account confirmation dialog."
+  },
+
+  "profileTitle": "Profile Details",
+  "@profileTitle": {
+    "description": "Screen title at the top of the Profile screen."
+  },
+  "profileSectionPersonal": "Personal Informations",
+  "@profileSectionPersonal": {
+    "description": "Header above the personal information card on Profile. Note: 'Informations' (plural) matches the legacy mock copy and the French source."
+  },
+  "profileSectionActions": "Actions",
+  "@profileSectionActions": {
+    "description": "Header above the actions card on Profile."
+  },
+  "profileFieldPhone": "Phone Number",
+  "@profileFieldPhone": {
+    "description": "Label for the phone-number row on Profile."
+  },
+  "profileFieldEmail": "Email",
+  "@profileFieldEmail": {
+    "description": "Label for the email row on Profile."
+  },
+  "profileFieldAddress": "Address",
+  "@profileFieldAddress": {
+    "description": "Label for the address row on Profile."
+  },
+  "profileFieldDateOfBirth": "Date of Birthday",
+  "@profileFieldDateOfBirth": {
+    "description": "Label for the date-of-birth row on Profile. Note: 'Date of Birthday' is intentional — matches the design mock; will be revisited in the plain-language pass."
+  },
+  "profileVerifiedBadge": "Verified",
+  "@profileVerifiedBadge": {
+    "description": "Badge shown next to a verified field on Profile."
+  },
+  "profileActionReferAndEarn": "Refere and earn",
+  "@profileActionReferAndEarn": {
+    "description": "Action row label that opens the referral flow. Note: 'Refere' typo matches the design mock; will be fixed in the plain-language pass."
+  },
+  "profileActionSettings": "Settings",
+  "@profileActionSettings": {
+    "description": "Action row label on Profile that opens the Settings screen."
+  },
+  "profileActionLogout": "Logout",
+  "@profileActionLogout": {
+    "description": "Destructive action row label on Profile."
+  },
+
+  "txnDetailTitle": "Transaction Details",
+  "@txnDetailTitle": {
+    "description": "Screen title for the transaction-detail receipt screen."
+  },
+  "txnDetailStatusSuccess": "Successful",
+  "@txnDetailStatusSuccess": {
+    "description": "Status badge on the receipt when the transaction succeeded."
+  },
+  "txnDetailStatusPending": "Pending",
+  "@txnDetailStatusPending": {
+    "description": "Status badge on the receipt when the transaction is pending settlement."
+  },
+  "txnDetailStatusFailed": "Failed",
+  "@txnDetailStatusFailed": {
+    "description": "Status badge on the receipt when the transaction failed."
+  },
+  "txnDetailDirectionSent": "Sent",
+  "@txnDetailDirectionSent": {
+    "description": "Tracked-uppercase direction label rendered above the counterparty name on outgoing receipts."
+  },
+  "txnDetailDirectionReceived": "Received",
+  "@txnDetailDirectionReceived": {
+    "description": "Tracked-uppercase direction label rendered above the counterparty name on incoming receipts."
+  },
+  "txnDetailRowFee": "Fee",
+  "@txnDetailRowFee": {
+    "description": "Receipt row label for the network/processing fee."
+  },
+  "txnDetailRowTotal": "Total",
+  "@txnDetailRowTotal": {
+    "description": "Receipt row label for the total amount (amount + fee)."
+  },
+  "txnDetailRowPhone": "Phone",
+  "@txnDetailRowPhone": {
+    "description": "Receipt row label for the counterparty phone number; row is tap-to-copy."
+  },
+  "txnDetailRowMethod": "Method",
+  "@txnDetailRowMethod": {
+    "description": "Receipt row label for the funding/payout method (e.g. mobile money, bank)."
+  },
+  "txnDetailRowReference": "Reference",
+  "@txnDetailRowReference": {
+    "description": "Receipt row label for the unique transaction reference id; row is tap-to-copy."
+  },
+  "txnDetailCopiedSnack": "{label} copied",
+  "@txnDetailCopiedSnack": {
+    "description": "SnackBar shown after a tap-to-copy receipt row succeeds.",
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "Reference"
+      }
+    }
+  },
+  "txnDetailActionShare": "Share",
+  "@txnDetailActionShare": {
+    "description": "Outline pill CTA at the bottom of the receipt — shares the receipt as text/image."
+  },
+  "txnDetailActionDownloadPdf": "Download PDF",
+  "@txnDetailActionDownloadPdf": {
+    "description": "Filled pill CTA at the bottom of the receipt — exports the receipt as a PDF."
+  },
+  "txnDetailShareSubject": "MoneyA receipt — {reference}",
+  "@txnDetailShareSubject": {
+    "description": "Subject line used when sharing a transaction receipt via email/share-sheet.",
+    "placeholders": {
+      "reference": { "type": "String", "example": "A1B2C3D4" }
+    }
+  },
+  "txnDetailShareHeader": "MoneyA receipt",
+  "@txnDetailShareHeader": {
+    "description": "First line of the shared receipt body — branded heading."
+  },
+  "txnDetailShareLineStatus": "Status: {status}",
+  "@txnDetailShareLineStatus": {
+    "description": "Status line in shared receipt body.",
+    "placeholders": {
+      "status": { "type": "String", "example": "Successful" }
+    }
+  },
+  "txnDetailShareLineDirection": "Direction: {direction}",
+  "@txnDetailShareLineDirection": {
+    "description": "Direction line (Sent/Received) in shared receipt body.",
+    "placeholders": {
+      "direction": { "type": "String", "example": "Sent" }
+    }
+  },
+  "txnDetailShareLineCounterparty": "{label}: {name}",
+  "@txnDetailShareLineCounterparty": {
+    "description": "Counterparty line — {label} is From/To, {name} is the person.",
+    "placeholders": {
+      "label": { "type": "String", "example": "To" },
+      "name": { "type": "String", "example": "Aminata Koffi" }
+    }
+  },
+  "txnDetailShareLineWhen": "When: {timestamp}",
+  "@txnDetailShareLineWhen": {
+    "description": "Timestamp line in shared receipt body.",
+    "placeholders": {
+      "timestamp": { "type": "String", "example": "May 3, 2026 • 2:32 PM" }
+    }
+  },
+  "txnDetailShareLineAmount": "Amount: {amount}",
+  "@txnDetailShareLineAmount": {
+    "description": "Amount line in shared receipt body — value already includes currency code and sign.",
+    "placeholders": {
+      "amount": { "type": "String", "example": "-GHC 250.00" }
+    }
+  },
+  "txnDetailShareLineFee": "Fee: {fee}",
+  "@txnDetailShareLineFee": {
+    "description": "Fee line in shared receipt body.",
+    "placeholders": {
+      "fee": { "type": "String", "example": "GHC 1.50" }
+    }
+  },
+  "txnDetailShareLineTotal": "Total: {total}",
+  "@txnDetailShareLineTotal": {
+    "description": "Total line in shared receipt body.",
+    "placeholders": {
+      "total": { "type": "String", "example": "GHC 251.50" }
+    }
+  },
+  "txnDetailShareLineMethod": "Method: {method}",
+  "@txnDetailShareLineMethod": {
+    "description": "Payment method line in shared receipt body.",
+    "placeholders": {
+      "method": { "type": "String", "example": "Mobile Money • MTN MoMo" }
+    }
+  },
+  "txnDetailShareLinePhone": "Phone: {phone}",
+  "@txnDetailShareLinePhone": {
+    "description": "Counterparty phone line in shared receipt body.",
+    "placeholders": {
+      "phone": { "type": "String", "example": "+233241234567" }
+    }
+  },
+  "txnDetailShareLineReference": "Reference: {reference}",
+  "@txnDetailShareLineReference": {
+    "description": "Reference line in shared receipt body.",
+    "placeholders": {
+      "reference": { "type": "String", "example": "A1B2C3D4" }
+    }
+  },
+  "txnDetailShareFooter": "Powered by MoneyA",
+  "@txnDetailShareFooter": {
+    "description": "Last line of shared receipt body — brand footer."
+  },
+
+  "notificationsTitle": "Notifications",
+  "@notificationsTitle": {
+    "description": "Title of the notifications bottom sheet."
+  },
+  "notificationsMarkAllRead": "Mark all as read",
+  "@notificationsMarkAllRead": {
+    "description": "Text-button label that marks every unread notification as read."
+  },
+  "notificationsGroupToday": "Today",
+  "@notificationsGroupToday": {
+    "description": "Section header for notifications received today."
+  },
+  "notificationsGroupYesterday": "Yesterday",
+  "@notificationsGroupYesterday": {
+    "description": "Section header for notifications received yesterday."
+  },
+  "notificationsGroupEarlierWeek": "Earlier this week",
+  "@notificationsGroupEarlierWeek": {
+    "description": "Section header for notifications received between 2 and 7 days ago."
+  },
+  "notificationsGroupOlder": "Older",
+  "@notificationsGroupOlder": {
+    "description": "Section header for notifications older than the rolling 7-day window."
+  },
+  "notificationsTimeJustNow": "just now",
+  "@notificationsTimeJustNow": {
+    "description": "Compact relative-time label rendered on a notification tile when the event happened less than 1 minute ago."
+  },
+  "notificationsTimeMinutes": "{n}m",
+  "@notificationsTimeMinutes": {
+    "description": "Compact relative-time label for events 1–59 minutes ago. Translators: 'm' is short for 'minutes'.",
+    "placeholders": {
+      "n": {
+        "type": "int",
+        "example": "12"
+      }
+    }
+  },
+  "notificationsTimeHours": "{n}h",
+  "@notificationsTimeHours": {
+    "description": "Compact relative-time label for events 1–23 hours ago. Translators: 'h' is short for 'hours'.",
+    "placeholders": {
+      "n": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "notificationsTimeYesterday": "Yesterday",
+  "@notificationsTimeYesterday": {
+    "description": "Compact relative-time label rendered on a notification tile when the event happened yesterday."
+  },
+  "notificationsTimeDays": "{n}d",
+  "@notificationsTimeDays": {
+    "description": "Compact relative-time label for events 2–6 days ago. Translators: 'd' is short for 'days'.",
+    "placeholders": {
+      "n": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+
+  "receiveTitle": "Receive",
+  "@receiveTitle": {
+    "description": "Screen title for the Receive screen — landing surface for getting paid via account number, QR, or payment request."
+  },
+  "receiveTabAccount": "Account",
+  "@receiveTabAccount": {
+    "description": "Tab label for the Account tab (shows the user's MoneyA account number)."
+  },
+  "receiveTabQrCode": "QR code",
+  "@receiveTabQrCode": {
+    "description": "Tab label for the QR code tab (shows a scannable code that resolves to the user's account)."
+  },
+  "receiveTabRequest": "Request",
+  "@receiveTabRequest": {
+    "description": "Tab label for the Request tab (sends a payment request to a phone number)."
+  },
+  "receiveTabSemanticLabel": "{label} tab",
+  "@receiveTabSemanticLabel": {
+    "description": "Screen-reader label for a tab segment, e.g. 'Account tab'. Wraps the visible tab label so VoiceOver/TalkBack announce the role.",
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "Account"
+      }
+    }
+  },
+  "receiveTabSemanticHint": "Double tap to switch",
+  "@receiveTabSemanticHint": {
+    "description": "Screen-reader hint announced on inactive tabs. Tells the user the gesture required to activate the tab."
+  },
+
+  "receiveAccountVerifiedMember": "Verified MoneyA member",
+  "@receiveAccountVerifiedMember": {
+    "description": "Status caption rendered under the user's name on the Account tab. Indicates the account has completed KYC."
+  },
+  "receiveAccountHelpText": "Anyone on MoneyA can send you money instantly using this number.",
+  "@receiveAccountHelpText": {
+    "description": "Help paragraph below the account-number card explaining what the account number does."
+  },
+  "receiveAccountCardLabel": "MoneyA account number",
+  "@receiveAccountCardLabel": {
+    "description": "Tracked-uppercase header inside the account-number card; also used as the field's screen-reader label."
+  },
+  "receiveAccountCopyLabel": "Copy number",
+  "@receiveAccountCopyLabel": {
+    "description": "Filled action-pill label that copies the account number to the clipboard."
+  },
+  "receiveAccountShareLabel": "Share",
+  "@receiveAccountShareLabel": {
+    "description": "Outline action-pill label that opens the native share sheet to share the account number."
+  },
+  "receiveAccountCopySemantic": "Copy account number {number}",
+  "@receiveAccountCopySemantic": {
+    "description": "Screen-reader label for the Copy pill, with the formatted account number spelled into the announcement.",
+    "placeholders": {
+      "number": {
+        "type": "String",
+        "example": "240 987 631"
+      }
+    }
+  },
+  "receiveAccountShareSemantic": "Share account number",
+  "@receiveAccountShareSemantic": {
+    "description": "Screen-reader label for the Share pill on the Account tab."
+  },
+  "receiveAccountCopyAnnouncement": "Account number copied to clipboard",
+  "@receiveAccountCopyAnnouncement": {
+    "description": "SemanticsService announcement spoken to assistive tech when the account number is copied."
+  },
+  "receiveAccountCopySnack": "Account number copied",
+  "@receiveAccountCopySnack": {
+    "description": "Visual SnackBar message shown after the user copies the account number."
+  },
+  "receiveAccountShareSubject": "My MoneyA account number",
+  "@receiveAccountShareSubject": {
+    "description": "Subject line passed to the native share sheet (used by email clients, etc.)."
+  },
+  "receiveAccountShareBody": "Send me money on MoneyA. My account number is {number}.",
+  "@receiveAccountShareBody": {
+    "description": "First line of the share-sheet body. The body is followed by a blank line and a moneya:// deep link rendered separately so the deep link is not translated.",
+    "placeholders": {
+      "number": {
+        "type": "String",
+        "example": "240 987 631"
+      }
+    }
+  },
+
+  "authLandingTagline": "Say it. We send it.",
+  "@authLandingTagline": {
+    "description": "Brand tagline shown under the wordmark on the auth landing screen."
+  },
+  "authLandingLogin": "Login",
+  "@authLandingLogin": {
+    "description": "Primary CTA on the auth landing screen for existing users to sign in."
+  },
+  "authLandingCreateAccount": "Create Account",
+  "@authLandingCreateAccount": {
+    "description": "Secondary CTA on the auth landing screen for new users to start signup."
+  },
+
+  "createAccountTitle": "Create New Account",
+  "@createAccountTitle": {
+    "description": "Hero title at the top of the phone-number signup screen."
+  },
+  "createAccountSubtitle": "Just enter your phone number and we're set.",
+  "@createAccountSubtitle": {
+    "description": "Subtitle under the create-account hero title; explains the one-field signup."
+  },
+  "createAccountPhoneHint": "Enter your phone number",
+  "@createAccountPhoneHint": {
+    "description": "Placeholder text inside the national-number input field."
+  },
+  "createAccountClearTooltip": "Clear",
+  "@createAccountClearTooltip": {
+    "description": "Tooltip on the X icon that clears the phone-number field."
+  },
+  "createAccountAlreadyHaveAccount": "Already have an account ? ",
+  "@createAccountAlreadyHaveAccount": {
+    "description": "Inline prompt before the Login link on the create-account screen. The trailing space is intentional — preserves spacing before the inline link."
+  },
+  "createAccountLoginLink": "Login",
+  "@createAccountLoginLink": {
+    "description": "Inline link label that takes existing users to the login screen."
+  },
+  "createAccountCta": "Create Account",
+  "@createAccountCta": {
+    "description": "Primary CTA pill on the create-account screen."
+  },
+  "createAccountPickCountryTitle": "Select country",
+  "@createAccountPickCountryTitle": {
+    "description": "Header inside the country-picker bottom sheet on the create-account screen."
+  },
+  "createAccountConfirmSheetTitle": "Confirm the phone number",
+  "@createAccountConfirmSheetTitle": {
+    "description": "Title of the bottom sheet shown after the user submits the phone number, asking them to confirm before OTP send."
+  },
+  "createAccountConfirmSheetBody": "We'll send a verification code to this number.",
+  "@createAccountConfirmSheetBody": {
+    "description": "Body copy inside the confirm-number bottom sheet."
+  },
+  "createAccountConfirmCta": "Confirm",
+  "@createAccountConfirmCta": {
+    "description": "Primary CTA in the confirm-number bottom sheet — proceeds to OTP."
+  },
+  "createAccountGoBack": "Go back",
+  "@createAccountGoBack": {
+    "description": "Ghost CTA in the confirm-number bottom sheet — dismisses without sending the OTP."
+  },
+  "countryTogo": "Togo",
+  "@countryTogo": {
+    "description": "Display name of Togo in the country-picker."
+  },
+  "countrySenegal": "Senegal",
+  "@countrySenegal": {
+    "description": "Display name of Senegal in the country-picker."
+  },
+  "countryIvoryCoast": "Côte d'Ivoire",
+  "@countryIvoryCoast": {
+    "description": "Display name of Côte d'Ivoire in the country-picker."
+  },
+  "countryMali": "Mali",
+  "@countryMali": {
+    "description": "Display name of Mali in the country-picker."
+  },
+  "countryBurkinaFaso": "Burkina Faso",
+  "@countryBurkinaFaso": {
+    "description": "Display name of Burkina Faso in the country-picker."
+  },
+  "countryBenin": "Benin",
+  "@countryBenin": {
+    "description": "Display name of Benin in the country-picker."
+  },
+  "countryNigeria": "Nigeria",
+  "@countryNigeria": {
+    "description": "Display name of Nigeria in the country-picker."
+  },
+  "countryGhana": "Ghana",
+  "@countryGhana": {
+    "description": "Display name of Ghana in the country-picker."
+  },
+
+  "verifyPhoneTitle": "Enter The Code",
+  "@verifyPhoneTitle": {
+    "description": "Hero title of the OTP verification screen."
+  },
+  "verifyPhoneSubtitle": "We sent an {length} digit code to your phone number (+{dialCode}) … {tail}",
+  "@verifyPhoneSubtitle": {
+    "description": "Subtitle on the OTP screen. Includes the code length, the dial code (without +), and the masked last digits of the phone number.",
+    "placeholders": {
+      "length": { "type": "int", "example": "4" },
+      "dialCode": { "type": "String", "example": "228" },
+      "tail": { "type": "String", "example": "7536" }
+    }
+  },
+  "verifyPhoneResendPrompt": "Didn't received the code ?",
+  "@verifyPhoneResendPrompt": {
+    "description": "Muted prompt above the resend link. Note: 'Didn't received' is intentional — matches the design mock; will be revisited in the plain-language pass."
+  },
+  "verifyPhoneResendLink": "Resend the code",
+  "@verifyPhoneResendLink": {
+    "description": "Tappable link label that re-sends the OTP. Disabled while the resend countdown is running."
+  },
+  "verifyPhoneIncorrectTitle": "Incorrect code entered",
+  "@verifyPhoneIncorrectTitle": {
+    "description": "Title of the bottom sheet shown when the entered OTP is wrong."
+  },
+  "verifyPhoneIncorrectBody": "Please, check the code and try again.",
+  "@verifyPhoneIncorrectBody": {
+    "description": "Body of the incorrect-OTP bottom sheet."
+  },
+  "verifyPhoneGotIt": "Got it",
+  "@verifyPhoneGotIt": {
+    "description": "Acknowledgement CTA in the incorrect-OTP bottom sheet — dismisses the sheet."
+  },
+
+  "passcodeSetTitle": "Set a passcode",
+  "@passcodeSetTitle": {
+    "description": "Hero title when the user is choosing their MoneyA passcode for the first time."
+  },
+  "passcodeConfirmTitle": "Confirm the passcode",
+  "@passcodeConfirmTitle": {
+    "description": "Hero title when the user is repeating the passcode they just chose."
+  },
+  "passcodeSetSubtitle": "create a {length} digit passcode",
+  "@passcodeSetSubtitle": {
+    "description": "Subtitle on the set-passcode screen. Note: lowercase 'create' is intentional — matches the design mock.",
+    "placeholders": {
+      "length": { "type": "int", "example": "6" }
+    }
+  },
+  "passcodeConfirmSubtitle": "Repeat the {length} digit passcode",
+  "@passcodeConfirmSubtitle": {
+    "description": "Subtitle on the confirm-passcode screen.",
+    "placeholders": {
+      "length": { "type": "int", "example": "6" }
+    }
+  },
+  "passcodeNextCta": "Next",
+  "@passcodeNextCta": {
+    "description": "CTA label on the set-passcode screen — advances to the confirm step."
+  },
+  "passcodeSaveCta": "Save",
+  "@passcodeSaveCta": {
+    "description": "CTA label on the confirm-passcode screen — saves the passcode."
+  },
+  "passcodeMismatchError": "Passcodes don't match.",
+  "@passcodeMismatchError": {
+    "description": "Inline error shown on the confirm screen when the repeated passcode does not match the original."
+  },
+  "passcodeErrorWrongLength": "Use {length} digits.",
+  "@passcodeErrorWrongLength": {
+    "description": "Inline error when the entered passcode is shorter or longer than required.",
+    "placeholders": {
+      "length": { "type": "int", "example": "6" }
+    }
+  },
+  "passcodeErrorDigitsOnly": "Digits only.",
+  "@passcodeErrorDigitsOnly": {
+    "description": "Inline error when the passcode contains a non-digit character."
+  },
+  "passcodeErrorRepeating": "Avoid repeating digits.",
+  "@passcodeErrorRepeating": {
+    "description": "Inline error when the passcode is all the same digit, e.g. 000000."
+  },
+  "passcodeErrorSequential": "Avoid sequential digits.",
+  "@passcodeErrorSequential": {
+    "description": "Inline error when the passcode is a strictly ascending or descending sequence, e.g. 123456."
+  },
+  "passcodeBiometricReason": "Enable login with biometric",
+  "@passcodeBiometricReason": {
+    "description": "Reason string shown by the OS biometric prompt when offering to enroll biometric login after passcode setup."
+  },
+
+  "kycChooseTitle": "Pick a document to verify\nyour identity",
+  "@kycChooseTitle": {
+    "description": "Hero title on the choose-KYC-document screen. Contains a hard newline matching the mock layout."
+  },
+  "kycChooseSubtitle": "We don't accept scans or copies.",
+  "@kycChooseSubtitle": {
+    "description": "Subtitle warning users that only originals are accepted for KYC."
+  },
+  "kycDocumentNationalId": "National ID",
+  "@kycDocumentNationalId": {
+    "description": "Label for the National ID option in the KYC document picker."
+  },
+  "kycDocumentPassport": "Passport",
+  "@kycDocumentPassport": {
+    "description": "Label for the Passport option in the KYC document picker."
+  },
+  "kycChooseContinue": "Continue",
+  "@kycChooseContinue": {
+    "description": "Primary CTA on the choose-KYC-document screen — advances to the camera screen."
+  },
+
+  "kycCaptureFrontInstruction": "Position the front of your document in the frame",
+  "@kycCaptureFrontInstruction": {
+    "description": "Instruction shown under the document-camera viewfinder when capturing the front side."
+  },
+  "kycCaptureBackInstruction": "Position the back of your document in the frame",
+  "@kycCaptureBackInstruction": {
+    "description": "Instruction shown under the document-camera viewfinder when capturing the back side."
+  },
+  "kycCaptureProcessing": "Processing…",
+  "@kycCaptureProcessing": {
+    "description": "Status text shown while the captured document image is being uploaded/processed."
+  },
+  "kycCameraDeniedMessage": "Camera access is required to verify your identity.",
+  "@kycCameraDeniedMessage": {
+    "description": "Message shown inside the camera viewfinder when the user has denied the camera permission."
+  },
+  "kycCameraOpenSettings": "Open settings",
+  "@kycCameraOpenSettings": {
+    "description": "Action button under the camera-permission-denied message; opens the OS app settings."
+  },
+  "kycCameraUnavailableMessage": "Camera is not available on this device.",
+  "@kycCameraUnavailableMessage": {
+    "description": "Message shown inside the camera viewfinder when no camera hardware is available."
+  },
+  "kycCameraTryAgain": "Try again",
+  "@kycCameraTryAgain": {
+    "description": "Action button under the camera-unavailable message; retries camera initialization."
+  },
+
+  "kycSelfieInstruction": "Keep your face within the oval",
+  "@kycSelfieInstruction": {
+    "description": "Instruction shown below the oval mask on the selfie capture screen."
+  },
+
+  "cameraShutterLabel": "Take picture",
+  "@cameraShutterLabel": {
+    "description": "Screen-reader label for the camera shutter button used on the document and selfie capture screens."
+  },
+
+  "transferHeaderTitle": "Transfer",
+  "@transferHeaderTitle": {
+    "description": "Top-bar title next to the back chevron on the Send Money screen."
+  },
+  "transferTitle": "Transfer Money",
+  "@transferTitle": {
+    "description": "Centered headline at the top of the Send Money screen body."
+  },
+  "transferSectionFrom": "From",
+  "@transferSectionFrom": {
+    "description": "Section label above the sender country / funding-provider / phone row on the Send Money screen."
+  },
+  "transferSectionTo": "To",
+  "@transferSectionTo": {
+    "description": "Section label above the recipient country / phone / name fields on the Send Money screen."
+  },
+  "transferSenderPhoneHint": "Your mobile money number",
+  "@transferSenderPhoneHint": {
+    "description": "Placeholder text in the sender phone-number field on the Send Money screen."
+  },
+  "transferRecipientPhoneHint": "Recipient phone number",
+  "@transferRecipientPhoneHint": {
+    "description": "Placeholder text in the recipient phone-number field on the Send Money screen."
+  },
+  "transferRecipientNameHint": "Recipient name",
+  "@transferRecipientNameHint": {
+    "description": "Placeholder text in the recipient name field on the Send Money screen."
+  },
+  "transferPurposeHint": "Purpose (Optional)",
+  "@transferPurposeHint": {
+    "description": "Placeholder text in the multi-line purpose / note field on the Send Money screen."
+  },
+  "transferFeeLabel": "Transaction fee",
+  "@transferFeeLabel": {
+    "description": "Row label for the transaction fee on the Send Money and Confirm Payment screens."
+  },
+  "transferRecipientReceivesLabel": "Recipient will receive",
+  "@transferRecipientReceivesLabel": {
+    "description": "Row label for the net amount the recipient receives on the Send Money and Confirm Payment screens."
+  },
+  "transferConfirmCta": "Confirm",
+  "@transferConfirmCta": {
+    "description": "Primary CTA at the bottom of the Send Money screen — opens the Confirm Payment screen."
+  },
+  "transferLookupChecking": "Checking MoneyA directory…",
+  "@transferLookupChecking": {
+    "description": "Inline status text shown while the recipient phone number is being looked up in the MoneyA directory."
+  },
+  "transferLookupFound": "MoneyA user found — {name}",
+  "@transferLookupFound": {
+    "description": "Inline success status shown when the recipient phone number resolves to an existing MoneyA user. Includes the matched display name.",
+    "placeholders": {
+      "name": { "type": "String", "example": "Nadège K." }
+    }
+  },
+  "transferLookupNotFound": "Not on MoneyA yet. They'll get an SMS invite to claim this transfer.",
+  "@transferLookupNotFound": {
+    "description": "Inline warning status shown when the recipient is not on MoneyA — funds will be escrowed and an SMS invite sent."
+  },
+  "transferContactPickerError": "Could not open the contact picker.",
+  "@transferContactPickerError": {
+    "description": "SnackBar shown when the OS contact picker fails to open."
+  },
+  "transferContactNoPhone": "That contact has no phone number.",
+  "@transferContactNoPhone": {
+    "description": "SnackBar shown when the picked contact has no associated phone number."
+  },
+  "transferContactPermissionDeniedPermanent": "Contacts access is disabled. Enable it in Settings to pick a recipient from your contact book.",
+  "@transferContactPermissionDeniedPermanent": {
+    "description": "SnackBar shown when the user has permanently denied the Contacts permission. Paired with a Settings action."
+  },
+  "transferContactPermissionDeniedAction": "Settings",
+  "@transferContactPermissionDeniedAction": {
+    "description": "SnackBar action label that opens the OS app-settings screen so the user can grant Contacts permission."
+  },
+  "transferContactPermissionNeeded": "Contacts permission is needed to pick a recipient.",
+  "@transferContactPermissionNeeded": {
+    "description": "SnackBar shown when the Contacts permission is denied (non-permanent) and the user tries to pick a contact."
+  },
+
+  "confirmPaymentHeaderTitle": "Confirm",
+  "@confirmPaymentHeaderTitle": {
+    "description": "Top-bar title next to the back chevron on the Confirm Payment screen."
+  },
+  "confirmPaymentTitle": "Confirm Your Payment",
+  "@confirmPaymentTitle": {
+    "description": "Centered headline at the top of the Confirm Payment screen body."
+  },
+  "confirmPaymentDetailsHeading": "Payment Details",
+  "@confirmPaymentDetailsHeading": {
+    "description": "Subsection heading above the amount + From/To card on the Confirm Payment screen."
+  },
+  "confirmPaymentDetailsSubtitle": "Check payment details and swipe to pay!",
+  "@confirmPaymentDetailsSubtitle": {
+    "description": "Helper sentence under the Payment Details heading on the Confirm Payment screen."
+  },
+  "confirmPaymentAmountLabel": "Amount",
+  "@confirmPaymentAmountLabel": {
+    "description": "Caption above the editable amount card on the Confirm Payment screen."
+  },
+  "confirmPaymentFromYourPrefix": "From your ",
+  "@confirmPaymentFromYourPrefix": {
+    "description": "Leading muted span before the bolded provider name in the From card on the Confirm Payment screen. Trailing space is intentional so the bolded provider name reads inline."
+  },
+  "confirmPaymentToRecipientPrefix": "To ",
+  "@confirmPaymentToRecipientPrefix": {
+    "description": "Leading muted span before the bolded recipient name in the To card on the Confirm Payment screen. Trailing space is intentional so the bolded name reads inline."
+  },
+  "confirmPaymentRecipientFallback": "Recipient",
+  "@confirmPaymentRecipientFallback": {
+    "description": "Fallback bolded label used in the To card when no recipient name was provided."
+  },
+  "confirmPaymentSwipeLabel": "Swipe to pay",
+  "@confirmPaymentSwipeLabel": {
+    "description": "Centered label on the slide-to-confirm pill at the bottom of the Confirm Payment screen."
+  },
+  "confirmPaymentAuthFailedSnack": "Too many wrong attempts. Try again.",
+  "@confirmPaymentAuthFailedSnack": {
+    "description": "SnackBar shown on the Confirm Payment screen after too many failed step-up authentication attempts."
+  },
+
+  "amountKeypadDoneCta": "Done",
+  "@amountKeypadDoneCta": {
+    "description": "Confirm CTA at the bottom of the numeric keypad bottom sheet for entering a transfer amount."
+  },
+  "fundingProviderPickerTitle": "Select funding source",
+  "@fundingProviderPickerTitle": {
+    "description": "Title at the top of the funding-provider picker bottom sheet (Send Money)."
+  },
+  "transferCountryPickerTitle": "Select sending country",
+  "@transferCountryPickerTitle": {
+    "description": "Title at the top of the country picker bottom sheet on the Send Money screen."
+  },
+
+  "fundingProviderMoneyaWallet": "MoneyA Wallet",
+  "@fundingProviderMoneyaWallet": {
+    "description": "Display name of the in-app MoneyA wallet funding source. Brand product name; usually kept as-is across locales."
+  },
+  "fundingProviderMoovAfrica": "Moov Africa",
+  "@fundingProviderMoovAfrica": {
+    "description": "Display name of the Moov Africa mobile-money funding source. Brand name; kept as-is across locales."
+  },
+  "fundingProviderOrangeMoney": "Orange Money",
+  "@fundingProviderOrangeMoney": {
+    "description": "Display name of the Orange Money mobile-money funding source. Brand name; kept as-is across locales."
+  },
+  "fundingProviderMtnMomo": "MTN MoMo",
+  "@fundingProviderMtnMomo": {
+    "description": "Display name of the MTN MoMo mobile-money funding source. Brand name; kept as-is across locales."
+  },
+  "fundingProviderWave": "Wave",
+  "@fundingProviderWave": {
+    "description": "Display name of the Wave mobile-money funding source. Brand name; kept as-is across locales."
+  },
+
+  "receiveQrCardSemantic": "MoneyA QR code. Have someone scan this with their MoneyA app to send you money. To read your account number out loud, switch to the Account tab.",
+  "@receiveQrCardSemantic": {
+    "description": "Screen-reader description of the QR card image on the QR tab. Explains the purpose of the code and points to the Account tab for the readable account number."
+  },
+  "receiveQrHelpText": "Show this QR code to anyone with the MoneyA app to receive money in person.",
+  "@receiveQrHelpText": {
+    "description": "Help paragraph below the QR card on the QR tab. Explains how the QR is used."
+  },
+  "receiveQrShareLabel": "Share QR",
+  "@receiveQrShareLabel": {
+    "description": "Filled action-pill label on the QR tab that opens the native share sheet to share the QR image."
+  },
+  "receiveQrSaveLabel": "Save image",
+  "@receiveQrSaveLabel": {
+    "description": "Outline action-pill label on the QR tab that saves the QR image to the user's photo library."
+  },
+  "receiveQrShareSemantic": "Share QR code",
+  "@receiveQrShareSemantic": {
+    "description": "Screen-reader label for the Share QR pill on the QR tab."
+  },
+  "receiveQrSaveSemantic": "Save QR code to photos",
+  "@receiveQrSaveSemantic": {
+    "description": "Screen-reader label for the Save image pill on the QR tab."
+  },
+  "receiveQrShareSubject": "My MoneyA QR code",
+  "@receiveQrShareSubject": {
+    "description": "Subject line passed to the native share sheet when sharing the QR image."
+  },
+  "receiveQrShareBody": "Send me money on MoneyA. My account number is {number}.",
+  "@receiveQrShareBody": {
+    "description": "First line of the share-sheet body when sharing the QR image. Followed by a blank line and a moneya:// deep link rendered separately so the deep link is not translated.",
+    "placeholders": {
+      "number": {
+        "type": "String",
+        "example": "240 987 631"
+      }
+    }
+  },
+  "receiveQrSavedSnack": "QR code saved to your photos",
+  "@receiveQrSavedSnack": {
+    "description": "Visual SnackBar message shown after the user successfully saves the QR image to their photo library."
+  },
+  "receiveQrSavedAnnouncement": "QR code saved to your photos",
+  "@receiveQrSavedAnnouncement": {
+    "description": "SemanticsService announcement spoken to assistive tech when the QR image has been saved to the photo library."
+  },
+  "receiveQrSaveErrorSnack": "Could not save QR: {reason}",
+  "@receiveQrSaveErrorSnack": {
+    "description": "Visual SnackBar message shown when saving the QR image to the photo library fails. The reason is platform-supplied (e.g. permission denied) and is not translated by us.",
+    "placeholders": {
+      "reason": {
+        "type": "String",
+        "example": "Permission denied"
+      }
+    }
+  },
+  "receiveQrSaveErrorAnnouncement": "Could not save QR code. {reason}",
+  "@receiveQrSaveErrorAnnouncement": {
+    "description": "SemanticsService announcement spoken to assistive tech when saving the QR image fails. The reason is platform-supplied and is not translated by us.",
+    "placeholders": {
+      "reason": {
+        "type": "String",
+        "example": "Permission denied"
+      }
+    }
+  },
+
+  "receiveRequestSectionFrom": "From",
+  "@receiveRequestSectionFrom": {
+    "description": "Tracked-uppercase section label above the recipient phone-number field on the Request tab."
+  },
+  "receiveRequestSectionAmount": "Amount",
+  "@receiveRequestSectionAmount": {
+    "description": "Tracked-uppercase section label above the amount input on the Request tab."
+  },
+  "receiveRequestClearPhoneSemantic": "Clear phone number",
+  "@receiveRequestClearPhoneSemantic": {
+    "description": "Screen-reader label for the trailing 'x' button on the phone-number field that clears the input."
+  },
+  "receiveRequestNotOnMoneyA": "This number is not on MoneyA. You can only request from existing MoneyA users.",
+  "@receiveRequestNotOnMoneyA": {
+    "description": "Screen-reader description (Semantics label) shown below the phone field when the entered number does not belong to a MoneyA user. The visible inline copy uses a different, friendlier phrasing rendered separately."
+  },
+  "receiveRequestCurrencyHint": "Double tap to change currency",
+  "@receiveRequestCurrencyHint": {
+    "description": "Screen-reader hint on the currency-picker pill in the amount row."
+  },
+  "receiveRequestBusyHint": "Loading",
+  "@receiveRequestBusyHint": {
+    "description": "Screen-reader hint announced on action pills (Share/Save) while an async operation is in flight."
+  },
+  "receiveRequestSwipeLabel": "Swipe to request",
+  "@receiveRequestSwipeLabel": {
+    "description": "Visible label on the swipe-to-pay button on the Request tab. The user drags right to submit the payment request."
+  },
+  "receiveRequestSwipeSemanticLabel": "Swipe to send payment request",
+  "@receiveRequestSwipeSemanticLabel": {
+    "description": "Screen-reader label for the swipe-to-pay button on the Request tab. Replaces the visible label for assistive tech with a fuller description."
+  },
+  "receiveRequestSwipeHintReady": "Swipe right to confirm",
+  "@receiveRequestSwipeHintReady": {
+    "description": "Screen-reader hint on the swipe-to-pay button when the form is valid and the request can be submitted."
+  },
+  "receiveRequestSwipeHintDisabled": "Enter a recipient and amount to enable",
+  "@receiveRequestSwipeHintDisabled": {
+    "description": "Screen-reader hint on the swipe-to-pay button when the form is incomplete; explains why the control is disabled."
+  },
+  "receiveRequestOutcomeTitle": "Request sent",
+  "@receiveRequestOutcomeTitle": {
+    "description": "Title shown on the success screen after submitting a payment request."
+  },
+  "receiveRequestOutcomeBodyPrefix": "We notified ",
+  "@receiveRequestOutcomeBodyPrefix": {
+    "description": "First muted segment of the request-sent body, shown before the bolded recipient name. Trailing space is intentional — the recipient name is appended directly."
+  },
+  "receiveRequestOutcomeBodyMiddle": " about your request for ",
+  "@receiveRequestOutcomeBodyMiddle": {
+    "description": "Muted middle segment of the request-sent body, shown between the recipient name and the bolded amount. Leading and trailing spaces are intentional."
+  },
+  "receiveRequestOutcomeBodySuffix": ". We’ll let you know the moment they pay.",
+  "@receiveRequestOutcomeBodySuffix": {
+    "description": "Final muted segment of the request-sent body, shown after the bolded amount."
+  },
+  "receiveRequestOutcomePrimary": "Done",
+  "@receiveRequestOutcomePrimary": {
+    "description": "Primary CTA on the request-sent success screen. Pops back to the home screen."
+  },
+  "receiveRequestOutcomeSecondary": "Share request",
+  "@receiveRequestOutcomeSecondary": {
+    "description": "Secondary CTA on the request-sent success screen. Opens the native share sheet so the user can also nudge the recipient outside MoneyA."
+  },
+  "receiveRequestShareSubject": "MoneyA payment request",
+  "@receiveRequestShareSubject": {
+    "description": "Subject line passed to the native share sheet when sharing a payment request."
+  },
+  "receiveRequestNoteLabel": "Note (optional)",
+  "@receiveRequestNoteLabel": {
+    "description": "Section label above the optional free-text note field on the Request tab of the Receive screen."
+  },
+  "receiveRequestNoteHint": "What is this for? (e.g. Lunch, rent, tickets)",
+  "@receiveRequestNoteHint": {
+    "description": "Placeholder hint shown inside the optional note field on the Request tab. Examples in parentheses help the user understand the kind of short context to type (e.g. lunch, rent, tickets)."
+  },
+  "receiveRequestShareBody": "Hi {name} — I just sent you a payment request for {currency} {amount} on MoneyA. Open the app to pay.",
+  "@receiveRequestShareBody": {
+    "description": "Body text passed to the native share sheet when sharing a payment request. Includes the recipient name, currency code, and amount.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Ama"
+      },
+      "currency": {
+        "type": "String",
+        "example": "GHS"
+      },
+      "amount": {
+        "type": "String",
+        "example": "120.00"
+      }
+    }
+  }
+}

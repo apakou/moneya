@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../domain/funding_provider.dart';
+import '../screens/transfer_money_screen.dart' show fundingProviderLabel;
 
 /// Bottom sheet that lets the user pick which rail funds the transfer
 /// (Moov Africa, Orange Money, MoneyA Wallet, …).
@@ -55,12 +57,12 @@ class _FundingProviderPickerSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Select funding source',
+                    AppLocalizations.of(context).fundingProviderPickerTitle,
                     style: AppTextStyles.screenTitle,
                   ),
                 ),
@@ -106,6 +108,10 @@ class _ProviderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final displayName = fundingProviderLabel(
+      provider,
+      AppLocalizations.of(context),
+    );
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -115,11 +121,11 @@ class _ProviderRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
-              _ProviderGlyph(provider: provider),
+              _ProviderGlyph(provider: provider, displayName: displayName),
               const SizedBox(width: 14),
               Expanded(
                 child: Text(
-                  provider.label,
+                  displayName,
                   style: AppTextStyles.actionLabel.copyWith(letterSpacing: 0),
                 ),
               ),
@@ -140,9 +146,10 @@ class _ProviderRow extends StatelessWidget {
 /// 32×32 logo or, when no asset is bundled yet, a colored initial
 /// square fallback so the row still has a visual anchor.
 class _ProviderGlyph extends StatelessWidget {
-  const _ProviderGlyph({required this.provider});
+  const _ProviderGlyph({required this.provider, required this.displayName});
 
   final FundingProvider provider;
+  final String displayName;
 
   @override
   Widget build(BuildContext context) {
@@ -155,11 +162,11 @@ class _ProviderGlyph extends StatelessWidget {
           width: 32,
           height: 32,
           fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _InitialBadge(label: provider.label),
+          errorBuilder: (_, _, _) => _InitialBadge(label: displayName),
         ),
       );
     }
-    return _InitialBadge(label: provider.label);
+    return _InitialBadge(label: displayName);
   }
 }
 

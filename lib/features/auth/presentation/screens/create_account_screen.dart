@@ -5,8 +5,34 @@ import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../domain/supported_country.dart';
 import 'verify_phone_screen.dart';
+
+/// Resolves the localized display name of a [SupportedCountry].
+///
+/// Kept here (rather than on the enum) because the enum is a read-only
+/// domain type that has no access to [AppLocalizations].
+String countryDisplayName(SupportedCountry country, AppLocalizations l10n) {
+  switch (country) {
+    case SupportedCountry.togo:
+      return l10n.countryTogo;
+    case SupportedCountry.senegal:
+      return l10n.countrySenegal;
+    case SupportedCountry.ivoryCoast:
+      return l10n.countryIvoryCoast;
+    case SupportedCountry.mali:
+      return l10n.countryMali;
+    case SupportedCountry.burkinaFaso:
+      return l10n.countryBurkinaFaso;
+    case SupportedCountry.benin:
+      return l10n.countryBenin;
+    case SupportedCountry.nigeria:
+      return l10n.countryNigeria;
+    case SupportedCountry.ghana:
+      return l10n.countryGhana;
+  }
+}
 
 /// Phone-number registration screen.
 ///
@@ -128,6 +154,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -150,17 +177,17 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
                   // --- Header ---
                   Text(
-                    'Create New Account',
+                    l10n.createAccountTitle,
                     textAlign: TextAlign.center,
                     style: AppTextStyles.heroAuth.copyWith(
                       letterSpacing: 0.2,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    "Just enter your phone number and we're set.",
+                  Text(
+                    l10n.createAccountSubtitle,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: AppColors.onBrandMuted,
                       fontSize: 14,
                       fontWeight: FontWeight.w400,
@@ -193,15 +220,18 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Already have an account ? ',
-                        style: TextStyle(
+                      Text(
+                        l10n.createAccountAlreadyHaveAccount,
+                        style: const TextStyle(
                           color: AppColors.onBrandMuted,
                           fontSize: 14,
                           fontWeight: FontWeight.w400,
                         ),
                       ),
-                      _InlineLink(label: 'Login', onTap: _goToLogin),
+                      _InlineLink(
+                        label: l10n.createAccountLoginLink,
+                        onTap: _goToLogin,
+                      ),
                     ],
                   ),
 
@@ -209,7 +239,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
                   // --- Primary CTA ---
                   _PrimaryPillButton(
-                    label: 'Create Account',
+                    label: l10n.createAccountCta,
                     enabled: _isValid,
                     onPressed: _submit,
                   ),
@@ -293,6 +323,7 @@ class _PhoneField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return TextField(
       controller: controller,
       focusNode: focusNode,
@@ -310,7 +341,7 @@ class _PhoneField extends StatelessWidget {
         LengthLimitingTextInputFormatter(20),
       ],
       decoration: InputDecoration(
-        hintText: 'Enter your phone number',
+        hintText: l10n.createAccountPhoneHint,
         hintStyle: const TextStyle(
           color: AppColors.onBrandMuted,
           fontSize: 16,
@@ -325,7 +356,7 @@ class _PhoneField extends StatelessWidget {
           builder: (context, value, _) {
             if (value.text.isEmpty) return const SizedBox.shrink();
             return IconButton(
-              tooltip: 'Clear',
+              tooltip: l10n.createAccountClearTooltip,
               splashRadius: 18,
               icon: Icon(
                 Icons.close_rounded,
@@ -431,6 +462,7 @@ class _CountryPickerSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SafeArea(
       top: false,
       child: Padding(
@@ -448,12 +480,12 @@ class _CountryPickerSheet extends StatelessWidget {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Select country',
+                  l10n.createAccountPickCountryTitle,
                   style: AppTextStyles.subsectionTitle,
                 ),
               ),
@@ -476,7 +508,7 @@ class _CountryPickerSheet extends StatelessWidget {
                       ),
                     ),
                     title: Text(
-                      c.label,
+                      countryDisplayName(c, l10n),
                       style: const TextStyle(
                         color: AppColors.onBrand,
                         fontSize: 16,
@@ -519,6 +551,7 @@ class _ConfirmNumberSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SafeArea(
       top: false,
       child: Padding(
@@ -540,17 +573,17 @@ class _ConfirmNumberSheet extends StatelessWidget {
               ),
             ),
             Text(
-              'Confirm the phone number',
+              l10n.createAccountConfirmSheetTitle,
               textAlign: TextAlign.center,
               style: AppTextStyles.sectionTitle.copyWith(
                 letterSpacing: 0.2,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              "We'll send a verification code to this number.",
+            Text(
+              l10n.createAccountConfirmSheetBody,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 color: AppColors.onBrandMuted,
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
@@ -596,7 +629,7 @@ class _ConfirmNumberSheet extends StatelessWidget {
             const SizedBox(height: 24),
 
             _PrimaryPillButton(
-              label: 'Confirm',
+              label: l10n.createAccountConfirmCta,
               enabled: true,
               onPressed: () => Navigator.of(context).pop(true),
             ),
@@ -617,7 +650,7 @@ class _ConfirmNumberSheet extends StatelessWidget {
                   onTap: () => Navigator.of(context).pop(false),
                   child: Center(
                     child: Text(
-                      'Go back',
+                      l10n.createAccountGoBack,
                       style: AppTextStyles.subsectionTitle.copyWith(
                         letterSpacing: 0.2,
                       ),

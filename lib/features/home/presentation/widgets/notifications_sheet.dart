@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../domain/app_notification.dart';
 
 /// Entry point — opens the notifications bottom-sheet.
@@ -128,8 +130,9 @@ class _NotificationsSheetState extends State<_NotificationsSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final unreadCount = _items.where((n) => !n.read).length;
-    final groups = _group(_items);
+    final groups = _group(_items, l10n);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
@@ -206,7 +209,7 @@ class _NotificationsSheetState extends State<_NotificationsSheet> {
   /// week-start, because that's what users intuitively expect from a
   /// notification feed and it sidesteps locale-specific week-start
   /// rules.
-  List<_Group> _group(List<AppNotification> items) {
+  List<_Group> _group(List<AppNotification> items, AppLocalizations l10n) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
@@ -231,10 +234,10 @@ class _NotificationsSheetState extends State<_NotificationsSheet> {
     }
 
     return <_Group>[
-      if (todayItems.isNotEmpty) _Group('Today', todayItems),
-      if (yesterdayItems.isNotEmpty) _Group('Yesterday', yesterdayItems),
-      if (earlierWeek.isNotEmpty) _Group('Earlier this week', earlierWeek),
-      if (older.isNotEmpty) _Group('Older', older),
+      if (todayItems.isNotEmpty) _Group(l10n.notificationsGroupToday, todayItems),
+      if (yesterdayItems.isNotEmpty) _Group(l10n.notificationsGroupYesterday, yesterdayItems),
+      if (earlierWeek.isNotEmpty) _Group(l10n.notificationsGroupEarlierWeek, earlierWeek),
+      if (older.isNotEmpty) _Group(l10n.notificationsGroupOlder, older),
     ];
   }
 }
@@ -273,12 +276,13 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 12, 12),
       child: Row(
         children: [
           Text(
-            'Notifications',
+            l10n.notificationsTitle,
             style: AppTextStyles.subsectionTitle.copyWith(
               fontWeight: FontWeight.w700,
             ),
@@ -312,8 +316,8 @@ class _Header extends StatelessWidget {
               disabledForegroundColor: Colors.white.withValues(alpha: 0.30),
               padding: const EdgeInsets.symmetric(horizontal: 12),
             ),
-            child: const Text(
-              'Mark all as read',
+            child: Text(
+              l10n.notificationsMarkAllRead,
               style: AppTextStyles.captionStrong,
             ),
           ),
@@ -382,6 +386,8 @@ class _NotificationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final localeTag = Localizations.localeOf(context).toLanguageTag();
     final d = _decor;
     final unread = !notification.read;
 
@@ -433,7 +439,7 @@ class _NotificationTile extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          _relativeTime(notification.when),
+                          _relativeTime(notification.when, l10n, localeTag),
                           style: AppTextStyles.microNumeric.copyWith(
                             color: Colors.white.withValues(alpha: 0.55),
                           ),
@@ -474,24 +480,20 @@ class _NotificationTile extends StatelessWidget {
     );
   }
 
-  /// Compact relative timestamp ("2m", "3h", "Yesterday", "Apr 18").
-  /// Once `intl` is on the project we should swap this for proper i18n.
-  static String _relativeTime(DateTime t) {
+  /// Compact relative timestamp (`just now`, `12m`, `3h`, `Yesterday`,
+  /// `Apr 18`). Day/hour/minute fragments come from ARB; the dated fallback
+  /// (`MMM d`) is rendered via `intl`'s `DateFormat` for the active locale.
+  String _relativeTime(DateTime t, AppLocalizations l10n, String localeTag) {
     final now = DateTime.now();
     final diff = now.difference(t);
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-    if (diff.inHours < 24) return '${diff.inHours}h';
+    if (diff.inMinutes < 1) return l10n.notificationsTimeJustNow;
+    if (diff.inMinutes < 60) return l10n.notificationsTimeMinutes(diff.inMinutes);
+    if (diff.inHours < 24) return l10n.notificationsTimeHours(diff.inHours);
     final today = DateTime(now.year, now.month, now.day);
     final d = DateTime(t.year, t.month, t.day);
     final daysAgo = today.difference(d).inDays;
-    if (daysAgo == 1) return 'Yesterday';
-    if (daysAgo < 7) return '${daysAgo}d';
-    const months = [
-      '',
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    return '${months[t.month]} ${t.day}';
+    if (daysAgo == 1) return l10n.notificationsTimeYesterday;
+    if (daysAgo < 7) return l10n.notificationsTimeDays(daysAgo);
+    return DateFormat.MMMd(localeTag).format(t);
   }
 }

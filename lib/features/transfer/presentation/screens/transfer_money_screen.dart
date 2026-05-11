@@ -8,11 +8,14 @@ import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/back_chevron_button.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../../auth/domain/supported_country.dart';
 import '../../../home/domain/supported_currency.dart';
 import '../../data/recipient_lookup_service.dart';
 import '../../domain/funding_provider.dart';
 import '../../domain/recipient_lookup.dart';
+import '../../domain/transfer_recipient_prefill.dart';
 import '../widgets/amount_keypad_sheet.dart';
 import '../widgets/country_picker_sheet.dart';
 import '../widgets/funding_provider_picker_sheet.dart';
@@ -38,11 +41,22 @@ import 'payment_confirm_screen.dart';
 /// no real lookup, no SMS, no balance debit. Confirm just `debugPrint`s
 /// the structured intent and pops.
 class TransferMoneyScreen extends StatefulWidget {
-  const TransferMoneyScreen({required this.currency, super.key});
+  const TransferMoneyScreen({
+    required this.currency,
+    this.prefill,
+    super.key,
+  });
 
   /// Currency the sender is debited in. Driven by the home screen's
   /// currency pill for now; will move to a Riverpod provider later.
   final SupportedCurrency currency;
+
+  /// Optional recipient prefill — set when the transfer is opened from
+  /// a deep entry point that already knows the recipient (e.g. tapping
+  /// a favorite avatar on Home). When non-null, the recipient country,
+  /// phone, and display name are populated and the directory lookup
+  /// runs immediately so the "Found" badge appears without typing.
+  final TransferRecipientPrefill? prefill;
 
   static const String routePath = '/transfer';
 
@@ -80,6 +94,31 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
   // Debounce token: incremented on every change so stale callbacks
   // don't overwrite a newer state.
   int _lookupRequestId = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    final prefill = widget.prefill;
+    if (prefill != null) {
+      _recipientCountry = prefill.country;
+      _recipientPhoneController.text = prefill.nationalPhone;
+      _recipientNameController.text = prefill.displayName;
+      _recipientPhoneValid = _validatePhone(
+        prefill.nationalPhone,
+        prefill.country,
+      );
+      // Kick off the directory lookup right away so the user sees the
+      // "Found" badge resolve without typing. If the number is in the
+      // directory, the canonical name overwrites the favorite's name.
+      if (prefill.nationalPhone.isNotEmpty) {
+        // Defer until after first frame so setState inside the lookup
+        // doesn't fire during build.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _runRecipientLookup(prefill.nationalPhone);
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -236,8 +275,10 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
       debugPrint('openExternalPick threw: $e\n$st');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not open the contact picker.'),
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context).transferContactPickerError,
+          ),
         ),
       );
       return;
@@ -272,8 +313,10 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
     if (phones.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('That contact has no phone number.'),
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context).transferContactNoPhone,
+          ),
         ),
       );
       return;
@@ -371,22 +414,23 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
   Future<void> _handleContactsPermissionDenied() async {
     final status = await Permission.contacts.status;
     if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     if (status.isPermanentlyDenied) {
       messenger.showSnackBar(
         SnackBar(
-          content: const Text(
-            'Contacts access is disabled. Enable it in Settings to '
-            'pick a recipient from your contact book.',
+          content: Text(l10n.transferContactPermissionDeniedPermanent),
+          action: SnackBarAction(
+            label: l10n.transferContactPermissionDeniedAction,
+            onPressed: openAppSettings,
           ),
-          action: SnackBarAction(label: 'Settings', onPressed: openAppSettings),
           duration: const Duration(seconds: 6),
         ),
       );
     } else {
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Contacts permission is needed to pick a recipient.'),
+        SnackBar(
+          content: Text(l10n.transferContactPermissionNeeded),
         ),
       );
     }
@@ -426,6 +470,7 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
   // -- Build ------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -448,10 +493,10 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Center(
+                        Center(
                           child: Text(
-                            'Transfer Money',
-                            style: TextStyle(
+                            l10n.transferTitle,
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 22,
                               fontWeight: FontWeight.w700,
@@ -466,7 +511,7 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
                         ),
                         const SizedBox(height: 28),
                         // From ------------------------------------------------
-                        const _SectionLabel('From'),
+                        _SectionLabel(l10n.transferSectionFrom),
                         const SizedBox(height: 12),
                         Row(
                           children: [
@@ -489,7 +534,7 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
                         _PhoneInputRow(
                           country: _senderCountry,
                           controller: _senderPhoneController,
-                          hint: 'Your mobile money number',
+                          hint: l10n.transferSenderPhoneHint,
                           onChanged: _onSenderPhoneChanged,
                           onClear: () {
                             _senderPhoneController.clear();
@@ -498,7 +543,7 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
                         ),
                         const SizedBox(height: 28),
                         // To --------------------------------------------------
-                        const _SectionLabel('To'),
+                        _SectionLabel(l10n.transferSectionTo),
                         const SizedBox(height: 12),
                         Row(
                           children: [
@@ -518,7 +563,7 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
                         _PhoneInputRow(
                           country: _recipientCountry,
                           controller: _recipientPhoneController,
-                          hint: 'Recipient phone number',
+                          hint: l10n.transferRecipientPhoneHint,
                           onChanged: _onRecipientPhoneChanged,
                           onClear: () {
                             _recipientPhoneController.clear();
@@ -554,13 +599,13 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
                         _PurposeField(controller: _purposeController),
                         const SizedBox(height: 24),
                         _FeeRow(
-                          label: 'Transaction fee',
+                          label: l10n.transferFeeLabel,
                           value:
                               '${widget.currency.code} ${_formatAmount(_feeValue)}',
                         ),
                         const SizedBox(height: 8),
                         _FeeRow(
-                          label: 'Recipient will receive',
+                          label: l10n.transferRecipientReceivesLabel,
                           value:
                               '${widget.currency.code} ${_formatAmount(_payoutValue)}',
                         ),
@@ -589,9 +634,9 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      child: const Text(
-                        'Confirm',
-                        style: TextStyle(
+                      child: Text(
+                        l10n.transferConfirmCta,
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
@@ -614,6 +659,19 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
 
 String _formatAmount(double value) => MoneyFormat.fromNum(value);
 
+/// Render-time resolver for [FundingProvider] display names. The enum's
+/// `label` field is kept for debug logs (per the `directionLabel`
+/// precedent on [Transaction]); user-visible strings come through here.
+String fundingProviderLabel(FundingProvider provider, AppLocalizations l10n) {
+  return switch (provider) {
+    FundingProvider.moneyaWallet => l10n.fundingProviderMoneyaWallet,
+    FundingProvider.moovAfrica => l10n.fundingProviderMoovAfrica,
+    FundingProvider.orangeMoney => l10n.fundingProviderOrangeMoney,
+    FundingProvider.mtnMomo => l10n.fundingProviderMtnMomo,
+    FundingProvider.wave => l10n.fundingProviderWave,
+  };
+}
+
 class _Header extends StatelessWidget {
   const _Header({required this.onBack});
 
@@ -621,21 +679,14 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 4, 24, 0),
       child: Row(
         children: [
-          IconButton(
-            onPressed: onBack,
-            icon: const Icon(
-              Icons.chevron_left_rounded,
-              color: Colors.white,
-              size: 28,
-            ),
-            splashRadius: 24,
-          ),
-          const Text(
-            'Transfer',
+          BackChevronButton(onTap: onBack, tooltip: l10n.commonBack),
+          Text(
+            l10n.transferHeaderTitle,
             style: AppTextStyles.screenTitle,
           ),
         ],
@@ -799,6 +850,7 @@ class _ProviderChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -811,7 +863,7 @@ class _ProviderChip extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  provider.label,
+                  fundingProviderLabel(provider, l10n),
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Colors.white,
@@ -849,14 +901,15 @@ class _ProviderInlineGlyph extends StatelessWidget {
           width: 24,
           height: 24,
           fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _initialFallback(),
+          errorBuilder: (ctx, _, _) => _initialFallback(ctx),
         ),
       );
     }
-    return _initialFallback();
+    return _initialFallback(context);
   }
 
-  Widget _initialFallback() {
+  Widget _initialFallback(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       width: 24,
       height: 24,
@@ -866,7 +919,7 @@ class _ProviderInlineGlyph extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: Text(
-        provider.label.characters.first.toUpperCase(),
+        fundingProviderLabel(provider, l10n).characters.first.toUpperCase(),
         style: const TextStyle(
           color: Colors.white,
           fontSize: 12,

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/back_chevron_button.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 
 /// App settings — reached from the Profile screen's Actions list.
 ///
@@ -20,9 +22,15 @@ import '../../../../core/theme/app_text_styles.dart';
 /// `biometrics_for_transactions_enabled` key) and the delete-account
 /// confirmation dialog.
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({super.key, this.showBackButton = true});
 
   static const String routePath = '/settings';
+
+  /// When `true` (default — pushed as a route from Profile) the header
+  /// renders a chevron-left back button. When `false` (hosted as a
+  /// bottom-nav tab inside [HomeShell]) the chevron is hidden so the
+  /// screen reads as a top-level destination.
+  final bool showBackButton;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -38,6 +46,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _onUssdBanking() => debugPrint('TODO: open USSD banking settings');
 
   Future<void> _onDeleteAccount() async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -45,13 +54,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
-        title: const Text(
-          'Delete account?',
+        title: Text(
+          l10n.deleteAccountDialogTitle,
           style: AppTextStyles.screenTitle,
         ),
         content: Text(
-          'This permanently removes your MoneyA account, balances, and '
-          'transaction history. This action cannot be undone.',
+          l10n.deleteAccountDialogBody,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.75),
             fontSize: 14,
@@ -63,7 +71,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
             child: Text(
-              'Cancel',
+              l10n.commonCancel,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.85),
                 fontWeight: FontWeight.w500,
@@ -72,9 +80,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text(
-              'Delete',
-              style: TextStyle(
+            child: Text(
+              l10n.commonDelete,
+              style: const TextStyle(
                 color: Color(0xFFFF4D2E),
                 fontWeight: FontWeight.w600,
               ),
@@ -92,6 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: AppColors.black,
       extendBodyBehindAppBar: true,
@@ -103,27 +112,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _Header(onBack: () => Navigator.of(context).maybePop()),
+                _Header(
+                  onBack: widget.showBackButton
+                      ? () => Navigator.of(context).maybePop()
+                      : null,
+                ),
                 const SizedBox(height: 28),
-                const _SectionLabel('Security & Privacy'),
+                _SectionLabel(l10n.settingsSectionSecurity),
                 _SectionCard(
                   children: [
                     _SettingsRow(
                       icon: Icons.lock_outline_rounded,
-                      label: 'Change Password',
+                      label: l10n.settingsRowChangePassword,
                       onTap: _onChangePassword,
                     ),
                     const _RowDivider(),
                     _SettingsRow(
                       icon: Icons.tune_rounded,
-                      label: 'Login Options',
+                      label: l10n.settingsRowLoginOptions,
                       onTap: _onLoginOptions,
                     ),
                     const _RowDivider(),
                     _SettingsToggleRow(
                       icon: Icons.fingerprint_rounded,
-                      label: 'Biometrics for transactions',
-                      subtitle: 'Authenticate transactions with biometrics',
+                      label: l10n.settingsRowBiometricsLabel,
+                      subtitle: l10n.settingsRowBiometricsSubtitle,
                       value: _biometricsEnabled,
                       onChanged: (v) =>
                           setState(() => _biometricsEnabled = v),
@@ -131,37 +144,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
                 const SizedBox(height: 28),
-                const _SectionLabel('Transactions'),
+                _SectionLabel(l10n.settingsSectionTransactions),
                 _SectionCard(
                   children: [
                     _SettingsRow(
                       icon: Icons.smartphone_rounded,
-                      label: 'Phone Number Account',
+                      label: l10n.settingsRowPhoneNumberAccount,
                       onTap: _onPhoneNumberAccount,
                     ),
                     const _RowDivider(),
                     _SettingsRow(
                       icon: Icons.tag_rounded,
-                      label: 'USSD Banking',
+                      label: l10n.settingsRowUssdBanking,
                       onTap: _onUssdBanking,
                     ),
                   ],
                 ),
                 const SizedBox(height: 28),
-                const _SectionLabel('Actions'),
+                _SectionLabel(l10n.settingsSectionActions),
                 _SectionCard(
                   children: [
                     _SettingsRow(
                       icon: Icons.delete_outline_rounded,
                       iconColor: const Color(0xFFFF4D2E),
                       labelColor: const Color(0xFFFF4D2E),
-                      label: 'Delete Account',
+                      label: l10n.settingsRowDeleteAccount,
                       onTap: _onDeleteAccount,
                       showChevron: false,
                     ),
                   ],
                 ),
-                const SizedBox(height: 32),
+                SizedBox(
+                  height: widget.showBackButton
+                      ? 32
+                      // Hosted inside HomeShell which uses extendBody:true,
+                      // so we must clear the 64dp bottom nav + system inset.
+                      : 32 + 64 + MediaQuery.paddingOf(context).bottom,
+                ),
               ],
             ),
           ),
@@ -178,25 +197,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
 class _Header extends StatelessWidget {
   const _Header({required this.onBack});
 
-  final VoidCallback onBack;
+  /// When `null`, the back chevron is omitted (used when Settings is
+  /// hosted as a bottom-nav tab). When non-null, renders the standard
+  /// chevron-left button.
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final hasBack = onBack != null;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 4, 24, 0),
+      padding: EdgeInsets.fromLTRB(hasBack ? 8 : 24, 4, 24, 0),
       child: Row(
         children: [
-          IconButton(
-            onPressed: onBack,
-            icon: const Icon(
-              Icons.chevron_left_rounded,
-              color: Colors.white,
-              size: 28,
-            ),
-            splashRadius: 24,
-          ),
-          const Text(
-            'Settings',
+          if (hasBack) ...[
+            BackChevronButton(onTap: onBack!, tooltip: l10n.commonBack),
+          ] else
+            // Match the vertical rhythm of the chevron variant so the
+            // title sits at the same baseline regardless of mode.
+            const SizedBox(height: 48),
+          Text(
+            l10n.settingsTitle,
             style: AppTextStyles.screenTitle,
           ),
         ],

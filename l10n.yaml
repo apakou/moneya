@@ -1,0 +1,10 @@
+# gen_l10n config — see https://docs.flutter.dev/ui/accessibility-and-internationalization/internationalization
+# Source .arb files: lib/l10n/app_<locale>.arb
+# Generated Dart:    lib/l10n/generated/app_localizations.dart
+# Templating locale: en (the source-of-truth for keys + descriptions)
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+output-dir: lib/l10n/generated
+nullable-getter: false

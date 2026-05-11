@@ -4,6 +4,8 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/back_chevron_button.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../../auth/domain/supported_country.dart';
 import '../../../home/domain/supported_currency.dart';
 import '../../data/transaction_auth_service.dart';
@@ -11,6 +13,7 @@ import '../../domain/funding_provider.dart';
 import '../../domain/recipient_lookup.dart';
 import '../widgets/swipe_to_pay_button.dart';
 import 'payment_success_screen.dart';
+import 'transfer_money_screen.dart' show fundingProviderLabel;
 
 /// Confirm-payment screen reached after the user taps `Confirm` on
 /// [TransferMoneyScreen]. Shows the amount, the From → To detail card,
@@ -159,9 +162,9 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
           break;
         case TransactionAuthResult.failed:
           messenger.showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text(
-                'Too many wrong attempts. Try again.',
+                AppLocalizations.of(context).confirmPaymentAuthFailedSnack,
               ),
               behavior: SnackBarBehavior.floating,
             ),
@@ -183,6 +186,7 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
     void popToTransfer() {
       if (navigator.canPop()) navigator.pop();
     }
+    final l10n = AppLocalizations.of(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -208,27 +212,27 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Center(
+                        Center(
                           child: Padding(
-                            padding: EdgeInsets.only(top: 4, bottom: 24),
+                            padding: const EdgeInsets.only(top: 4, bottom: 24),
                             child: Text(
-                              'Confirm Your Payment',
+                              l10n.confirmPaymentTitle,
                               style: AppTextStyles.sectionTitle,
                             ),
                           ),
                         ),
-                        const Text(
-                          'Payment Details',
+                        Text(
+                          l10n.confirmPaymentDetailsHeading,
                           style: AppTextStyles.subsectionTitle,
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          'Check payment details and swipe to pay!',
+                        Text(
+                          l10n.confirmPaymentDetailsSubtitle,
                           style: AppTextStyles.bodyMuted,
                         ),
                         const SizedBox(height: 28),
-                        const Text(
-                          'Amount',
+                        Text(
+                          l10n.confirmPaymentAmountLabel,
                           style: AppTextStyles.bodyMuted,
                         ),
                         const SizedBox(height: 8),
@@ -251,12 +255,12 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
                         ),
                         const SizedBox(height: 28),
                         _FeeRow(
-                          label: 'Transaction fee',
+                          label: l10n.transferFeeLabel,
                           value: '${widget.currency.code} $_formattedFee',
                         ),
                         const SizedBox(height: 12),
                         _FeeRow(
-                          label: 'Recipient will receive',
+                          label: l10n.transferRecipientReceivesLabel,
                           value: '${widget.currency.code} $_formattedNet',
                         ),
                       ],
@@ -267,6 +271,7 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
                   child: SwipeToPayButton(
                     key: _swipeKey,
+                    label: l10n.confirmPaymentSwipeLabel,
                     onCompleted: _onSwipeCompleted,
                   ),
                 ),
@@ -290,21 +295,14 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 4, 24, 0),
       child: Row(
         children: [
-          IconButton(
-            onPressed: onBack,
-            icon: const Icon(
-              Icons.chevron_left_rounded,
-              color: Colors.white,
-              size: 28,
-            ),
-            splashRadius: 24,
-          ),
-          const Text(
-            'Confirm',
+          BackChevronButton(onTap: onBack, tooltip: l10n.commonBack),
+          Text(
+            l10n.confirmPaymentHeaderTitle,
             style: AppTextStyles.screenTitle,
           ),
         ],
@@ -367,6 +365,8 @@ class _FromToCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final providerName = fundingProviderLabel(provider, l10n);
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: BoxDecoration(
@@ -379,7 +379,7 @@ class _FromToCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _ProviderGlyph(provider: provider),
+              _ProviderGlyph(provider: provider, displayName: providerName),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -388,12 +388,12 @@ class _FromToCard extends StatelessWidget {
                     Text.rich(
                       TextSpan(
                         children: [
-                          const TextSpan(
-                            text: 'From your ',
+                          TextSpan(
+                            text: l10n.confirmPaymentFromYourPrefix,
                             style: AppTextStyles.label,
                           ),
                           TextSpan(
-                            text: provider.label,
+                            text: providerName,
                             style: AppTextStyles.label
                                 .copyWith(fontWeight: FontWeight.w700),
                           ),
@@ -437,13 +437,13 @@ class _FromToCard extends StatelessWidget {
                     Text.rich(
                       TextSpan(
                         children: [
-                          const TextSpan(
-                            text: 'To ',
+                          TextSpan(
+                            text: l10n.confirmPaymentToRecipientPrefix,
                             style: AppTextStyles.label,
                           ),
                           TextSpan(
                             text: recipientName.isEmpty
-                                ? 'Recipient'
+                                ? l10n.confirmPaymentRecipientFallback
                                 : recipientName,
                             style: AppTextStyles.label
                                 .copyWith(fontWeight: FontWeight.w700),
@@ -468,9 +468,10 @@ class _FromToCard extends StatelessWidget {
 }
 
 class _ProviderGlyph extends StatelessWidget {
-  const _ProviderGlyph({required this.provider});
+  const _ProviderGlyph({required this.provider, required this.displayName});
 
   final FundingProvider provider;
+  final String displayName;
 
   @override
   Widget build(BuildContext context) {
@@ -479,12 +480,12 @@ class _ProviderGlyph extends StatelessWidget {
       width: 44,
       height: 44,
       child: icon == null
-          ? _ProviderInitialBadge(label: provider.label)
+          ? _ProviderInitialBadge(label: displayName)
           : Image.asset(
               icon,
               fit: BoxFit.contain,
               errorBuilder: (_, _, _) =>
-                  _ProviderInitialBadge(label: provider.label),
+                  _ProviderInitialBadge(label: displayName),
             ),
     );
   }

@@ -4,6 +4,8 @@ import 'package:local_auth/local_auth.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/back_chevron_button.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../domain/passcode_policy.dart';
 import 'choose_kyc_document_screen.dart';
 
@@ -113,9 +115,10 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
   void _onNext() {
     if (!_isComplete) return;
     final code = _code;
+    final l10n = AppLocalizations.of(context);
 
     if (widget.mode == PasscodeMode.set) {
-      final reason = PasscodePolicy.validate(code);
+      final reason = _validateLocalized(code, l10n);
       if (reason != null) {
         setState(() => _error = reason);
         return;
@@ -134,7 +137,7 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
     // Confirm mode.
     if (code != widget.expectedCode) {
       setState(() {
-        _error = "Passcodes don't match.";
+        _error = l10n.passcodeMismatchError;
       });
       _clearAndRefocus();
       return;
@@ -143,9 +146,28 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
     _enrollBiometricThenAdvance();
   }
 
+  /// Localized wrapper around [PasscodePolicy.validate]. Maps the policy's
+  /// stable English reason strings to translated user-facing copy.
+  static String? _validateLocalized(String code, AppLocalizations l10n) {
+    final reason = PasscodePolicy.validate(code);
+    if (reason == null) return null;
+    if (reason.startsWith('Use ')) {
+      return l10n.passcodeErrorWrongLength(PasscodePolicy.length);
+    }
+    if (reason == 'Digits only.') return l10n.passcodeErrorDigitsOnly;
+    if (reason == 'Avoid repeating digits.') {
+      return l10n.passcodeErrorRepeating;
+    }
+    if (reason == 'Avoid sequential digits.') {
+      return l10n.passcodeErrorSequential;
+    }
+    return reason;
+  }
+
   /// Offers to enroll biometric login. Silently skips if unavailable; treats
   /// success and user-cancel both as "advance" since biometric is optional.
   Future<void> _enrollBiometricThenAdvance() async {
+    final l10n = AppLocalizations.of(context);
     final auth = LocalAuthentication();
     var enabled = false;
     try {
@@ -155,7 +177,7 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
         final available = await auth.getAvailableBiometrics();
         if (available.isNotEmpty) {
           enabled = await auth.authenticate(
-            localizedReason: 'Enable login with biometric',
+            localizedReason: l10n.passcodeBiometricReason,
             options: const AuthenticationOptions(
               biometricOnly: true,
               stickyAuth: true,
@@ -187,12 +209,13 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final isSet = widget.mode == PasscodeMode.set;
-    final title = isSet ? 'Set a passcode' : 'Confirm the passcode';
+    final title = isSet ? l10n.passcodeSetTitle : l10n.passcodeConfirmTitle;
     final subtitle = isSet
-        ? 'create a ${PasscodePolicy.length} digit passcode'
-        : 'Repeat the ${PasscodePolicy.length} digit passcode';
-    final ctaLabel = isSet ? 'Next' : 'Save';
+        ? l10n.passcodeSetSubtitle(PasscodePolicy.length)
+        : l10n.passcodeConfirmSubtitle(PasscodePolicy.length);
+    final ctaLabel = isSet ? l10n.passcodeNextCta : l10n.passcodeSaveCta;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -215,14 +238,11 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
                 Positioned(
                   top: 4,
                   left: 4,
-                  child: IconButton(
-                    tooltip: 'Back',
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      color: AppColors.onBrand,
-                      size: 20,
-                    ),
+                  child: BackChevronButton(
+                    onTap: () => Navigator.of(context).maybePop(),
+                    tooltip: l10n.commonBack,
+                    icon: Icons.arrow_back_ios_new_rounded,
+                    iconSize: 20,
                   ),
                 ),
                 Padding(

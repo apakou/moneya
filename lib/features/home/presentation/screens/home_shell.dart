@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../widgets/voice_fab.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import 'home_screen.dart';
+import 'settings_screen.dart';
 import 'transactions_screen.dart';
 
 /// Top-level post-onboarding shell.
 ///
-/// Hosts the bottom navigation bar (Home / Transactions) with a centered
-/// floating voice mic button (the primary CTA of the app — "say it,
-/// confirm it"). The voice button taps a stub for now; in a later
-/// iteration it will open the voice intent capture sheet.
+/// Hosts the bottom navigation bar (Home / Transactions / Settings).
+/// The voice intent capture entry point is temporarily removed from
+/// the nav bar; see `VoiceFab` widget (still on disk) and the
+/// voice-intent-parsing skill for the planned re-introduction.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -31,7 +32,7 @@ class HomeShell extends StatefulWidget {
 /// outside this library can switch tabs without depending on the
 /// private `_HomeShellState` type.
 abstract class HomeShellController {
-  /// Switch the visible tab (0 = Home, 1 = Transactions).
+  /// Switch the visible tab (0 = Home, 1 = Transactions, 2 = Settings).
   void selectTab(int index);
 }
 
@@ -49,13 +50,8 @@ class _HomeShellState extends State<HomeShell>
   static const List<Widget> _tabs = [
     HomeScreen(),
     TransactionsScreen(),
+    SettingsScreen(showBackButton: false),
   ];
-
-  void _onVoicePressed() {
-    // TODO: open the voice intent capture sheet (see voice-intent-parsing
-    // skill — STT + LLM function-calling to extract transfer intent).
-    debugPrint('Voice FAB pressed.');
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,8 +67,6 @@ class _HomeShellState extends State<HomeShell>
         extendBody: true,
         backgroundColor: AppColors.black,
         body: IndexedStack(index: _index, children: _tabs),
-        floatingActionButton: VoiceFab(onPressed: _onVoicePressed),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
         bottomNavigationBar: _BottomBar(
           index: _index,
           onTap: (i) => setState(() => _index = i),
@@ -90,11 +84,10 @@ class _BottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return BottomAppBar(
       color: AppColors.black,
       elevation: 0,
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 10,
       padding: EdgeInsets.zero,
       child: SizedBox(
         height: 64,
@@ -103,18 +96,25 @@ class _BottomBar extends StatelessWidget {
             Expanded(
               child: _NavItem(
                 icon: Icons.home_rounded,
-                label: 'Home',
+                label: l10n.navHome,
                 selected: index == 0,
                 onTap: () => onTap(0),
               ),
             ),
-            const SizedBox(width: 96), // notch gap for the oversized FAB
             Expanded(
               child: _NavItem(
                 icon: Icons.receipt_long_rounded,
-                label: 'Transactions',
+                label: l10n.navTransactions,
                 selected: index == 1,
                 onTap: () => onTap(1),
+              ),
+            ),
+            Expanded(
+              child: _NavItem(
+                icon: Icons.settings_rounded,
+                label: l10n.navSettings,
+                selected: index == 2,
+                onTap: () => onTap(2),
               ),
             ),
           ],

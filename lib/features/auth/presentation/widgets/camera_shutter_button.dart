@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/generated/app_localizations.dart';
+
 /// Reusable camera shutter button used by the KYC document and selfie
 /// capture screens. White outline ring (3dp) around a smaller solid white
 /// disc; renders an indeterminate spinner when [busy] is true.
@@ -17,9 +19,10 @@ class CameraShutterButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Semantics(
       button: true,
-      label: 'Take picture',
+      label: l10n.cameraShutterLabel,
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: enabled ? onPressed : null,

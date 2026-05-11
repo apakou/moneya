@@ -1,10 +1,19 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:intl/intl.dart';
+import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/back_chevron_button.dart';
+import '../../../../l10n/generated/app_localizations.dart';
+import '../../data/transaction_pdf_generator.dart';
 import '../../domain/transaction.dart';
 
 /// Read-only detail screen for one [Transaction], rendered as a
@@ -25,7 +34,7 @@ import '../../domain/transaction.dart';
 ///     and filled "Download PDF". PDF generation is stubbed
 ///     (`debugPrint`); see project notes for the proposed `pdf` +
 ///     `printing` stack.
-class TransactionDetailScreen extends StatelessWidget {
+class TransactionDetailScreen extends StatefulWidget {
   const TransactionDetailScreen({
     super.key,
     required this.txn,
@@ -39,6 +48,30 @@ class TransactionDetailScreen extends StatelessWidget {
   /// itself once the backend model carries currency per-row.
   final String currencyCode;
 
+  @override
+  State<TransactionDetailScreen> createState() =>
+      _TransactionDetailScreenState();
+}
+
+class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
+  /// Anchors the [RepaintBoundary] around the receipt card so we can
+  /// rasterize it on demand for share. Mirrors the QR tab's pattern.
+  /// The boundary wraps only the receipt itself — not the action
+  /// pills or the brand gradient — so the captured PNG is a clean
+  /// shareable receipt image.
+  final _receiptKey = GlobalKey();
+
+  /// True while a share-capture is in flight. Prevents double-taps
+  /// of the share pill from firing two share sheets back-to-back.
+  bool _capturing = false;
+
+  /// True while a PDF is being generated + handed off to the share
+  /// sheet. Prevents double-taps of the download pill.
+  bool _downloading = false;
+
+  Transaction get txn => widget.txn;
+  String get currencyCode => widget.currencyCode;
+
   // Status palette. Same hex values used everywhere status is
   // shown — keeps the disc, label, and amount sign in sync.
   static const _green = Color(0xFF16A34A); // success
@@ -46,45 +79,55 @@ class TransactionDetailScreen extends StatelessWidget {
   static const _red = Color(0xFFDC2626); // failed
 
   Color get _statusColor => switch (txn.status) {
-        TxnStatus.success => _green,
-        TxnStatus.pending => _amber,
-        TxnStatus.failed => _red,
-      };
+    TxnStatus.success => _green,
+    TxnStatus.pending => _amber,
+    TxnStatus.failed => _red,
+  };
 
-  String get _statusLabel => switch (txn.status) {
-        TxnStatus.success => 'Successful',
-        TxnStatus.pending => 'Pending',
-        TxnStatus.failed => 'Failed',
-      };
+  String _statusLabel(AppLocalizations l10n) => switch (txn.status) {
+    TxnStatus.success => l10n.txnDetailStatusSuccess,
+    TxnStatus.pending => l10n.txnDetailStatusPending,
+    TxnStatus.failed => l10n.txnDetailStatusFailed,
+  };
+
+  String _directionLabel(AppLocalizations l10n) => switch (txn.kind) {
+    TxnKind.sent => l10n.txnDetailDirectionSent,
+    TxnKind.received => l10n.txnDetailDirectionReceived,
+  };
 
   IconData get _statusIcon => switch (txn.status) {
-        TxnStatus.success => Icons.check_circle_rounded,
-        TxnStatus.pending => Icons.schedule_rounded,
-        TxnStatus.failed => Icons.error_rounded,
-      };
+    TxnStatus.success => Icons.check_circle_rounded,
+    TxnStatus.pending => Icons.schedule_rounded,
+    TxnStatus.failed => Icons.error_rounded,
+  };
 
   /// Direction-tinted color for the giant signed amount. Sent =
   /// red so the user sees money leaving; received = green.
   Color get _amountColor => switch (txn.kind) {
-        TxnKind.sent => _red,
-        TxnKind.received => _green,
-      };
+    TxnKind.sent => _red,
+    TxnKind.received => _green,
+  };
 
   /// `+` for received, `-` for sent.
   String get _amountSign => switch (txn.kind) {
-        TxnKind.sent => '-',
-        TxnKind.received => '+',
-      };
+    TxnKind.sent => '-',
+    TxnKind.received => '+',
+  };
 
   /// Inserts locale-aware thousands separators via [MoneyFormat]. Once the
   /// backend lands and amounts become numeric (Decimal/num) we'll call
   /// [MoneyFormat.fromNum] directly and drop this shim.
   String _withCommas(String s) => MoneyFormat.fromString(s);
 
-  void _copy(BuildContext context, {required String label, required String value}) {
+  void _copy(
+    BuildContext context, {
+    required String label,
+    required String value,
+  }) {
     Clipboard.setData(ClipboardData(text: value));
     HapticFeedback.selectionClick();
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
     messenger.clearSnackBars();
     messenger.showSnackBar(
       SnackBar(
@@ -92,7 +135,7 @@ class TransactionDetailScreen extends StatelessWidget {
         margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
         backgroundColor: const Color(0xFF1F1F23),
         content: Text(
-          '$label copied',
+          l10n.txnDetailCopiedSnack(label),
           style: const TextStyle(color: Colors.white),
         ),
         duration: const Duration(seconds: 2),
@@ -100,13 +143,133 @@ class TransactionDetailScreen extends StatelessWidget {
     );
   }
 
-  void _onShare(BuildContext context) =>
-      debugPrint('TODO: share transaction receipt ${txn.id}');
-  void _onDownload(BuildContext context) =>
-      debugPrint('TODO: download transaction PDF ${txn.id}');
+  /// Rasterize the [RepaintBoundary] holding the receipt card to PNG
+  /// bytes. Returns null if the boundary isn't yet mounted (shouldn't
+  /// happen in practice — capture is only triggered by user taps
+  /// after layout has settled). Uses `pixelRatio: 3.0` so the
+  /// resulting image is sharp on hi-DPI receiving devices.
+  Future<Uint8List?> _captureReceiptPng() async {
+    final boundary =
+        _receiptKey.currentContext?.findRenderObject()
+            as RenderRepaintBoundary?;
+    if (boundary == null) return null;
+    final image = await boundary.toImage(pixelRatio: 3.0);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    return byteData?.buffer.asUint8List();
+  }
+
+  /// Captures the on-screen receipt as a PNG and hands both the image
+  /// and a plain-text caption to the platform share sheet. Mirrors
+  /// the QR tab's share flow — recipients on WhatsApp, iMessage,
+  /// email etc. receive a visual receipt + text summary they can
+  /// search and forward.
+  ///
+  /// Text caption uses the same locale-formatted timestamp + same
+  /// `MoneyFormat` thousands separators as the rendered receipt, so
+  /// the textual content matches the image pixel-for-pixel in copy.
+  Future<void> _onShare() async {
+    if (_capturing) return;
+    final l10n = AppLocalizations.of(context);
+    final localeTag = Localizations.localeOf(context).toLanguageTag();
+    setState(() => _capturing = true);
+    try {
+      final png = await _captureReceiptPng();
+      if (!mounted) return;
+      if (png == null) return;
+
+      final timestamp =
+          '${DateFormat.yMMMd(localeTag).format(txn.when)} • ${DateFormat.jm(localeTag).format(txn.when)}';
+      final amountStr = '$_amountSign$currencyCode ${_withCommas(txn.amount)}';
+      final feeStr = '$currencyCode ${_withCommas(txn.fee)}';
+      final totalStr = '$currencyCode ${_withCommas(txn.total)}';
+
+      // Reuse the existing transferSectionFrom/To keys for the
+      // counterparty preposition — semantically identical to the
+      // detail screen's "From X / To Y" framing and avoids
+      // duplicating single-word ARB entries.
+      final counterpartyLabel = switch (txn.kind) {
+        TxnKind.sent => l10n.transferSectionTo,
+        TxnKind.received => l10n.transferSectionFrom,
+      };
+
+      final body = [
+        l10n.txnDetailShareHeader,
+        '',
+        l10n.txnDetailShareLineStatus(_statusLabel(l10n)),
+        l10n.txnDetailShareLineDirection(_directionLabel(l10n)),
+        l10n.txnDetailShareLineCounterparty(
+          counterpartyLabel,
+          txn.counterparty,
+        ),
+        l10n.txnDetailShareLineWhen(timestamp),
+        '',
+        l10n.txnDetailShareLineAmount(amountStr),
+        l10n.txnDetailShareLineFee(feeStr),
+        l10n.txnDetailShareLineTotal(totalStr),
+        '',
+        l10n.txnDetailShareLineMethod(txn.paymentMethod),
+        l10n.txnDetailShareLinePhone(txn.counterpartyPhone),
+        l10n.txnDetailShareLineReference(txn.id),
+        '',
+        l10n.txnDetailShareFooter,
+      ].join('\n');
+
+      HapticFeedback.selectionClick();
+      await Share.shareXFiles(
+        [
+          XFile.fromData(
+            png,
+            name: 'moneya-receipt-${txn.id}.png',
+            mimeType: 'image/png',
+          ),
+        ],
+        text: body,
+        subject: l10n.txnDetailShareSubject(txn.id),
+      );
+    } finally {
+      if (mounted) setState(() => _capturing = false);
+    }
+  }
+
+  /// Generates a typeset, vector PDF receipt and hands it to the
+  /// platform share/print sheet. Users get the full set of native
+  /// destinations: Save to Files (iOS/Android), AirPrint, Google
+  /// Drive, WhatsApp, email — anywhere the OS can route a PDF.
+  ///
+  /// PDF is built off-thread by `pdf`'s deferred-rendering pipeline;
+  /// the spinner stays on the pill until the share sheet appears.
+  /// All copy is locale-aware via [TransactionPdfGenerator].
+  Future<void> _onDownload() async {
+    if (_downloading) return;
+    final l10n = AppLocalizations.of(context);
+    final localeTag = Localizations.localeOf(context).toLanguageTag();
+    setState(() => _downloading = true);
+    try {
+      final bytes = await const TransactionPdfGenerator().build(
+        txn: txn,
+        currencyCode: currencyCode,
+        l10n: l10n,
+        localeTag: localeTag,
+      );
+      if (!mounted) return;
+      HapticFeedback.selectionClick();
+      // `Printing.sharePdf` opens the OS share sheet with PDF-aware
+      // destinations (Files, AirPrint, Mail, WhatsApp, Drive). On
+      // iPad / desktop a positional anchor is required; we anchor
+      // it to the screen's bounds so the popover spawns from the
+      // CTA region.
+      await Printing.sharePdf(
+        bytes: bytes,
+        filename: 'moneya-receipt-${txn.id}.pdf',
+      );
+    } finally {
+      if (mounted) setState(() => _downloading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       // Transparent so the brand-gradient `DecoratedBox` below paints
       // edge-to-edge under the status bar and home indicator.
@@ -119,87 +282,97 @@ class TransactionDetailScreen extends StatelessWidget {
             children: [
               _Header(onBack: () => Navigator.of(context).maybePop()),
               const SizedBox(height: 16),
-                Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      return SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                        physics: const BouncingScrollPhysics(),
-                        child: ConstrainedBox(
-                          // Centers the receipt+actions block when it
-                          // fits in the viewport; falls back to natural
-                          // top-aligned scroll when it doesn't.
-                          constraints: BoxConstraints(
-                            minHeight: constraints.maxHeight,
-                          ),
-                          child: IntrinsicHeight(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                _ReceiptCard(
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                      physics: const BouncingScrollPhysics(),
+                      child: ConstrainedBox(
+                        // Centers the receipt+actions block when it
+                        // fits in the viewport; falls back to natural
+                        // top-aligned scroll when it doesn't.
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: IntrinsicHeight(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // RepaintBoundary anchors the receipt
+                              // card for PNG capture in `_onShare`.
+                              // Wraps only the receipt — not the
+                              // action pills below — so the captured
+                              // image is a clean shareable receipt.
+                              RepaintBoundary(
+                                key: _receiptKey,
+                                child: _ReceiptCard(
                                   statusColor: _statusColor,
-                                  statusLabel: _statusLabel,
+                                  statusLabel: _statusLabel(l10n),
                                   statusIcon: _statusIcon,
                                   counterparty: txn.counterparty,
-                                  directionLabel: txn.directionLabel,
-                                  timestamp: txn.timestamp,
+                                  directionLabel: _directionLabel(l10n),
+                                  when: txn.when,
                                   amountText:
                                       '$_amountSign$currencyCode ${_withCommas(txn.amount)}',
                                   amountColor: _amountColor,
                                   rows: [
                                     _ReceiptRowData(
-                                      label: 'Fee',
+                                      label: l10n.txnDetailRowFee,
                                       value:
                                           '$currencyCode ${_withCommas(txn.fee)}',
                                     ),
                                     _ReceiptRowData(
-                                      label: 'Total',
+                                      label: l10n.txnDetailRowTotal,
                                       value:
                                           '$currencyCode ${_withCommas(txn.total)}',
                                       emphasize: true,
                                     ),
                                     _ReceiptRowData(
-                                      label: 'Phone',
+                                      label: l10n.txnDetailRowPhone,
                                       value: txn.counterpartyPhone,
                                       onCopy: () => _copy(
                                         context,
-                                        label: 'Phone',
+                                        label: l10n.txnDetailRowPhone,
                                         value: txn.counterpartyPhone,
                                       ),
                                     ),
                                     _ReceiptRowData(
-                                      label: 'Method',
+                                      label: l10n.txnDetailRowMethod,
                                       value: txn.paymentMethod,
                                     ),
                                     _ReceiptRowData(
-                                      label: 'Reference',
+                                      label: l10n.txnDetailRowReference,
                                       value: txn.id,
                                       monospace: true,
                                       onCopy: () => _copy(
                                         context,
-                                        label: 'Reference',
+                                        label: l10n.txnDetailRowReference,
                                         value: txn.id,
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 28),
-                                _ActionPills(
-                                  onShare: () => _onShare(context),
-                                  onDownload: () => _onDownload(context),
-                                ),
-                              ],
-                            ),
+                              ),
+                              const SizedBox(height: 28),
+                              _ActionPills(
+                                onShare: _capturing ? null : _onShare,
+                                onDownload: _downloading ? null : _onDownload,
+                                shareBusy: _capturing,
+                                downloadBusy: _downloading,
+                              ),
+                            ],
                           ),
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
+      ),
     );
   }
 }
@@ -215,23 +388,13 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 4, 24, 0),
       child: Row(
         children: [
-          IconButton(
-            onPressed: onBack,
-            icon: const Icon(
-              Icons.chevron_left_rounded,
-              color: Colors.white,
-              size: 28,
-            ),
-            splashRadius: 24,
-          ),
-          const Text(
-            'Transaction Details',
-            style: AppTextStyles.screenTitle,
-          ),
+          BackChevronButton(onTap: onBack, tooltip: l10n.commonBack),
+          Text(l10n.txnDetailTitle, style: AppTextStyles.screenTitle),
         ],
       ),
     );
@@ -249,7 +412,7 @@ class _ReceiptCard extends StatelessWidget {
     required this.statusIcon,
     required this.counterparty,
     required this.directionLabel,
-    required this.timestamp,
+    required this.when,
     required this.amountText,
     required this.amountColor,
     required this.rows,
@@ -260,13 +423,20 @@ class _ReceiptCard extends StatelessWidget {
   final IconData statusIcon;
   final String counterparty;
   final String directionLabel;
-  final String timestamp;
+  final DateTime when;
   final String amountText;
   final Color amountColor;
   final List<_ReceiptRowData> rows;
 
   @override
   Widget build(BuildContext context) {
+    // Format the timestamp at render time with the current locale so
+    // month names + AM/PM render in the user's language. Single source
+    // of truth replaces the (English-only) `Transaction.timestamp`
+    // getter — keep that getter for debug logs only.
+    final localeTag = Localizations.localeOf(context).toLanguageTag();
+    final timestamp =
+        '${DateFormat.yMMMd(localeTag).format(when)} • ${DateFormat.jm(localeTag).format(when)}';
     return PhysicalShape(
       color: Colors.white,
       elevation: 12,
@@ -348,8 +518,9 @@ class _ReceiptCard extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   child: Text(
                     amountText,
-                    style: AppTextStyles.heroAmountReceipt
-                        .copyWith(color: amountColor),
+                    style: AppTextStyles.heroAmountReceipt.copyWith(
+                      color: amountColor,
+                    ),
                   ),
                 ),
               ),
@@ -375,7 +546,7 @@ class _ReceiptCard extends StatelessWidget {
             Center(
               child: SvgPicture.asset(
                 'assets/logo/logo-colored.svg',
-                height: 22,
+                height: 25,
                 semanticsLabel: 'MoneyA',
               ),
             ),
@@ -572,30 +743,52 @@ class _ReceiptRow extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _ActionPills extends StatelessWidget {
-  const _ActionPills({required this.onShare, required this.onDownload});
+  const _ActionPills({
+    required this.onShare,
+    required this.onDownload,
+    this.shareBusy = false,
+    this.downloadBusy = false,
+  });
 
-  final VoidCallback onShare;
-  final VoidCallback onDownload;
+  /// Pass `null` to render the share pill in a disabled state (used
+  /// while a PNG capture is in flight).
+  final VoidCallback? onShare;
+
+  /// Pass `null` to render the download pill in a disabled state
+  /// (used while the PDF is being generated + the share sheet is
+  /// being prepared).
+  final VoidCallback? onDownload;
+
+  /// True while the share capture is running. Swaps the leading icon
+  /// for a spinner.
+  final bool shareBusy;
+
+  /// True while the PDF generation + share-sheet hand-off is running.
+  /// Swaps the leading icon for a spinner.
+  final bool downloadBusy;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Row(
       children: [
         Expanded(
           child: _PillButton(
-            label: 'Share',
+            label: l10n.txnDetailActionShare,
             icon: Icons.ios_share_rounded,
             onTap: onShare,
             filled: false,
+            busy: shareBusy,
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: _PillButton(
-            label: 'Download PDF',
+            label: l10n.txnDetailActionDownloadPdf,
             icon: Icons.file_download_outlined,
             onTap: onDownload,
             filled: true,
+            busy: downloadBusy,
           ),
         ),
       ],
@@ -609,16 +802,23 @@ class _PillButton extends StatelessWidget {
     required this.icon,
     required this.onTap,
     required this.filled,
+    this.busy = false,
   });
 
   final String label;
   final IconData icon;
-  final VoidCallback onTap;
+
+  /// Pass `null` to render the pill in a disabled state.
+  final VoidCallback? onTap;
   final bool filled;
+
+  /// When true, renders a spinner in place of the leading icon.
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
     const fg = AppColors.onBrand;
+    final disabled = onTap == null;
     final bg = filled ? AppColors.actionPurple : Colors.transparent;
     final border = filled
         ? null
@@ -630,26 +830,37 @@ class _PillButton extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(28),
-        child: Container(
-          height: 56,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            border: border,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: fg, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: fg,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 120),
+          opacity: disabled ? 0.55 : 1.0,
+          child: Container(
+            height: 56,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              border: border,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (busy)
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: fg),
+                  )
+                else
+                  Icon(icon, color: fg, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: fg,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

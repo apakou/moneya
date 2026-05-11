@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/back_chevron_button.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../domain/user_profile.dart';
 import 'settings_screen.dart';
 
@@ -77,18 +79,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
-                  child: _SectionLabel('Personal Informations'),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                  child: _SectionLabel(AppLocalizations.of(context).profileSectionPersonal),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: _PersonalInfoCard(user: _user),
                 ),
                 const SizedBox(height: 32),
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
-                  child: _SectionLabel('Actions'),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                  child: _SectionLabel(AppLocalizations.of(context).profileSectionActions),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -119,21 +121,14 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 4, 24, 0),
       child: Row(
         children: [
-          IconButton(
-            onPressed: onBack,
-            icon: const Icon(
-              Icons.chevron_left_rounded,
-              color: Colors.white,
-              size: 28,
-            ),
-            splashRadius: 24,
-          ),
-          const Text(
-            'Profile Details',
+          BackChevronButton(onTap: onBack, tooltip: l10n.commonBack),
+          Text(
+            l10n.profileTitle,
             style: AppTextStyles.screenTitle,
           ),
         ],
@@ -334,6 +329,7 @@ class _PersonalInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
@@ -345,25 +341,25 @@ class _PersonalInfoCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _InfoRow(
-            label: 'Phone Number',
+            label: l10n.profileFieldPhone,
             value: user.phone,
             verified: user.phoneVerified,
           ),
           const _InfoDivider(),
           _InfoRow(
-            label: 'Email',
+            label: l10n.profileFieldEmail,
             value: user.email,
             verified: user.emailVerified,
           ),
           const _InfoDivider(),
           _InfoRow(
-            label: 'Address',
+            label: l10n.profileFieldAddress,
             value: user.address,
             verified: user.addressVerified,
           ),
           const _InfoDivider(),
           _InfoRow(
-            label: 'Date of Birthday',
+            label: l10n.profileFieldDateOfBirth,
             value: user.dateOfBirth,
             verified: user.dobVerified,
           ),
@@ -415,7 +411,7 @@ class _InfoRow extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(left: 12, top: 4),
               child: Text(
-                'Verified',
+                AppLocalizations.of(context).profileVerifiedBadge,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.55),
                   fontSize: 13,
@@ -459,6 +455,7 @@ class _ActionsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
@@ -471,20 +468,20 @@ class _ActionsCard extends StatelessWidget {
           _ActionRow(
             icon: Icons.card_giftcard_rounded,
             iconColor: Colors.white,
-            label: 'Refere and earn',
+            label: l10n.profileActionReferAndEarn,
             onTap: onReferAndEarn,
           ),
           _ActionRow(
             icon: Icons.settings_rounded,
             iconColor: Colors.white,
-            label: 'Settings',
+            label: l10n.profileActionSettings,
             onTap: onSettings,
           ),
           _ActionRow(
             icon: Icons.logout_rounded,
             iconColor: const Color(0xFFFF4D2E),
             labelColor: const Color(0xFFFF4D2E),
-            label: 'Logout',
+            label: l10n.profileActionLogout,
             onTap: onLogout,
           ),
         ],

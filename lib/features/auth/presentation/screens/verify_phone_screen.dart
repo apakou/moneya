@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/back_chevron_button.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import 'passcode_screen.dart';
 
 /// OTP verification screen.
@@ -174,6 +176,7 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -193,14 +196,11 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> {
                 Positioned(
                   top: 4,
                   left: 4,
-                  child: IconButton(
-                    tooltip: 'Back',
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      color: AppColors.onBrand,
-                      size: 20,
-                    ),
+                  child: BackChevronButton(
+                    onTap: () => Navigator.of(context).maybePop(),
+                    tooltip: l10n.commonBack,
+                    icon: Icons.arrow_back_ios_new_rounded,
+                    iconSize: 20,
                   ),
                 ),
 
@@ -213,7 +213,7 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> {
 
                       // --- Header ---
                       Text(
-                        'Enter The Code',
+                        l10n.verifyPhoneTitle,
                         textAlign: TextAlign.center,
                         style: AppTextStyles.heroAuth.copyWith(
                           letterSpacing: 0.2,
@@ -221,9 +221,11 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'We sent an ${VerifyPhoneScreen.codeLength} digit '
-                        'code to your phone number '
-                        '(+${widget.dialCode}) … $_maskedTail',
+                        l10n.verifyPhoneSubtitle(
+                          VerifyPhoneScreen.codeLength,
+                          widget.dialCode,
+                          _maskedTail,
+                        ),
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: AppColors.onBrandMuted,
@@ -375,6 +377,7 @@ class _ResendRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     const muted = TextStyle(
       color: AppColors.onBrandMuted,
       fontSize: 14,
@@ -387,8 +390,8 @@ class _ResendRow extends StatelessWidget {
 
     return Column(
       children: [
-        const Text(
-          "Didn't received the code ?",
+        Text(
+          l10n.verifyPhoneResendPrompt,
           textAlign: TextAlign.center,
           style: muted,
         ),
@@ -399,7 +402,7 @@ class _ResendRow extends StatelessWidget {
           child: Text.rich(
             TextSpan(
               children: [
-                TextSpan(text: 'Resend the code', style: linkStyle),
+                TextSpan(text: l10n.verifyPhoneResendLink, style: linkStyle),
                 if (!canResend) ...[
                   const TextSpan(text: ' ', style: muted),
                   TextSpan(
@@ -429,6 +432,7 @@ class _IncorrectCodeSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SafeArea(
       top: false,
       child: Padding(
@@ -457,17 +461,17 @@ class _IncorrectCodeSheet extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Incorrect code entered',
+              l10n.verifyPhoneIncorrectTitle,
               textAlign: TextAlign.center,
               style: AppTextStyles.sectionTitle.copyWith(
                 letterSpacing: 0.2,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Please, check the code and try again.',
+            Text(
+              l10n.verifyPhoneIncorrectBody,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 color: AppColors.onBrandMuted,
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
@@ -491,6 +495,7 @@ class _GotItButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SizedBox(
       height: 56,
       child: Material(
@@ -502,7 +507,7 @@ class _GotItButton extends StatelessWidget {
           onTap: onPressed,
           child: Center(
             child: Text(
-              'Got it',
+              l10n.verifyPhoneGotIt,
               style: AppTextStyles.subsectionTitle.copyWith(
                 color: AppColors.actionPurple,
                 letterSpacing: 0.2,

@@ -7,6 +7,8 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/back_chevron_button.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../../home/presentation/screens/home_shell.dart';
 import '../widgets/camera_shutter_button.dart';
 
@@ -156,6 +158,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -174,8 +177,8 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
             _PreviewLayer(status: _status, controller: _controller),
             // Layer 2: brand-gradient overlay with an oval cut-out, plus
             // the white oval stroke and the instruction line.
-            const _OvalMaskOverlay(
-              instruction: 'Keep your face within the oval',
+            _OvalMaskOverlay(
+              instruction: l10n.kycSelfieInstruction,
             ),
             // Layer 3: error / permission states (the cut-out is empty when
             // we don't have a preview, which is fine; the message floats on
@@ -194,14 +197,11 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
             SafeArea(
               child: Align(
                 alignment: Alignment.topLeft,
-                child: IconButton(
-                  tooltip: 'Back',
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  icon: const Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    color: AppColors.onBrand,
-                    size: 22,
-                  ),
+                child: BackChevronButton(
+                  onTap: () => Navigator.of(context).maybePop(),
+                  tooltip: l10n.commonBack,
+                  icon: Icons.arrow_back_ios_new_rounded,
+                  iconSize: 22,
                 ),
               ),
             ),
@@ -367,13 +367,14 @@ class _ProcessingOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return ColoredBox(
       color: Colors.black.withValues(alpha: 0.55),
-      child: const Center(
+      child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
+            const SizedBox(
               width: 56,
               height: 56,
               child: CircularProgressIndicator(
@@ -382,9 +383,9 @@ class _ProcessingOverlay extends StatelessWidget {
                 backgroundColor: Colors.transparent,
               ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
-              'Processing\u2026',
+              l10n.kycCaptureProcessing,
               style: AppTextStyles.subsectionTitle,
             ),
           ],
@@ -407,6 +408,7 @@ class _CameraMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final isDenied = status == _CameraStatus.denied;
     return Center(
       child: Padding(
@@ -422,8 +424,8 @@ class _CameraMessage extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               isDenied
-                  ? 'Camera access is required to verify your identity.'
-                  : 'Camera is not available on this device.',
+                  ? l10n.kycCameraDeniedMessage
+                  : l10n.kycCameraUnavailableMessage,
               textAlign: TextAlign.center,
               style: AppTextStyles.body,
             ),
@@ -432,7 +434,9 @@ class _CameraMessage extends StatelessWidget {
               onPressed: () =>
                   isDenied ? onOpenSettings() : onRetry(),
               style: TextButton.styleFrom(foregroundColor: AppColors.onBrand),
-              child: Text(isDenied ? 'Open settings' : 'Try again'),
+              child: Text(
+                isDenied ? l10n.kycCameraOpenSettings : l10n.kycCameraTryAgain,
+              ),
             ),
           ],
         ),

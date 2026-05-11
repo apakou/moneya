@@ -11,6 +11,8 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/back_chevron_button.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../../home/domain/supported_currency.dart';
 import '../../../home/domain/user_profile.dart';
 import '../../../home/presentation/widgets/currency_picker_sheet.dart';
@@ -156,30 +158,18 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 4, 24, 0),
       child: Row(
         children: [
-          // Explicit semantic label + tooltip so screen-reader and
-          // long-press users both get the same affordance ("Go back").
-          // The default IconButton tooltip on chevron icons reads as
-          // "chevron left" which is meaningless to assistive tech.
-          IconButton(
-            onPressed: onBack,
-            tooltip: 'Go back',
-            icon: const Icon(
-              Icons.chevron_left_rounded,
-              color: AppColors.onBrand,
-              size: 28,
-            ),
-            splashRadius: 24,
-          ),
+          BackChevronButton(onTap: onBack, tooltip: l10n.commonBack),
           // Mark the screen title as a header so screen readers announce
           // "Receive, heading" — establishes navigation landmark.
           Semantics(
             header: true,
-            child: const Text(
-              'Receive',
+            child: Text(
+              l10n.receiveTitle,
               style: AppTextStyles.screenTitle,
             ),
           ),
@@ -199,10 +189,14 @@ class _TabSwitcher extends StatelessWidget {
   final int selected;
   final ValueChanged<int> onChanged;
 
-  static const _labels = ['Account', 'QR code', 'Request'];
-
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final labels = <String>[
+      l10n.receiveTabAccount,
+      l10n.receiveTabQrCode,
+      l10n.receiveTabRequest,
+    ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Container(
@@ -217,7 +211,7 @@ class _TabSwitcher extends StatelessWidget {
         padding: const EdgeInsets.all(4),
         child: LayoutBuilder(
           builder: (ctx, constraints) {
-            final segWidth = constraints.maxWidth / _labels.length;
+            final segWidth = constraints.maxWidth / labels.length;
             return Stack(
               children: [
                 AnimatedPositioned(
@@ -235,7 +229,7 @@ class _TabSwitcher extends StatelessWidget {
                   ),
                 ),
                 Row(
-                  children: List.generate(_labels.length, (i) {
+                  children: List.generate(labels.length, (i) {
                     final active = i == selected;
                     // Tab semantics: each segment exposes selected state
                     // and a friendly hint ("Activate to switch tab").
@@ -245,14 +239,14 @@ class _TabSwitcher extends StatelessWidget {
                       child: Semantics(
                         button: true,
                         selected: active,
-                        label: '${_labels[i]} tab',
-                        hint: active ? null : 'Double tap to switch',
+                        label: l10n.receiveTabSemanticLabel(labels[i]),
+                        hint: active ? null : l10n.receiveTabSemanticHint,
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: () => onChanged(i),
                           child: Center(
                             child: Text(
-                              _labels[i],
+                              labels[i],
                               style: TextStyle(
                                 // Inactive label held at 80% white so it
                                 // clears the 4.5:1 body-text floor on
@@ -295,6 +289,7 @@ class _AccountTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final accountNumber = accountNumberFor(user);
     final formatted = formatAccountNumber(accountNumber);
     return SingleChildScrollView(
@@ -320,8 +315,8 @@ class _AccountTab extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
-                  'Verified MoneyA member',
+                Text(
+                  l10n.receiveAccountVerifiedMember,
                   style: AppTextStyles.captionMuted,
                 ),
               ],
@@ -333,8 +328,7 @@ class _AccountTab extends StatelessWidget {
           // Help text — kept at AA-readable secondary, not the
           // decorative tertiary tier.
           Text(
-            'Anyone on MoneyA can send you money instantly using this '
-            'number.',
+            l10n.receiveAccountHelpText,
             textAlign: TextAlign.center,
             style: AppTextStyles.captionMuted.copyWith(height: 1.45),
           ),
@@ -343,21 +337,21 @@ class _AccountTab extends StatelessWidget {
             children: [
               Expanded(
                 child: _ActionPill(
-                  label: 'Copy number',
+                  label: l10n.receiveAccountCopyLabel,
                   icon: Icons.copy_rounded,
                   filled: true,
-                  semanticLabel: 'Copy account number $formatted',
+                  semanticLabel: l10n.receiveAccountCopySemantic(formatted),
                   onTap: () => _copyAccountNumber(context, accountNumber),
                 ),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: _ActionPill(
-                  label: 'Share',
+                  label: l10n.receiveAccountShareLabel,
                   icon: Icons.ios_share_rounded,
                   filled: false,
-                  semanticLabel: 'Share account number',
-                  onTap: () => _shareAccountNumber(accountNumber),
+                  semanticLabel: l10n.receiveAccountShareSemantic,
+                  onTap: () => _shareAccountNumber(context, accountNumber),
                 ),
               ),
             ],
@@ -368,6 +362,7 @@ class _AccountTab extends StatelessWidget {
   }
 
   void _copyAccountNumber(BuildContext context, String accountNumber) {
+    final l10n = AppLocalizations.of(context);
     // Copy the raw NSN — no spaces, no country code — so paste-targets
     // (other apps' phone-input fields, banking forms) accept it
     // verbatim.
@@ -377,7 +372,7 @@ class _AccountTab extends StatelessWidget {
     HapticFeedback.selectionClick();
     SemanticsService.sendAnnouncement(
       View.of(context),
-      'Account number copied to clipboard',
+      l10n.receiveAccountCopyAnnouncement,
       Directionality.of(context),
     );
     ScaffoldMessenger.of(context)
@@ -387,17 +382,17 @@ class _AccountTab extends StatelessWidget {
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppColors.brandPurpleDeep,
           content: Row(
-            children: const [
-              Icon(
+            children: [
+              const Icon(
                 Icons.check_circle_rounded,
                 color: AppColors.success,
                 size: 20,
               ),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Account number copied',
-                  style: TextStyle(color: AppColors.onBrand),
+                  l10n.receiveAccountCopySnack,
+                  style: const TextStyle(color: AppColors.onBrand),
                 ),
               ),
             ],
@@ -407,7 +402,8 @@ class _AccountTab extends StatelessWidget {
       );
   }
 
-  void _shareAccountNumber(String accountNumber) {
+  void _shareAccountNumber(BuildContext context, String accountNumber) {
+    final l10n = AppLocalizations.of(context);
     // Hand off to the native share sheet so users can pipe their MoneyA
     // account number into WhatsApp, SMS, email, etc. The text bundles
     // the formatted (human-readable) account number plus a deep-link
@@ -415,9 +411,9 @@ class _AccountTab extends StatelessWidget {
     // Send screen.
     final formatted = formatAccountNumber(accountNumber);
     final text =
-        'Send me money on MoneyA. My account number is $formatted.\n\n'
+        '${l10n.receiveAccountShareBody(formatted)}\n\n'
         'moneya://pay?to=$accountNumber';
-    Share.share(text, subject: 'My MoneyA account number');
+    Share.share(text, subject: l10n.receiveAccountShareSubject);
   }
 }
 
@@ -466,12 +462,13 @@ class _AccountNumberCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final formatted = formatAccountNumber(accountNumber);
     return Semantics(
       // Read as a single field, with the digits spelled out one-by-one
       // (otherwise TalkBack/VoiceOver speak "240 987 631" as
       // "two hundred forty thousand…").
-      label: 'MoneyA account number',
+      label: l10n.receiveAccountCardLabel,
       value: accountNumber.split('').join(' '),
       readOnly: true,
       child: Container(
@@ -486,7 +483,7 @@ class _AccountNumberCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'MoneyA account number',
+              l10n.receiveAccountCardLabel,
               style: AppTextStyles.trackedLabel.copyWith(letterSpacing: 0.6),
             ),
             const SizedBox(height: 10),
@@ -566,6 +563,7 @@ class _QrTabState extends State<_QrTab> {
 
   Future<void> _shareQr() async {
     if (_capturing) return;
+    final l10n = AppLocalizations.of(context);
     setState(() => _capturing = true);
     try {
       final png = await _captureQrPng();
@@ -582,9 +580,9 @@ class _QrTabState extends State<_QrTab> {
           ),
         ],
         text:
-            'Send me money on MoneyA. My account number is $formatted.\n\n'
+            '${l10n.receiveQrShareBody(formatted)}\n\n'
             'moneya://pay?to=$account',
-        subject: 'My MoneyA QR code',
+        subject: l10n.receiveQrShareSubject,
       );
     } finally {
       if (mounted) setState(() => _capturing = false);
@@ -593,6 +591,7 @@ class _QrTabState extends State<_QrTab> {
 
   Future<void> _saveQr() async {
     if (_capturing) return;
+    final l10n = AppLocalizations.of(context);
     setState(() => _capturing = true);
     try {
       final png = await _captureQrPng();
@@ -608,7 +607,7 @@ class _QrTabState extends State<_QrTab> {
         HapticFeedback.selectionClick();
         SemanticsService.sendAnnouncement(
           View.of(context),
-          'QR code saved to your photos',
+          l10n.receiveQrSavedAnnouncement,
           Directionality.of(context),
         );
         ScaffoldMessenger.of(context)
@@ -618,17 +617,17 @@ class _QrTabState extends State<_QrTab> {
               behavior: SnackBarBehavior.floating,
               backgroundColor: AppColors.brandPurpleDeep,
               content: Row(
-                children: const [
-                  Icon(
+                children: [
+                  const Icon(
                     Icons.check_circle_rounded,
                     color: AppColors.success,
                     size: 20,
                   ),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'QR code saved to your photos',
-                      style: TextStyle(color: AppColors.onBrand),
+                      l10n.receiveQrSavedSnack,
+                      style: const TextStyle(color: AppColors.onBrand),
                     ),
                   ),
                 ],
@@ -640,7 +639,7 @@ class _QrTabState extends State<_QrTab> {
         if (!mounted) return;
         SemanticsService.sendAnnouncement(
           View.of(context),
-          'Could not save QR code. ${e.type.message}',
+          l10n.receiveQrSaveErrorAnnouncement(e.type.message),
           Directionality.of(context),
         );
         ScaffoldMessenger.of(context)
@@ -659,7 +658,7 @@ class _QrTabState extends State<_QrTab> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Could not save QR: ${e.type.message}',
+                      l10n.receiveQrSaveErrorSnack(e.type.message),
                       style: const TextStyle(color: AppColors.onBrand),
                     ),
                   ),
@@ -676,6 +675,7 @@ class _QrTabState extends State<_QrTab> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final accountNumber = accountNumberFor(widget.user);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 4, 24, 32),
@@ -688,10 +688,7 @@ class _QrTabState extends State<_QrTab> {
           // where the number is presented in a readable form.
           Semantics(
             image: true,
-            label:
-                'MoneyA QR code. Have someone scan this with their MoneyA '
-                'app to send you money. To read your account number out '
-                'loud, switch to the Account tab.',
+            label: l10n.receiveQrCardSemantic,
             child: ExcludeSemantics(
               child: _QrCard(
                 captureKey: _qrCardKey,
@@ -703,8 +700,7 @@ class _QrTabState extends State<_QrTab> {
           ),
           const SizedBox(height: 22),
           Text(
-            'Show this QR code to anyone with the MoneyA app to receive '
-            'money in person.',
+            l10n.receiveQrHelpText,
             textAlign: TextAlign.center,
             style: AppTextStyles.captionMuted.copyWith(height: 1.45),
           ),
@@ -713,10 +709,10 @@ class _QrTabState extends State<_QrTab> {
             children: [
               Expanded(
                 child: _ActionPill(
-                  label: 'Share QR',
+                  label: l10n.receiveQrShareLabel,
                   icon: Icons.ios_share_rounded,
                   filled: true,
-                  semanticLabel: 'Share QR code',
+                  semanticLabel: l10n.receiveQrShareSemantic,
                   busy: _capturing,
                   onTap: _capturing ? null : _shareQr,
                 ),
@@ -724,10 +720,10 @@ class _QrTabState extends State<_QrTab> {
               const SizedBox(width: 14),
               Expanded(
                 child: _ActionPill(
-                  label: 'Save image',
+                  label: l10n.receiveQrSaveLabel,
                   icon: Icons.download_rounded,
                   filled: false,
-                  semanticLabel: 'Save QR code to photos',
+                  semanticLabel: l10n.receiveQrSaveSemantic,
                   busy: _capturing,
                   onTap: _capturing ? null : _saveQr,
                 ),
@@ -1006,6 +1002,7 @@ class _RequestTabState extends State<_RequestTab> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Stack(
       children: [
         SingleChildScrollView(
@@ -1013,7 +1010,7 @@ class _RequestTabState extends State<_RequestTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _RequestSectionLabel('From'),
+              _RequestSectionLabel(l10n.receiveRequestSectionFrom),
               const SizedBox(height: 10),
               _PhoneField(
                 controller: _phoneController,
@@ -1028,7 +1025,7 @@ class _RequestTabState extends State<_RequestTab> {
               const SizedBox(height: 10),
               _LookupStatusRow(looking: _looking, result: _lookupResult),
               const SizedBox(height: 24),
-              _RequestSectionLabel('Amount'),
+              _RequestSectionLabel(l10n.receiveRequestSectionAmount),
               const SizedBox(height: 10),
               _AmountRow(
                 currency: _currency,
@@ -1036,9 +1033,9 @@ class _RequestTabState extends State<_RequestTab> {
                 onCurrencyTap: _pickCurrency,
               ),
               const SizedBox(height: 24),
-              _RequestSectionLabel('Note (optional)'),
-              const SizedBox(height: 10),
-              _NoteField(controller: _noteController),
+              _RequestSectionLabel(l10n.receiveRequestNoteLabel),
+               const SizedBox(height: 10),
+               _NoteField(controller: _noteController),
             ],
           ),
         ),
@@ -1054,10 +1051,10 @@ class _RequestTabState extends State<_RequestTab> {
           child: Semantics(
             button: true,
             enabled: _canSubmit,
-            label: 'Swipe to send payment request',
+            label: l10n.receiveRequestSwipeSemanticLabel,
             hint: _canSubmit
-                ? 'Swipe right to confirm'
-                : 'Enter a recipient and amount to enable',
+                ? l10n.receiveRequestSwipeHintReady
+                : l10n.receiveRequestSwipeHintDisabled,
             child: AbsorbPointer(
               absorbing: !_canSubmit,
               child: AnimatedOpacity(
@@ -1065,7 +1062,7 @@ class _RequestTabState extends State<_RequestTab> {
                 opacity: _canSubmit ? 1 : 0.5,
                 child: SwipeToPayButton(
                   key: _swipeKey,
-                  label: 'Swipe to request',
+                  label: l10n.receiveRequestSwipeLabel,
                   onCompleted: _onSwipeCompleted,
                 ),
               ),
@@ -1098,6 +1095,7 @@ class _PhoneField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       // 56dp matches iOS HIG / Material 3 minimum tappable input height.
       height: 56,
@@ -1137,7 +1135,7 @@ class _PhoneField extends StatelessWidget {
           if (controller.text.isNotEmpty)
             Semantics(
               button: true,
-              label: 'Clear phone number',
+              label: l10n.receiveRequestClearPhoneSemantic,
               child: GestureDetector(
                 onTap: onClear,
                 // Pad the hit-target out to 44dp without growing the
@@ -1221,11 +1219,10 @@ class _LookupStatusRow extends StatelessWidget {
       );
     }
     if (result is RecipientNotFound) {
+      final l10n = AppLocalizations.of(context);
       return Semantics(
         liveRegion: true,
-        label:
-            'This number is not on MoneyA. You can only request from '
-            'existing MoneyA users.',
+        label: l10n.receiveRequestNotOnMoneyA,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1266,6 +1263,7 @@ class _AmountRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       height: 64,
       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -1281,7 +1279,7 @@ class _AmountRow extends StatelessWidget {
           Semantics(
             button: true,
             label: 'Currency: ${currency.name}',
-            hint: 'Double tap to change currency',
+            hint: l10n.receiveRequestCurrencyHint,
             child: GestureDetector(
               onTap: onCurrencyTap,
               child: Container(
@@ -1355,6 +1353,7 @@ class _NoteField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
@@ -1375,11 +1374,11 @@ class _NoteField extends StatelessWidget {
           fontSize: 14,
           height: 1.35,
         ),
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           isCollapsed: true,
           border: InputBorder.none,
-          hintText: 'What is this for? (e.g. Lunch, rent, tickets)',
-          hintStyle: TextStyle(color: AppColors.onBrandHint),
+          hintText: l10n.receiveRequestNoteHint,
+          hintStyle: const TextStyle(color: AppColors.onBrandHint),
         ),
       ),
     );
@@ -1432,12 +1431,13 @@ class _ActionPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final disabled = onTap == null;
     return Semantics(
       button: true,
       enabled: !disabled,
       label: semanticLabel ?? label,
-      hint: busy ? 'Loading' : null,
+      hint: busy ? l10n.receiveRequestBusyHint : null,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -1517,35 +1517,40 @@ class _RequestSentScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return TransferOutcomeScaffold(
       glyphColor: AppColors.success,
       glyphIcon: Icons.send_rounded,
-      title: 'Request sent',
+      title: l10n.receiveRequestOutcomeTitle,
       body: TransferOutcomeBody(
         spans: [
-          TransferOutcomeBody.muted('We notified '),
+          TransferOutcomeBody.muted(l10n.receiveRequestOutcomeBodyPrefix),
           TransferOutcomeBody.bold(recipientName),
-          TransferOutcomeBody.muted(' about your request for '),
+          TransferOutcomeBody.muted(l10n.receiveRequestOutcomeBodyMiddle),
           TransferOutcomeBody.bold('$currencyCode $amount'),
-          TransferOutcomeBody.muted(
-            '. We’ll let you know the moment they pay.',
-          ),
+          TransferOutcomeBody.muted(l10n.receiveRequestOutcomeBodySuffix),
         ],
       ),
-      primaryLabel: 'Done',
+      primaryLabel: l10n.receiveRequestOutcomePrimary,
       onPrimary: () {
-        // Pop both the request-sent screen and the receive screen.
-        Navigator.of(context).popUntil((r) => r.isFirst);
+        // Capture the navigator before doing anything else — the
+        // TransferOutcomeScaffold's button ripple may still be in
+        // flight when this fires, and looking up Navigator.of via the
+        // button's deactivated context throws "deactivated widget's
+        // ancestor is unsafe". Pull the navigator off this screen's
+        // own (stable) context, then pop back to root.
+        final navigator = Navigator.of(context);
+        if (!navigator.mounted) return;
+        navigator.popUntil((r) => r.isFirst);
       },
-      secondaryLabel: 'Share request',
+      secondaryLabel: l10n.receiveRequestOutcomeSecondary,
       onSecondary: () {
         // Hand the request summary off to the platform share sheet so
         // the user can also nudge the recipient via WhatsApp/SMS in
         // case the in-app notification gets missed.
         Share.share(
-          'Hi $recipientName — I just sent you a payment request for '
-          '$currencyCode $amount on MoneyA. Open the app to pay.',
-          subject: 'MoneyA payment request',
+          l10n.receiveRequestShareBody(recipientName, currencyCode, amount),
+          subject: l10n.receiveRequestShareSubject,
         );
       },
     );

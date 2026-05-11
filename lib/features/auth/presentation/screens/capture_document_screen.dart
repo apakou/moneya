@@ -7,10 +7,23 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/back_chevron_button.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../domain/document_side.dart';
 import '../../domain/kyc_document_type.dart';
 import '../widgets/camera_shutter_button.dart';
 import 'selfie_capture_screen.dart';
+
+/// Localized instruction for capturing a given document side. The domain
+/// enum's `.instruction` getter is English-only by design.
+String documentSideInstruction(DocumentSide side, AppLocalizations l10n) {
+  switch (side) {
+    case DocumentSide.front:
+      return l10n.kycCaptureFrontInstruction;
+    case DocumentSide.back:
+      return l10n.kycCaptureBackInstruction;
+  }
+}
 
 /// Document capture screen.
 ///
@@ -184,6 +197,7 @@ class _CaptureDocumentScreenState extends State<CaptureDocumentScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -207,19 +221,16 @@ class _CaptureDocumentScreenState extends State<CaptureDocumentScreen>
               controller: _controller,
               onRetry: _bootstrap,
               onOpenSettings: openAppSettings,
-              instruction: widget.side.instruction,
+              instruction: documentSideInstruction(widget.side, l10n),
             ),
             SafeArea(
               child: Align(
                 alignment: Alignment.topLeft,
-                child: IconButton(
-                  tooltip: 'Back',
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  icon: const Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    color: AppColors.onBrand,
-                    size: 22,
-                  ),
+                child: BackChevronButton(
+                  onTap: () => Navigator.of(context).maybePop(),
+                  tooltip: l10n.commonBack,
+                  icon: Icons.arrow_back_ios_new_rounded,
+                  iconSize: 22,
                 ),
               ),
             ),
@@ -275,6 +286,7 @@ class _CameraLayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 56, 24, 140),
@@ -293,7 +305,7 @@ class _CameraLayer extends StatelessWidget {
                     ),
                     borderRadius: BorderRadius.circular(28),
                   ),
-                  child: _previewContent(),
+                  child: _previewContent(l10n),
                 ),
               ),
             ),
@@ -312,7 +324,7 @@ class _CameraLayer extends StatelessWidget {
     );
   }
 
-  Widget _previewContent() {
+  Widget _previewContent(AppLocalizations l10n) {
     switch (status) {
       case _CameraStatus.initializing:
         return const Center(
@@ -344,15 +356,15 @@ class _CameraLayer extends StatelessWidget {
       case _CameraStatus.denied:
         return _CameraMessage(
           icon: Icons.lock_outline_rounded,
-          message: 'Camera access is required to verify your identity.',
-          actionLabel: 'Open settings',
+          message: l10n.kycCameraDeniedMessage,
+          actionLabel: l10n.kycCameraOpenSettings,
           onAction: onOpenSettings,
         );
       case _CameraStatus.unavailable:
         return _CameraMessage(
           icon: Icons.videocam_off_outlined,
-          message: 'Camera is not available on this device.',
-          actionLabel: 'Try again',
+          message: l10n.kycCameraUnavailableMessage,
+          actionLabel: l10n.kycCameraTryAgain,
           onAction: () async {
             onRetry();
             return true;

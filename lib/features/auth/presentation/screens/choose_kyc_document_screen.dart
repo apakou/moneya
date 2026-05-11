@@ -3,9 +3,22 @@ import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/back_chevron_button.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../domain/document_side.dart';
 import '../../domain/kyc_document_type.dart';
 import 'capture_document_screen.dart';
+
+/// Localized display label for a [KycDocumentType]. The domain enum's
+/// `.label` is English-only by design; UI must resolve here.
+String kycDocumentTypeLabel(KycDocumentType type, AppLocalizations l10n) {
+  switch (type) {
+    case KycDocumentType.nationalId:
+      return l10n.kycDocumentNationalId;
+    case KycDocumentType.passport:
+      return l10n.kycDocumentPassport;
+  }
+}
 
 /// Choose KYC document screen.
 ///
@@ -40,6 +53,7 @@ class _ChooseKycDocumentScreenState extends State<ChooseKycDocumentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -57,14 +71,11 @@ class _ChooseKycDocumentScreenState extends State<ChooseKycDocumentScreen> {
                 Positioned(
                   top: 4,
                   left: 4,
-                  child: IconButton(
-                    tooltip: 'Back',
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      color: AppColors.onBrand,
-                      size: 20,
-                    ),
+                  child: BackChevronButton(
+                    onTap: () => Navigator.of(context).maybePop(),
+                    tooltip: l10n.commonBack,
+                    icon: Icons.arrow_back_ios_new_rounded,
+                    iconSize: 20,
                   ),
                 ),
                 Padding(
@@ -74,15 +85,15 @@ class _ChooseKycDocumentScreenState extends State<ChooseKycDocumentScreen> {
                     children: [
                       const Spacer(flex: 4),
                       Text(
-                        'Pick a document to verify\nyour identity',
+                        l10n.kycChooseTitle,
                         textAlign: TextAlign.center,
                         style: AppTextStyles.heroOnboarding.copyWith(
                           letterSpacing: 0.2,
                         ),
                       ),
                       const SizedBox(height: 12),
-                      const Text(
-                        "We don't accept scans or copies.",
+                      Text(
+                        l10n.kycChooseSubtitle,
                         textAlign: TextAlign.center,
                         style: AppTextStyles.bodyOnboardingMuted,
                       ),
@@ -167,10 +178,12 @@ class _DocumentOptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final label = kycDocumentTypeLabel(type, l10n);
     return Semantics(
       button: true,
       selected: isSelected,
-      label: type.label,
+      label: label,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -184,7 +197,7 @@ class _DocumentOptionTile extends StatelessWidget {
               const SizedBox(width: 16),
               Expanded(
                 child: Text(
-                  type.label,
+                  label,
                   style: AppTextStyles.inputText,
                 ),
               ),
@@ -265,6 +278,7 @@ class _ContinueButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SizedBox(
       height: 56,
       child: Material(
@@ -276,7 +290,7 @@ class _ContinueButton extends StatelessWidget {
           onTap: onPressed,
           child: Center(
             child: Text(
-              'Continue',
+              l10n.kycChooseContinue,
               style: AppTextStyles.subsectionTitle.copyWith(
                 color: AppColors.actionPurple,
                 letterSpacing: 0.2,

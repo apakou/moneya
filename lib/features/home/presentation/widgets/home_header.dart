@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 
 /// UI languages exposed in the top-right pill across the home shell
 /// tabs. Lives at module scope (not inside [HomeHeader]) because both
@@ -49,6 +50,7 @@ class HomeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Row(
       children: [
         InkResponse(
@@ -72,7 +74,7 @@ class HomeHeader extends StatelessWidget {
           ),
         ),
         HomeIconButton(
-          tooltip: 'Language',
+          tooltip: l10n.languageTooltip,
           onTap: onLanguageTap,
           // Round flag PNG for the active language. Clipped to a
           // circle so the rectangular asset reads as a flag chip.
@@ -87,7 +89,7 @@ class HomeHeader extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         HomeIconButton(
-          tooltip: 'Notifications',
+          tooltip: l10n.notificationsTooltip,
           onTap: onNotificationsTap,
           child: Image.asset(
             'assets/images/Notification.png',

@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/locale/locale_controller.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../l10n/generated/app_localizations.dart';
+import '../../../../main.dart' show LocaleScope;
+import '../../../auth/domain/supported_country.dart';
+import '../../../transfer/domain/transfer_recipient_prefill.dart';
 import '../../../transfer/presentation/screens/transfer_money_screen.dart';
 import '../../../receive/presentation/screens/receive_screen.dart';
 import '../../domain/supported_currency.dart';
+import '../../domain/transaction.dart';
 import '../widgets/currency_picker_sheet.dart';
 import '../widgets/home_header.dart';
 import '../widgets/notifications_sheet.dart';
 import 'home_shell.dart';
 import 'profile_screen.dart';
+import 'transaction_detail_screen.dart';
 
 /// Post-onboarding home / dashboard.
 ///
@@ -27,7 +34,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _balanceVisible = true;
-  UiLanguage _currentLanguage = UiLanguage.en;
   // Default to Ghanaian Cedi to match the mock; the picker lets the
   // user switch to any of the SupportedCurrency entries.
   SupportedCurrency _currency = SupportedCurrency.ghs;
@@ -37,39 +43,90 @@ class _HomeScreenState extends State<HomeScreen> {
   static const String _balance = '13,000';
 
   static const List<_Favorite> _favorites = [
-    _Favorite('Rodrigue Gomez', Color(0xFFE0A872)),
-    _Favorite('Celia Koffi', Color(0xFF8B5A3C)),
-    _Favorite('John Doe', Color(0xFF3D2817)),
+    // Phone numbers below are intentionally chosen from the
+    // RecipientLookupService stub directory so tapping a favorite
+    // results in an immediate "Found" badge in the transfer screen.
+    // Replace with real backend-sourced favorites once the directory
+    // endpoint lands.
+    _Favorite(
+      name: 'Xavier Brahman',
+      color: Color(0xFFE0A872),
+      country: SupportedCountry.ivoryCoast,
+      nationalPhone: '0598766265',
+    ),
+    _Favorite(
+      name: 'Aminata Koffi',
+      color: Color(0xFF8B5A3C),
+      country: SupportedCountry.ivoryCoast,
+      nationalPhone: '0598001234',
+    ),
+    _Favorite(
+      name: 'Kojo Mensah',
+      color: Color(0xFF3D2817),
+      country: SupportedCountry.ghana,
+      nationalPhone: '0244112233',
+    ),
   ];
 
-  static const List<_Txn> _transactions = [
-    _Txn(
-      kind: _TxnKind.received,
-      label: 'Received',
-      timestamp: 'Jun 12, 2025 - 10:25 AM',
+  // Recent-transactions seed for the home dashboard.
+  //
+  // Now uses the public [Transaction] model (same shape as the
+  // dedicated Transactions tab + detail screen) so taps can push
+  // straight into [TransactionDetailScreen] without an intermediate
+  // adapter. Once the backend lands this becomes a Riverpod provider
+  // backed by `GET /transfers?limit=4`.
+  //
+  // Mock identifiers (`TX…`), counterparty names, phones, and
+  // payment-method labels are intentionally aligned with the
+  // patterns used in `transactions_screen.dart` so the detail
+  // screen feels populated regardless of which list the user
+  // tapped through from. `when` uses a fixed timestamp on a
+  // `static const`-incompatible field, so the list is built lazily
+  // in [_recentTransactions] (`DateTime` literals aren't `const`).
+  static final List<Transaction> _transactions = [
+    Transaction(
+      id: 'TX10A2B3',
+      kind: TxnKind.received,
+      when: DateTime(2025, 6, 12, 10, 25),
       amount: '13000',
-      success: true,
+      fee: '0',
+      status: TxnStatus.success,
+      counterparty: 'Axel Asamoa',
+      counterpartyPhone: '+233241234567',
+      paymentMethod: 'Mobile Money • MTN MoMo',
     ),
-    _Txn(
-      kind: _TxnKind.sent,
-      label: 'Sent',
-      timestamp: 'Jun 12, 2025 - 10:25 AM',
+    Transaction(
+      id: 'TX20C4D5',
+      kind: TxnKind.sent,
+      when: DateTime(2025, 6, 12, 10, 25),
       amount: '2500',
-      success: false,
+      fee: '50',
+      status: TxnStatus.failed,
+      counterparty: 'Maria Diop',
+      counterpartyPhone: '+221771234567',
+      paymentMethod: 'Mobile Money • Wave',
     ),
-    _Txn(
-      kind: _TxnKind.payed,
-      label: 'Payed',
-      timestamp: 'Jun 12, 2025 - 10:25 AM',
+    Transaction(
+      id: 'TX30E6F7',
+      kind: TxnKind.sent,
+      when: DateTime(2025, 6, 12, 10, 25),
       amount: '56300',
-      success: true,
+      fee: '281',
+      status: TxnStatus.success,
+      counterparty: 'Kwame Nkrumah',
+      counterpartyPhone: '+233244987654',
+      paymentMethod: 'Bank Transfer • Ecobank',
     ),
-    _Txn(
-      kind: _TxnKind.received,
-      label: 'Received',
-      timestamp: 'Jun 12, 2025 - 10:25 AM',
+    Transaction(
+      id: 'TX40A8B9',
+      kind: TxnKind.received,
+      when: DateTime(2025, 6, 12, 10, 25),
       amount: '56300',
-      success: true,
+      fee: '0',
+      status: TxnStatus.success,
+      counterparty: 'Aminata Traoré',
+      counterpartyPhone: '+223761122334',
+      paymentMethod: 'Mobile Money • Orange Money',
     ),
   ];
 
@@ -79,14 +136,12 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(builder: (_) => const ProfileScreen()),
     );
   }
-  void _onLanguageTap() {
-    // Visible toggle for now; real i18n wiring lands later.
-    setState(() {
-      _currentLanguage = _currentLanguage == UiLanguage.en
-          ? UiLanguage.fr
-          : UiLanguage.en;
-    });
-    debugPrint('Language tapped → ${_currentLanguage.name}');
+  Future<void> _onLanguageTap() async {
+    // Flip the app-wide locale via the InheritedNotifier handle. Every
+    // descendant of MaterialApp that reads AppLocalizations.of(context)
+    // re-builds in the new language; the choice is persisted to
+    // SharedPreferences so it survives a cold start.
+    await LocaleScope.of(context, listen: false).toggle();
   }
 
   void _onNotificationsTap() => showNotificationsSheet(context);
@@ -121,19 +176,57 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onSmartRate() => debugPrint('Smart Rate tapped');
   void _onTrustScore() => debugPrint('Trust Score tapped');
   void _onFavoritesViewAll() => debugPrint('Favorites view all tapped');
-  void _onFavoriteTap(String name) => debugPrint('Favorite tapped: $name');
+
+  /// Open the transfer flow with the favorite already selected as the
+  /// recipient. The directory lookup runs on mount so the "Found"
+  /// badge resolves immediately and the canonical name overwrites the
+  /// favorite's locally-stored name.
+  void _onFavoriteTap(_Favorite favorite) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => TransferMoneyScreen(
+          currency: _currency,
+          prefill: TransferRecipientPrefill(
+            country: favorite.country,
+            nationalPhone: favorite.nationalPhone,
+            displayName: favorite.name,
+          ),
+        ),
+      ),
+    );
+  }
   void _onTransactionsViewAll() {
     // Switch the parent HomeShell to the Transactions tab (index 1)
     // rather than pushing a new route — keeps the bottom-nav state
     // selection in sync with what's on screen.
     HomeShell.of(context)?.selectTab(1);
   }
-  void _onTransactionTap(_Txn t) => debugPrint(
-    'Transaction tapped: ${t.label} ${_currency.code} ${t.amount}',
-  );
+  void _onTransactionTap(Transaction t) {
+    // Push the shared detail screen with the same currency context
+    // the home dashboard is currently displaying. The Transactions
+    // tab routes through the same widget; both call sites stay in
+    // sync because they share the [Transaction] model.
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => TransactionDetailScreen(
+          txn: t,
+          currencyCode: _currency.code,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    // The language pill flag mirrors the app-wide active locale.
+    // Reading the LocaleScope here (listen: true via context.dependOn…)
+    // means HomeScreen rebuilds whenever the locale flips, which keeps
+    // the flag glyph in sync without a per-screen state copy.
+    final activeLocale = LocaleScope.of(context).current;
+    final pillLanguage = activeLocale == AppLocale.fr
+        ? UiLanguage.fr
+        : UiLanguage.en;
     return DecoratedBox(
       decoration: const BoxDecoration(gradient: AppColors.brandGradient),
       child: SafeArea(
@@ -143,7 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             HomeHeader(
               userName: _userName,
-              language: _currentLanguage,
+              language: pillLanguage,
               onProfileTap: _onProfileTap,
               onLanguageTap: _onLanguageTap,
               onNotificationsTap: _onNotificationsTap,
@@ -167,7 +260,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 36),
             _SectionHeader(
               icon: Icons.auto_awesome_rounded,
-              title: 'AI Insights',
+              title: l10n.homeSectionAiInsights,
             ),
             const SizedBox(height: 12),
             _InsightsStrip(
@@ -178,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 28),
             _SectionHeader(
               icon: Icons.favorite_rounded,
-              title: 'Your Favorites',
+              title: l10n.homeSectionFavorites,
               trailing: _ViewAllButton(onTap: _onFavoritesViewAll),
             ),
             const SizedBox(height: 16),
@@ -186,7 +279,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 28),
             _SectionHeader(
               icon: Icons.history_rounded,
-              title: 'Recent transactions',
+              title: l10n.homeSectionRecentTransactions,
               trailing: _ViewAllButton(onTap: _onTransactionsViewAll),
             ),
             const SizedBox(height: 8),
@@ -274,14 +367,15 @@ class _Balance extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              'Total Balance',
-              style: TextStyle(
+            Text(
+              l10n.homeTotalBalance,
+              style: const TextStyle(
                 color: AppColors.onBrandMuted,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
@@ -291,12 +385,18 @@ class _Balance extends StatelessWidget {
             InkResponse(
               onTap: onToggle,
               radius: 20,
-              child: Icon(
-                visible
-                    ? Icons.visibility_off_rounded
-                    : Icons.visibility_rounded,
-                color: AppColors.onBrandMuted,
-                size: 20,
+              // Tooltip / a11y label flips with state — when the
+              // balance is currently visible the eye-with-slash hides
+              // it, and vice-versa.
+              child: Tooltip(
+                message: visible ? l10n.homeBalanceHide : l10n.homeBalanceShow,
+                child: Icon(
+                  visible
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_rounded,
+                  color: AppColors.onBrandMuted,
+                  size: 20,
+                ),
               ),
             ),
           ],
@@ -343,11 +443,12 @@ class _PrimaryActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Row(
       children: [
         Expanded(
           child: _PrimaryActionButton(
-            label: 'Send',
+            label: l10n.homeActionSend,
             icon: Icons.north_east_rounded,
             background: Colors.white,
             foreground: AppColors.actionPurple,
@@ -357,7 +458,7 @@ class _PrimaryActions extends StatelessWidget {
         const SizedBox(width: 16),
         Expanded(
           child: _PrimaryActionButton(
-            label: 'Receive',
+            label: l10n.homeActionReceive,
             icon: Icons.south_west_rounded,
             background: AppColors.actionPurple,
             foreground: Colors.white,
@@ -462,6 +563,7 @@ class _ViewAllButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -469,17 +571,17 @@ class _ViewAllButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          children: const [
+          children: [
             Text(
-              'View all',
-              style: TextStyle(
+              l10n.homeViewAll,
+              style: const TextStyle(
                 color: AppColors.onBrandMuted,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(width: 4),
-            Icon(
+            const SizedBox(width: 4),
+            const Icon(
               Icons.arrow_forward_rounded,
               color: AppColors.onBrandMuted,
               size: 18,
@@ -567,18 +669,22 @@ class _InsightsStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final insights = <_Insight>[
       _Insight(
-        title: 'Smart Rate',
-        body: 'Save on your next cross-border transfer.',
+        title: l10n.insightSmartRateTitle,
+        body: l10n.insightSmartRateBody,
         metric: '+ $currencyCode 10',
         icon: Icons.trending_up_rounded,
         accent: _greenAccent,
         onTap: onSmartRate,
       ),
       _Insight(
-        title: 'Trust Score',
-        body: 'Unlock micro-loans up to $currencyCode 5,000.',
+        // Trust-score body is ICU-templated so the currency code and
+        // limit slot in via gen_l10n placeholders rather than string
+        // interpolation — keeps French word order natural.
+        title: l10n.insightTrustScoreTitle,
+        body: l10n.insightTrustScoreBody(currencyCode, '5,000'),
         metric: '750',
         icon: Icons.verified_user_rounded,
         accent: AppColors.actionPurple,
@@ -587,8 +693,8 @@ class _InsightsStrip extends StatelessWidget {
       // Sample third card so the horizontal scroll affordance is real.
       // Replace with backend-driven insights when wired.
       _Insight(
-        title: 'Spending pulse',
-        body: 'You spent 18% less than last week.',
+        title: l10n.insightSpendingPulseTitle,
+        body: l10n.insightSpendingPulseBody,
         metric: '-18%',
         icon: Icons.insights_rounded,
         accent: _amberAccent,
@@ -818,16 +924,28 @@ class _AccentGlow extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _Favorite {
-  const _Favorite(this.name, this.color);
+  const _Favorite({
+    required this.name,
+    required this.color,
+    required this.country,
+    required this.nationalPhone,
+  });
+
   final String name;
   final Color color;
+  final SupportedCountry country;
+
+  /// National-significant digits only. Leading `0` is preserved (it's
+  /// stripped by `phone_numbers_parser` when the country is set), no
+  /// dial code, no spaces.
+  final String nationalPhone;
 }
 
 class _FavoritesStrip extends StatelessWidget {
   const _FavoritesStrip({required this.favorites, required this.onTap});
 
   final List<_Favorite> favorites;
-  final ValueChanged<String> onTap;
+  final ValueChanged<_Favorite> onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -839,7 +957,7 @@ class _FavoritesStrip extends StatelessWidget {
         separatorBuilder: (_, _) => const SizedBox(width: 20),
         itemBuilder: (context, i) {
           final f = favorites[i];
-          return _FavoriteAvatar(favorite: f, onTap: () => onTap(f.name));
+          return _FavoriteAvatar(favorite: f, onTap: () => onTap(f));
         },
       ),
     );
@@ -893,24 +1011,12 @@ class _FavoriteAvatar extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // Recent transactions
 // ---------------------------------------------------------------------------
-
-enum _TxnKind { received, sent, payed }
-
-class _Txn {
-  const _Txn({
-    required this.kind,
-    required this.label,
-    required this.timestamp,
-    required this.amount,
-    required this.success,
-  });
-
-  final _TxnKind kind;
-  final String label;
-  final String timestamp;
-  final String amount;
-  final bool success;
-}
+//
+// The home dashboard now consumes the public [Transaction] model
+// from `domain/transaction.dart` (same model the dedicated
+// Transactions tab + detail screen use), so the previous
+// home-private `_Txn` + `_TxnKind` types have been retired. Tile
+// rendering lives in [_TransactionTile] below.
 
 class _TransactionTile extends StatelessWidget {
   const _TransactionTile({
@@ -919,31 +1025,53 @@ class _TransactionTile extends StatelessWidget {
     required this.onTap,
   });
 
-  final _Txn txn;
+  final Transaction txn;
   final String currencyCode;
   final VoidCallback onTap;
 
+  /// Direction-specific tile glyph + tint. Mirrors the diagonal-arrow
+  /// language used on the dedicated Transactions tab so users see the
+  /// same visual whichever surface they're on.
   ({IconData icon, Color color}) get _glyph {
     switch (txn.kind) {
-      case _TxnKind.received:
+      case TxnKind.received:
         return (icon: Icons.south_west_rounded, color: const Color(0xFF22C55E));
-      case _TxnKind.sent:
+      case TxnKind.sent:
         return (icon: Icons.north_east_rounded, color: const Color(0xFFF97316));
-      case _TxnKind.payed:
-        return (
-          icon: Icons.credit_card_rounded,
-          color: const Color(0xFF3B82F6),
-        );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final g = _glyph;
-    final statusColor = txn.success
-        ? const Color(0xFF22C55E)
-        : const Color(0xFFEF4444);
-    final statusLabel = txn.success ? 'Success' : 'Failed';
+
+    // Map the 3-state [TxnStatus] to a tile color + label. `pending`
+    // is rendered amber to distinguish it from success/failed at a
+    // glance — this matches the chip palette used on the
+    // Transactions tab + detail screen so the design language stays
+    // consistent across all three surfaces.
+    final (statusColor, statusLabel) = switch (txn.status) {
+      TxnStatus.success => (
+          const Color(0xFF22C55E),
+          l10n.txnStatusSuccess,
+        ),
+      TxnStatus.pending => (
+          const Color(0xFFD97706),
+          l10n.txnDetailStatusPending,
+        ),
+      TxnStatus.failed => (
+          const Color(0xFFEF4444),
+          l10n.txnStatusFailed,
+        ),
+    };
+
+    // Tile-row label is derived from the kind enum so the active
+    // locale wins; the model itself no longer carries a string label.
+    final kindLabel = switch (txn.kind) {
+      TxnKind.received => l10n.txnLabelReceived,
+      TxnKind.sent => l10n.txnLabelSent,
+    };
 
     return InkWell(
       onTap: onTap,
@@ -970,7 +1098,7 @@ class _TransactionTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    txn.label,
+                    kindLabel,
                     style: AppTextStyles.listTitle,
                   ),
                   const SizedBox(height: 2),

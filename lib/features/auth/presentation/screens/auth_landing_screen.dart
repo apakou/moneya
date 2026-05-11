@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import 'create_account_screen.dart';
 
 /// Auth landing screen shown after the onboarding flow finishes.
@@ -32,6 +33,7 @@ class AuthLandingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -58,10 +60,10 @@ class AuthLandingScreen extends StatelessWidget {
                     fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Say it. We send it.',
+                  Text(
+                    l10n.authLandingTagline,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: AppColors.onBrandMuted,
                       fontSize: 16,
                       fontWeight: FontWeight.w400,
@@ -73,14 +75,14 @@ class AuthLandingScreen extends StatelessWidget {
 
                   // Primary actions.
                   _AuthPillButton(
-                    label: 'Login',
+                    label: l10n.authLandingLogin,
                     background: Colors.white,
                     foreground: AppColors.actionPurple,
                     onPressed: () => _goToLogin(context),
                   ),
                   const SizedBox(height: 12),
                   _AuthPillButton(
-                    label: 'Create Account',
+                    label: l10n.authLandingCreateAccount,
                     background: AppColors.actionPurple,
                     foreground: AppColors.onBrand,
                     onPressed: () => _goToCreateAccount(context),

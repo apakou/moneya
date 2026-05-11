@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../../auth/domain/supported_country.dart';
 
 /// Bottom sheet that lets the user pick the sending corridor (a country
@@ -55,12 +56,12 @@ class _TransferCountryPickerSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Select sending country',
+                    AppLocalizations.of(context).transferCountryPickerTitle,
                     style: AppTextStyles.screenTitle,
                   ),
                 ),
