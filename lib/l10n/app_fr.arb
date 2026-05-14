@@ -78,6 +78,7 @@
   "profileFieldDateOfBirth": "Date de naissance",
   "profileVerifiedBadge": "Vérifié",
   "profileActionReferAndEarn": "Parrainer et gagner",
+  "profileActionFavorites": "Favoris",
   "profileActionSettings": "Paramètres",
   "profileActionLogout": "Déconnexion",
 
@@ -343,5 +344,17 @@
   "discardChangesTitle": "Annuler les modifications ?",
   "discardChangesBody": "Vos saisies sur cet écran ne seront pas enregistrées.",
   "discardChangesConfirm": "Annuler",
-  "discardChangesCancel": "Continuer la saisie"
+  "discardChangesCancel": "Continuer la saisie",
+
+  "favoritesTitle": "Favoris",
+  "favoritesEmptyTitle": "Aucun favori pour l'instant",
+  "favoritesEmptyBody": "Envoyez d'abord de l'argent à quelqu'un, puis vous pourrez l'enregistrer ici pour un accès rapide la prochaine fois.",
+  "favoritesEmptyCta": "Envoyer de l'argent",
+  "favoritesRemoved": "{name} supprimé",
+  "favoritesUndo": "Annuler",
+  "favoritesSwipeHint": "Glissez vers la gauche pour supprimer",
+  "favoritesAddPromptTitle": "Enregistrer {name} comme favori ?",
+  "favoritesAddPromptBody": "Les destinataires enregistrés apparaissent sur votre écran d'accueil pour leur envoyer de l'argent en un seul appui.",
+  "favoritesAddCta": "Ajouter aux favoris",
+  "favoritesAddedConfirmation": "Ajouté aux favoris"
 }

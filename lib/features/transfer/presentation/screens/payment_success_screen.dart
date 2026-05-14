@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../auth/domain/supported_country.dart';
+import '../../../favorites/data/favorites_service.dart';
+import '../../../favorites/presentation/widgets/add_to_favorites_card.dart';
 import '../../../home/domain/supported_currency.dart';
 import '../widgets/transfer_outcome_scaffold.dart';
 import 'transfer_money_screen.dart';
@@ -24,12 +27,26 @@ import 'transfer_money_screen.dart';
 ///   fire another transfer with one tap.
 /// * **Go back home** (secondary, dark pill) — just pops to the first
 ///   route.
+///
+/// ## Add-to-favourites prompt
+///
+/// When the transfer is direct (not invite/escrow) AND the recipient
+/// is not already in [FavoritesService], an [AddToFavoritesCard] is
+/// injected into the scaffold's `extras` slot. The card lets the
+/// user save the recipient with one tap so the home strip and the
+/// Profile > Favourites screen surface them next time. Invite/escrow
+/// transfers don't get the prompt because the recipient is not yet
+/// on MoneyA and can't currently receive a tap-to-send — favouriting
+/// them now would surface a contact who'd just fail the immediate-
+/// send path on tap.
 class PaymentSuccessScreen extends StatelessWidget {
   const PaymentSuccessScreen({
     required this.amount,
     required this.currency,
     required this.netAmount,
     required this.recipientName,
+    required this.recipientCountry,
+    required this.recipientPhoneLocal,
     required this.isInvite,
     super.key,
   });
@@ -43,10 +60,31 @@ class PaymentSuccessScreen extends StatelessWidget {
   /// actually sees land in their wallet.
   final String netAmount;
   final String recipientName;
+
+  /// Recipient origin country — required to plumb the Add-to-Favourites
+  /// card. Passed straight through from `PaymentConfirmScreen` where
+  /// it's already held in state.
+  final SupportedCountry recipientCountry;
+
+  /// Recipient national-significant digits — required to plumb the
+  /// Add-to-Favourites card. Same shape as
+  /// `TransferRecipientPrefill.nationalPhone` and what
+  /// `PaymentConfirmScreen.recipientPhoneLocal` carries.
+  final String recipientPhoneLocal;
+
   final bool isInvite;
 
   String get _displayName =>
       recipientName.isEmpty ? 'Recipient' : recipientName;
+
+  /// Whether to surface the Add-to-Favourites card. Hidden for
+  /// invite/escrow flows and when the recipient is already saved.
+  bool _shouldShowFavoritePrompt() {
+    if (isInvite) return false;
+    if (recipientPhoneLocal.isEmpty) return false;
+    return !FavoritesService.instance
+        .contains(recipientCountry, recipientPhoneLocal);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,48 +92,56 @@ class PaymentSuccessScreen extends StatelessWidget {
     final title = isInvite
         ? 'Invite Sent Successfully'
         : 'Transfer Done Successfully';
+    final showPrompt = _shouldShowFavoritePrompt();
     return PopScope(
       // Terminal screen: predictive back must not return to the
       // (already-replaced) confirm form. Primary/secondary CTAs are
       // the only sanctioned exits. See flutter-navigation skill §4.
       canPop: false,
       child: TransferOutcomeScaffold(
-      glyphColor: const Color(0xFF2BC46A),
-      glyphIcon: Icons.check_rounded,
-      title: title,
-      body: TransferOutcomeBody(
-        spans: isInvite
-            ? [
-                TransferOutcomeBody.muted(
-                  '$_displayName will get an SMS to claim ',
-                ),
-                TransferOutcomeBody.bold(amountSpan),
-                TransferOutcomeBody.muted(
-                  '. Funds are held in escrow until they sign '
-                  'up and verify their phone.',
-                ),
-              ]
-            : [
-                TransferOutcomeBody.muted('$_displayName will receive '),
-                TransferOutcomeBody.bold(amountSpan),
-                TransferOutcomeBody.muted(
-                  ' within a few seconds, but it can take up to '
-                  '2 hours in some special cases.',
-                ),
-              ],
-      ),
-      primaryLabel: 'Send more money',
-      onPrimary: () {
-        // Pop down to HomeShell, then re-open Send Money with the
-        // same currency so the user lands on a fresh transfer screen
-        // with one tap.
-        Get.until((r) => r.isFirst);
-        Get.to<void>(() => TransferMoneyScreen(currency: currency));
-      },
-      secondaryLabel: 'Go back home',
-      onSecondary: () {
-        Get.until((r) => r.isFirst);
-      },
+        glyphColor: const Color(0xFF2BC46A),
+        glyphIcon: Icons.check_rounded,
+        title: title,
+        body: TransferOutcomeBody(
+          spans: isInvite
+              ? [
+                  TransferOutcomeBody.muted(
+                    '$_displayName will get an SMS to claim ',
+                  ),
+                  TransferOutcomeBody.bold(amountSpan),
+                  TransferOutcomeBody.muted(
+                    '. Funds are held in escrow until they sign '
+                    'up and verify their phone.',
+                  ),
+                ]
+              : [
+                  TransferOutcomeBody.muted('$_displayName will receive '),
+                  TransferOutcomeBody.bold(amountSpan),
+                  TransferOutcomeBody.muted(
+                    ' within a few seconds, but it can take up to '
+                    '2 hours in some special cases.',
+                  ),
+                ],
+        ),
+        extras: showPrompt
+            ? AddToFavoritesCard(
+                country: recipientCountry,
+                nationalPhone: recipientPhoneLocal,
+                displayName: _displayName,
+              )
+            : null,
+        primaryLabel: 'Send more money',
+        onPrimary: () {
+          // Pop down to HomeShell, then re-open Send Money with the
+          // same currency so the user lands on a fresh transfer screen
+          // with one tap.
+          Get.until((r) => r.isFirst);
+          Get.to<void>(() => TransferMoneyScreen(currency: currency));
+        },
+        secondaryLabel: 'Go back home',
+        onSecondary: () {
+          Get.until((r) => r.isFirst);
+        },
       ),
     );
   }

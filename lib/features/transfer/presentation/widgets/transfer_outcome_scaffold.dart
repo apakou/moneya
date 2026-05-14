@@ -27,6 +27,7 @@ class TransferOutcomeScaffold extends StatelessWidget {
     required this.onPrimary,
     required this.secondaryLabel,
     required this.onSecondary,
+    this.extras,
     super.key,
   });
 
@@ -44,6 +45,14 @@ class TransferOutcomeScaffold extends StatelessWidget {
   final VoidCallback onPrimary;
   final String secondaryLabel;
   final VoidCallback onSecondary;
+
+  /// Optional extras inserted between the body copy and the bottom
+  /// CTA pair (e.g. the "Add to favourites" card on the success
+  /// screen). Kept `Widget?` and slotted into the middle of the
+  /// flexible space so the medallion + body and the CTAs keep their
+  /// relative spacing on every screen size — when `null`, the layout
+  /// matches the original three-screen mock exactly.
+  final Widget? extras;
 
   @override
   Widget build(BuildContext context) {
@@ -79,6 +88,10 @@ class TransferOutcomeScaffold extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: body,
                   ),
+                  if (extras != null) ...[
+                    const SizedBox(height: 24),
+                    extras!,
+                  ],
                   const Spacer(flex: 4),
                   _PrimaryCta(label: primaryLabel, onPressed: onPrimary),
                   const SizedBox(height: 12),

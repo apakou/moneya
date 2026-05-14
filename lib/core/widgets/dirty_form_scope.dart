@@ -1,6 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:get/get.dart';
 
 import '../../l10n/generated/app_localizations.dart';
@@ -96,14 +97,20 @@ class DirtyFormScope extends StatelessWidget {
   /// the enclosing route on the next frame. Returns `true` if a pop
   /// was scheduled.
   ///
-  /// The pop is deferred via [SchedulerBinding.addPostFrameCallback]
-  /// so any in-flight `Tooltip` / `InkResponse` post-tap timers on
-  /// the chevron (or any other tap source) drain against the still-
-  /// attached element tree before the route deactivates. Popping
-  /// synchronously after `await showAdaptiveDialog` triggers a
-  /// "Looking up a deactivated widget's ancestor is unsafe" crash
-  /// because the chevron's `Tooltip` ancestor calls `Overlay.of` in
-  /// its own post-tap callback chain.
+  /// The pop is deferred via [scheduleMicrotask] so any in-flight
+  /// `Tooltip` / `InkResponse` post-tap timers on the chevron (or
+  /// any other tap source) drain against the still-attached element
+  /// tree before the route deactivates. Popping synchronously after
+  /// `await showAdaptiveDialog` triggers a "Looking up a deactivated
+  /// widget's ancestor is unsafe" crash because the chevron's
+  /// `Tooltip` ancestor calls `Overlay.of` in its own post-tap
+  /// callback chain.
+  ///
+  /// We previously deferred with `addPostFrameCallback`, but that
+  /// added ~16 ms of perceptible lag to every back tap. A microtask
+  /// is the smallest defer that still escapes the synchronous call
+  /// stack — visually indistinguishable from a sync pop but with
+  /// none of the ancestor-lookup risk.
   ///
   /// Use this from chevron `onBack` handlers instead of awaiting
   /// [confirmDiscardIfDirty] and calling `Get.back()` yourself.
@@ -125,10 +132,10 @@ class DirtyFormScope extends StatelessWidget {
   ) async {
     final canLeave = await confirmDiscardIfDirty(context, isDirty);
     if (!canLeave) return false;
-    // Defer one frame so any in-flight post-tap timers on the
+    // Defer to a microtask so any in-flight post-tap timers on the
     // chevron / dialog barrier drain against the still-attached
     // element tree. See [popAfterFrame] for the long-form rationale.
-    SchedulerBinding.instance.addPostFrameCallback((_) {
+    scheduleMicrotask(() {
       // `Get.back()` is a no-op when there's nothing to pop, so we
       // don't need to guard against an empty navigator stack.
       Get.back<void>();
@@ -199,17 +206,21 @@ class DirtyFormScope extends StatelessWidget {
         if (didPop) return; // user already left (canPop was true)
         final shouldLeave = await _showDiscardDialog(context);
         if (!shouldLeave) return;
-        // Defer the pop one frame so any in-flight post-tap timers
+        // Defer to a microtask so any in-flight post-tap timers
         // from the dialog's barrier or the underlying chevron drain
         // against the still-attached element tree. Synchronous pop
         // here triggers "Looking up a deactivated widget's ancestor
         // is unsafe" because ancestors (Tooltip, InkResponse, Hero)
         // schedule cleanup callbacks that fire after this returns.
         //
+        // A microtask is the smallest defer that still escapes the
+        // synchronous call stack — `addPostFrameCallback` would add
+        // ~16 ms of perceptible lag to system-back pops.
+        //
         // Uses `Get.back()` (not `Navigator.pop`) to keep GetX's
         // internal route accounting in sync — see
         // [confirmAndPopIfDirty] for the rationale.
-        SchedulerBinding.instance.addPostFrameCallback((_) {
+        scheduleMicrotask(() {
           Get.back<void>();
         });
       },

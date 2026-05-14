@@ -205,6 +205,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileActionReferAndEarn => 'Refere and earn';
 
   @override
+  String get profileActionFavorites => 'Favorites';
+
+  @override
   String get profileActionSettings => 'Settings';
 
   @override
@@ -1013,4 +1016,43 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get discardChangesCancel => 'Keep editing';
+
+  @override
+  String get favoritesTitle => 'Favorites';
+
+  @override
+  String get favoritesEmptyTitle => 'No favorites yet';
+
+  @override
+  String get favoritesEmptyBody =>
+      'Send money to someone first, then you can save them here for quick access next time.';
+
+  @override
+  String get favoritesEmptyCta => 'Send money';
+
+  @override
+  String favoritesRemoved(String name) {
+    return 'Removed $name';
+  }
+
+  @override
+  String get favoritesUndo => 'Undo';
+
+  @override
+  String get favoritesSwipeHint => 'Swipe left to remove';
+
+  @override
+  String favoritesAddPromptTitle(String name) {
+    return 'Save $name as a favorite?';
+  }
+
+  @override
+  String get favoritesAddPromptBody =>
+      'Saved recipients appear on your home screen so you can send money to them in one tap.';
+
+  @override
+  String get favoritesAddCta => 'Add to favorites';
+
+  @override
+  String get favoritesAddedConfirmation => 'Added to favorites';
 }

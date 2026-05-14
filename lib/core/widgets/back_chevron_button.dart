@@ -1,5 +1,6 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:get/get.dart';
 
 import '../theme/app_colors.dart';
@@ -83,7 +84,7 @@ class BackChevronButton extends StatelessWidget {
         label: tooltip,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          // Defer the tap callback to the next frame.
+          // Defer the tap callback to a microtask.
           //
           // The `Tooltip` ancestor registers a post-tap timer that
           // performs an inherited-widget lookup (`Overlay.of(context)`)
@@ -92,13 +93,20 @@ class BackChevronButton extends StatelessWidget {
           // element and throws "Looking up a deactivated widget's
           // ancestor is unsafe".
           //
+          // We only need to escape the synchronous tap-handler call
+          // stack so the Tooltip's hover-state cleanup runs against
+          // the *live* element; we do NOT need to wait a full frame
+          // for that. `scheduleMicrotask` runs before the next event-
+          // loop turn — visually indistinguishable from a sync call,
+          // unlike `addPostFrameCallback` which adds ~16 ms of lag
+          // that users perceive as a sluggish back button.
+          //
           // The `Semantics` and `GestureDetector` themselves don't
           // touch inherited widgets post-tap — only `Tooltip` does —
           // but every back chevron in the app is wrapped in this
           // tooltip for hover/long-press a11y, so the defer must live
-          // here, not at the call sites. A single-frame delay is
-          // visually indistinguishable from a synchronous pop.
-          onTap: () => SchedulerBinding.instance.addPostFrameCallback((_) {
+          // here, not at the call sites.
+          onTap: () => scheduleMicrotask(() {
             final cb = onTap;
             if (cb != null) {
               cb();

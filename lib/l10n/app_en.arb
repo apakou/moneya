@@ -275,6 +275,10 @@
   "@profileActionReferAndEarn": {
     "description": "Action row label that opens the referral flow. Note: 'Refere' typo matches the design mock; will be fixed in the plain-language pass."
   },
+  "profileActionFavorites": "Favorites",
+  "@profileActionFavorites": {
+    "description": "Action row label on Profile that opens the saved-recipients (favourites) list."
+  },
   "profileActionSettings": "Settings",
   "@profileActionSettings": {
     "description": "Action row label on Profile that opens the Settings screen."
@@ -1409,5 +1413,56 @@
   "discardChangesCancel": "Keep editing",
   "@discardChangesCancel": {
     "description": "Cancel CTA of the discard-changes dialog — returns the user to the form."
+  },
+
+  "favoritesTitle": "Favorites",
+  "@favoritesTitle": {
+    "description": "Screen title for the saved-recipients list (Profile > Favorites)."
+  },
+  "favoritesEmptyTitle": "No favorites yet",
+  "@favoritesEmptyTitle": {
+    "description": "Empty-state title on the Favorites screen when the user has not saved any recipients."
+  },
+  "favoritesEmptyBody": "Send money to someone first, then you can save them here for quick access next time.",
+  "@favoritesEmptyBody": {
+    "description": "Empty-state body on the Favorites screen explaining the add-favorite rule: favorites are added from the success screen after a transfer."
+  },
+  "favoritesEmptyCta": "Send money",
+  "@favoritesEmptyCta": {
+    "description": "Empty-state CTA on the Favorites screen that opens the Transfer flow."
+  },
+  "favoritesRemoved": "Removed {name}",
+  "@favoritesRemoved": {
+    "description": "Snackbar shown after the user swipes to delete a favorite. {name} is the favorite's display name.",
+    "placeholders": {
+      "name": { "type": "String", "example": "Aminata Koffi" }
+    }
+  },
+  "favoritesUndo": "Undo",
+  "@favoritesUndo": {
+    "description": "Snackbar action label that restores the just-removed favorite."
+  },
+  "favoritesSwipeHint": "Swipe left to remove",
+  "@favoritesSwipeHint": {
+    "description": "Screen-reader hint on each favorite row describing the swipe-to-delete affordance."
+  },
+  "favoritesAddPromptTitle": "Save {name} as a favorite?",
+  "@favoritesAddPromptTitle": {
+    "description": "Title of the add-to-favorites card shown on the Send Money success screen. {name} is the recipient's display name.",
+    "placeholders": {
+      "name": { "type": "String", "example": "Aminata Koffi" }
+    }
+  },
+  "favoritesAddPromptBody": "Saved recipients appear on your home screen so you can send money to them in one tap.",
+  "@favoritesAddPromptBody": {
+    "description": "Body of the add-to-favorites card on the Send Money success screen."
+  },
+  "favoritesAddCta": "Add to favorites",
+  "@favoritesAddCta": {
+    "description": "CTA on the add-to-favorites card that saves the recipient."
+  },
+  "favoritesAddedConfirmation": "Added to favorites",
+  "@favoritesAddedConfirmation": {
+    "description": "Inline confirmation shown in place of the add-to-favorites card after the user taps the CTA."
   }
 }

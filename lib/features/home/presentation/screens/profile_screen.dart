@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/back_chevron_button.dart';
 import '../../../../l10n/generated/app_localizations.dart';
+import '../../../favorites/presentation/screens/favorites_screen.dart';
 import '../../domain/user_profile.dart';
 import 'settings_screen.dart';
 
@@ -43,6 +44,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _onChangePhoto() => debugPrint('TODO: pick & upload profile photo');
   void _onReferAndEarn() => debugPrint('TODO: open refer-and-earn flow');
+  void _onFavorites() {
+    Get.to<void>(() => const FavoritesScreen());
+  }
   void _onSettings() {
     Get.to<void>(() => const SettingsScreen());
   }
@@ -95,6 +99,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: _ActionsCard(
                     onReferAndEarn: _onReferAndEarn,
+                    onFavorites: _onFavorites,
                     onSettings: _onSettings,
                     onLogout: _onLogout,
                   ),
@@ -444,11 +449,13 @@ class _InfoDivider extends StatelessWidget {
 class _ActionsCard extends StatelessWidget {
   const _ActionsCard({
     required this.onReferAndEarn,
+    required this.onFavorites,
     required this.onSettings,
     required this.onLogout,
   });
 
   final VoidCallback onReferAndEarn;
+  final VoidCallback onFavorites;
   final VoidCallback onSettings;
   final VoidCallback onLogout;
 
@@ -469,6 +476,15 @@ class _ActionsCard extends StatelessWidget {
             iconColor: Colors.white,
             label: l10n.profileActionReferAndEarn,
             onTap: onReferAndEarn,
+          ),
+          _ActionRow(
+            // Favourites lives between Refer & Earn and Settings —
+            // it's a "people-related" action so it pairs naturally
+            // with Refer & Earn, while still keeping Logout last.
+            icon: Icons.favorite_rounded,
+            iconColor: Colors.white,
+            label: l10n.profileActionFavorites,
+            onTap: onFavorites,
           ),
           _ActionRow(
             icon: Icons.settings_rounded,

@@ -482,6 +482,12 @@ abstract class AppLocalizations {
   /// **'Refere and earn'**
   String get profileActionReferAndEarn;
 
+  /// Action row label on Profile that opens the saved-recipients (favourites) list.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get profileActionFavorites;
+
   /// Action row label on Profile that opens the Settings screen.
   ///
   /// In en, this message translates to:
@@ -1903,6 +1909,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Keep editing'**
   String get discardChangesCancel;
+
+  /// Screen title for the saved-recipients list (Profile > Favorites).
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get favoritesTitle;
+
+  /// Empty-state title on the Favorites screen when the user has not saved any recipients.
+  ///
+  /// In en, this message translates to:
+  /// **'No favorites yet'**
+  String get favoritesEmptyTitle;
+
+  /// Empty-state body on the Favorites screen explaining the add-favorite rule: favorites are added from the success screen after a transfer.
+  ///
+  /// In en, this message translates to:
+  /// **'Send money to someone first, then you can save them here for quick access next time.'**
+  String get favoritesEmptyBody;
+
+  /// Empty-state CTA on the Favorites screen that opens the Transfer flow.
+  ///
+  /// In en, this message translates to:
+  /// **'Send money'**
+  String get favoritesEmptyCta;
+
+  /// Snackbar shown after the user swipes to delete a favorite. {name} is the favorite's display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed {name}'**
+  String favoritesRemoved(String name);
+
+  /// Snackbar action label that restores the just-removed favorite.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get favoritesUndo;
+
+  /// Screen-reader hint on each favorite row describing the swipe-to-delete affordance.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe left to remove'**
+  String get favoritesSwipeHint;
+
+  /// Title of the add-to-favorites card shown on the Send Money success screen. {name} is the recipient's display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Save {name} as a favorite?'**
+  String favoritesAddPromptTitle(String name);
+
+  /// Body of the add-to-favorites card on the Send Money success screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved recipients appear on your home screen so you can send money to them in one tap.'**
+  String get favoritesAddPromptBody;
+
+  /// CTA on the add-to-favorites card that saves the recipient.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to favorites'**
+  String get favoritesAddCta;
+
+  /// Inline confirmation shown in place of the add-to-favorites card after the user taps the CTA.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to favorites'**
+  String get favoritesAddedConfirmation;
 }
 
 class _AppLocalizationsDelegate

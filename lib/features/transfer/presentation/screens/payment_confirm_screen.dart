@@ -151,6 +151,8 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
               currency: widget.currency,
               netAmount: _formattedNet,
               recipientName: widget.recipientName,
+              recipientCountry: widget.recipientCountry,
+              recipientPhoneLocal: widget.recipientPhoneLocal,
               isInvite: isInvite,
             ),
           );

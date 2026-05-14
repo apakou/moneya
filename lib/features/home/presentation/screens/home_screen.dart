@@ -7,6 +7,9 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../../main.dart' show LocaleScope;
 import '../../../auth/domain/supported_country.dart';
+import '../../../favorites/data/favorites_service.dart';
+import '../../../favorites/domain/favorite.dart';
+import '../../../favorites/presentation/screens/favorites_screen.dart';
 import '../../../load_money/presentation/screens/load_provider_screen.dart';
 import '../../../transfer/domain/transfer_recipient_prefill.dart';
 import '../../../transfer/presentation/screens/transfer_money_screen.dart';
@@ -71,12 +74,17 @@ class _HomeScreenState extends State<HomeScreen> {
     return b.toString();
   }
 
-  static const List<_Favorite> _favorites = [
+  static const List<_Favorite> _favoritesFallback = [
+    // Seed fallback shown only if the FavoritesService is somehow
+    // empty (e.g. after a forced wipe in tests). The service ships
+    // pre-populated with the same three entries so production users
+    // always render from live data — these are kept as a belt-and-
+    // braces guarantee that the strip never collapses to zero height.
+    //
     // Phone numbers below are intentionally chosen from the
     // RecipientLookupService stub directory so tapping a favorite
     // results in an immediate "Found" badge in the transfer screen.
-    // Replace with real backend-sourced favorites once the directory
-    // endpoint lands.
+    // Replace once the directory endpoint lands.
     _Favorite(
       name: 'Xavier Brahman',
       color: Color(0xFFE0A872),
@@ -96,6 +104,33 @@ class _HomeScreenState extends State<HomeScreen> {
       nationalPhone: '0244112233',
     ),
   ];
+
+  /// Avatar colours used to skin the home favourites strip. Picked
+  /// deterministically per favourite (by `identityKey` hash) so a
+  /// given contact always keeps the same colour across rebuilds and
+  /// across the cold-start ordering of [FavoritesService].
+  static const List<Color> _favoritePalette = [
+    Color(0xFFE0A872),
+    Color(0xFF8B5A3C),
+    Color(0xFF3D2817),
+    Color(0xFF6B4423),
+    Color(0xFFB07D5C),
+    Color(0xFF4A2E1A),
+  ];
+
+  /// Adapt a live [Favorite] (domain model) to the local view-model
+  /// the home strip already knows how to render. Deterministic colour
+  /// derivation keeps the avatar visually stable as the list is
+  /// reordered (e.g. when a re-favouriting bumps the entry to the top).
+  _Favorite _toFavoriteVM(Favorite f) {
+    final idx = f.identityKey.hashCode.abs() % _favoritePalette.length;
+    return _Favorite(
+      name: f.displayName,
+      color: _favoritePalette[idx],
+      country: f.country,
+      nationalPhone: f.nationalPhone,
+    );
+  }
 
   // Recent-transactions seed for the home dashboard.
   //
@@ -216,7 +251,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   void _onSmartRate() => debugPrint('Smart Rate tapped');
   void _onTrustScore() => debugPrint('Trust Score tapped');
-  void _onFavoritesViewAll() => debugPrint('Favorites view all tapped');
+  void _onFavoritesViewAll() {
+    Get.to<void>(() => FavoritesScreen(currency: _currency));
+  }
 
   /// Open the transfer flow with the favorite already selected as the
   /// recipient. The directory lookup runs on mount so the "Found"
@@ -317,7 +354,24 @@ class _HomeScreenState extends State<HomeScreen> {
               trailing: _ViewAllButton(onTap: _onFavoritesViewAll),
             ),
             const SizedBox(height: 16),
-            _FavoritesStrip(favorites: _favorites, onTap: _onFavoriteTap),
+            ListenableBuilder(
+              // Strip rebuilds whenever the in-memory FavoritesService
+              // mutates — covers add-from-success-screen, remove +
+              // undo from FavoritesScreen, and tests overriding the
+              // singleton via `debugSetInstance`. Capped to the 6
+              // newest entries to keep the horizontal scroll short on
+              // a phone; FavoritesScreen shows the full list.
+              listenable: FavoritesService.instance,
+              builder: (context, _) {
+                final live = FavoritesService.instance.favorites;
+                final source = live.isEmpty ? _favoritesFallback :
+                    live.take(6).map(_toFavoriteVM).toList(growable: false);
+                return _FavoritesStrip(
+                  favorites: source,
+                  onTap: _onFavoriteTap,
+                );
+              },
+            ),
             const SizedBox(height: 28),
             _SectionHeader(
               icon: Icons.history_rounded,

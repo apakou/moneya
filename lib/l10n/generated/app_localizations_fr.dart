@@ -208,6 +208,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get profileActionReferAndEarn => 'Parrainer et gagner';
 
   @override
+  String get profileActionFavorites => 'Favoris';
+
+  @override
   String get profileActionSettings => 'Paramètres';
 
   @override
@@ -1024,4 +1027,43 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get discardChangesCancel => 'Continuer la saisie';
+
+  @override
+  String get favoritesTitle => 'Favoris';
+
+  @override
+  String get favoritesEmptyTitle => 'Aucun favori pour l\'instant';
+
+  @override
+  String get favoritesEmptyBody =>
+      'Envoyez d\'abord de l\'argent à quelqu\'un, puis vous pourrez l\'enregistrer ici pour un accès rapide la prochaine fois.';
+
+  @override
+  String get favoritesEmptyCta => 'Envoyer de l\'argent';
+
+  @override
+  String favoritesRemoved(String name) {
+    return '$name supprimé';
+  }
+
+  @override
+  String get favoritesUndo => 'Annuler';
+
+  @override
+  String get favoritesSwipeHint => 'Glissez vers la gauche pour supprimer';
+
+  @override
+  String favoritesAddPromptTitle(String name) {
+    return 'Enregistrer $name comme favori ?';
+  }
+
+  @override
+  String get favoritesAddPromptBody =>
+      'Les destinataires enregistrés apparaissent sur votre écran d\'accueil pour leur envoyer de l\'argent en un seul appui.';
+
+  @override
+  String get favoritesAddCta => 'Ajouter aux favoris';
+
+  @override
+  String get favoritesAddedConfirmation => 'Ajouté aux favoris';
 }
