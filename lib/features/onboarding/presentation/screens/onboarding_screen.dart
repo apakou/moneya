@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../l10n/generated/app_localizations.dart';
+import '../../../../main.dart' show LocaleScope;
 import '../../../auth/presentation/screens/auth_landing_screen.dart';
 import '../../domain/app_language.dart';
 import '../pages/cross_corridor_page.dart';
@@ -14,6 +17,13 @@ import '../widgets/onboarding_page_indicator.dart';
 ///
 /// Steps: language selection, send-money pitch, cross-corridor pitch. After
 /// the final step (or "Skip") the user lands on [AuthLandingScreen].
+///
+/// The language selected on step 1 is applied **live** to the app via
+/// [LocaleScope]/`LocaleController.setLocale` so the headlines on
+/// steps 2 + 3 (and the Next/Skip/Back labels) immediately appear in
+/// the chosen language. This is the entire point of putting the
+/// language step first — picking Français at step 1 and then reading
+/// English on step 2 would be a UX bug.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -29,12 +39,37 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final PageController _controller = PageController();
   int _index = 0;
-  AppLanguage _language = AppLanguage.english;
+
+  /// Local mirror of the picker selection. Initialized lazily from
+  /// the active app locale in [didChangeDependencies] (we can't read
+  /// inherited widgets in [initState]). This way the picker always
+  /// opens reflecting reality — if the user is already on French
+  /// (e.g. they returned through dev-bypass), the dropdown opens on
+  /// Français rather than snapping back to English.
+  AppLanguage? _language;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Seed only once; subsequent locale changes are driven by the
+    // user via the picker itself.
+    _language ??= AppLanguage.fromAppLocale(
+      LocaleScope.of(context, listen: false).current,
+    );
+  }
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  void _onLanguageChanged(AppLanguage lang) {
+    setState(() => _language = lang);
+    // Fire-and-forget — `setLocale` persists to SharedPreferences but
+    // we don't need to await it; the in-memory switch (which is what
+    // drives the UI rebuild) is synchronous via `notifyListeners`.
+    LocaleScope.of(context, listen: false).setLocale(lang.appLocale);
   }
 
   void _goNext() {
@@ -62,16 +97,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _finishOnboarding() {
     // TODO: persist that onboarding has been completed (e.g. SharedPreferences)
     // before routing.
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(
-        builder: (_) => const AuthLandingScreen(),
-        settings: const RouteSettings(name: AuthLandingScreen.routeName),
-      ),
+    Get.off<void>(
+      () => const AuthLandingScreen(),
+      routeName: AuthLandingScreen.routeName,
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    // Guard: `_language` is hydrated in `didChangeDependencies` which
+    // runs before `build`, so this null-coalesce is defensive only.
+    final language = _language ?? AppLanguage.english;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -87,13 +124,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             child: Stack(
               children: [
                 // --- Page content ---
+                // PageView (not a Navigator-based wizard) is intentional
+                // here: the three onboarding pages are *peers* the user
+                // can swipe between freely, with no per-page state to
+                // discard and no commit semantics. System back from any
+                // page exits the app, which matches the
+                // "before-the-app-starts" mental model — going back from
+                // onboarding should drop the user out, not surface a
+                // previous page. Switching to `Navigator.push` would
+                // wrongly turn back into a "previous-page" gesture and
+                // require us to manage a route stack we don't need. See
+                // flutter-navigation skill §1 (root vs. push routes).
                 PageView(
                   controller: _controller,
                   onPageChanged: (i) => setState(() => _index = i),
                   children: [
                     LanguagePage(
-                      value: _language,
-                      onChanged: (lang) => setState(() => _language = lang),
+                      value: language,
+                      onChanged: _onLanguageChanged,
                     ),
                     const SendMoneyPage(),
                     const CrossCorridorPage(),
@@ -104,7 +152,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 Positioned(
                   top: 8,
                   right: 12,
-                  child: OnboardingSkipButton(onPressed: _skip),
+                  child: OnboardingSkipButton(
+                    onPressed: _skip,
+                    label: l10n.onboardingSkip,
+                  ),
                 ),
 
                 // --- Bottom controls: indicator (left) + Next pill (right) ---
@@ -128,7 +179,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 Positioned(
                   right: 24,
                   bottom: 60,
-                  child: OnboardingNextButton(onPressed: _goNext),
+                  child: OnboardingNextButton(
+                    onPressed: _goNext,
+                    label: l10n.onboardingNext,
+                  ),
                 ),
 
                 // --- Bottom-left "Back" pill (hidden on the first page) ---
@@ -136,7 +190,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   Positioned(
                     left: 24,
                     bottom: 60,
-                    child: OnboardingBackButton(onPressed: _goBack),
+                    child: OnboardingBackButton(
+                      onPressed: _goBack,
+                      label: l10n.onboardingBack,
+                    ),
                   ),
               ],
             ),

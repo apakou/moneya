@@ -76,10 +76,24 @@ class SwipeToPayButtonState extends State<SwipeToPayButton>
   /// re-entry if the user keeps the finger pressed at the end.
   bool _completed = false;
 
-  late final AnimationController _springController = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 220),
-  );
+  /// Spring-back animation controller. Eagerly created in
+  /// [initState] (not `late final` lazy-init) because lazy
+  /// initialization in [dispose] — i.e. the user navigates away
+  /// without ever triggering a sub-threshold swipe — performs an
+  /// inherited-widget lookup against a deactivated element through
+  /// `SingleTickerProviderStateMixin.createTicker`'s `TickerMode.of`
+  /// call, which throws "Looking up a deactivated widget's ancestor
+  /// is unsafe" in debug and is undefined behavior in release.
+  late final AnimationController _springController;
+
+  @override
+  void initState() {
+    super.initState();
+    _springController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    );
+  }
 
   @override
   void dispose() {

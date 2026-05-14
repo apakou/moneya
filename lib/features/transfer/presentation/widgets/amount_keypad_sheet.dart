@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/safe_pop.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 
 /// Cash App / Wise-style numeric keypad for entering a transfer amount.
@@ -100,7 +101,7 @@ class _AmountKeypadSheetState extends State<_AmountKeypadSheet> {
     final cleaned = _value.endsWith('.')
         ? _value.substring(0, _value.length - 1)
         : _value;
-    Navigator.of(context).pop(cleaned);
+    popAfterFrame<String>(context, cleaned);
   }
 
   @override

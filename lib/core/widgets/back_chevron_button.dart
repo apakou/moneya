@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:get/get.dart';
 
 import '../theme/app_colors.dart';
 
@@ -32,17 +34,28 @@ import '../theme/app_colors.dart';
 /// Use this for **every** back chevron / back arrow in the app.
 class BackChevronButton extends StatelessWidget {
   const BackChevronButton({
-    required this.onTap,
     required this.tooltip,
+    this.onTap,
     this.icon = Icons.chevron_left_rounded,
     this.iconSize = 28,
     this.color = AppColors.onBrand,
     super.key,
   });
 
-  /// Tap callback — typically `() => Navigator.of(context).maybePop()`
-  /// or a passed-in `onBack`.
-  final VoidCallback onTap;
+  /// Tap callback. When `null`, defaults to `Get.back()` so the
+  /// chevron Just Works on any screen whose only back behaviour is
+  /// "pop the route". GetX is the canonical navigator across the
+  /// app (`Get.to`, `Get.off`, `Get.offAll`); using `Get.back()`
+  /// here keeps GetX's internal route accounting in sync.
+  /// `Get.back()` is a no-op when there's nothing to pop, so the
+  /// chevron is safe to render even on the very first route of a
+  /// cold-start deep-link.
+  ///
+  /// Pass a non-null callback when the screen needs to run extra
+  /// logic before popping (e.g. unfocus the keyboard, prompt
+  /// discard-changes via `DirtyFormScope`). See the
+  /// `flutter-navigation` skill §6 for the rationale.
+  final VoidCallback? onTap;
 
   /// Tooltip + screen-reader label. Should be the localized "Back"
   /// string (e.g. `l10n.commonBack`).
@@ -70,7 +83,33 @@ class BackChevronButton extends StatelessWidget {
         label: tooltip,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: onTap,
+          // Defer the tap callback to the next frame.
+          //
+          // The `Tooltip` ancestor registers a post-tap timer that
+          // performs an inherited-widget lookup (`Overlay.of(context)`)
+          // to dismiss its long-press hint. When `onTap` synchronously
+          // pops the route, that lookup runs against a deactivated
+          // element and throws "Looking up a deactivated widget's
+          // ancestor is unsafe".
+          //
+          // The `Semantics` and `GestureDetector` themselves don't
+          // touch inherited widgets post-tap — only `Tooltip` does —
+          // but every back chevron in the app is wrapped in this
+          // tooltip for hover/long-press a11y, so the defer must live
+          // here, not at the call sites. A single-frame delay is
+          // visually indistinguishable from a synchronous pop.
+          onTap: () => SchedulerBinding.instance.addPostFrameCallback((_) {
+            final cb = onTap;
+            if (cb != null) {
+              cb();
+            } else {
+              // `Get.back()` is a no-op when nothing is poppable —
+              // safe even on the first route of a cold-start deep
+              // link. See [onTap] doc for why we don't use
+              // `Navigator.of(context).pop()` here.
+              Get.back<void>();
+            }
+          }),
           child: SizedBox(
             width: 48,
             height: 48,

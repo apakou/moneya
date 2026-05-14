@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 import 'package:local_auth/local_auth.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -123,12 +124,10 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
         setState(() => _error = reason);
         return;
       }
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => PasscodeScreen(
-            mode: PasscodeMode.confirm,
-            expectedCode: code,
-          ),
+      Get.to<void>(
+        () => PasscodeScreen(
+          mode: PasscodeMode.confirm,
+          expectedCode: code,
         ),
       );
       return;
@@ -193,11 +192,12 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
     if (!mounted) return;
     // TODO: persist `enabled` flag to flutter_secure_storage.
     debugPrint('Biometric enrolled: $enabled');
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(
-        builder: (_) => const ChooseKycDocumentScreen(),
-      ),
-    );
+    // `Get.off` (not `Get.to`) drops the passcode-set step so the
+    // user can't navigate back into it after committing a PIN. The
+    // KYC wizard treats each completed step as immutable from the
+    // wizard's perspective — re-entry would require restarting the
+    // flow. See flutter-navigation skill §4.
+    Get.off<void>(() => const ChooseKycDocumentScreen());
   }
 
   void _clearAndRefocus() {
@@ -239,7 +239,7 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
                   top: 4,
                   left: 4,
                   child: BackChevronButton(
-                    onTap: () => Navigator.of(context).maybePop(),
+                    onTap: Get.back,
                     tooltip: l10n.commonBack,
                     icon: Icons.arrow_back_ios_new_rounded,
                     iconSize: 20,

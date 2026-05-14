@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/safe_pop.dart';
 import '../../../auth/domain/passcode_policy.dart';
 
 /// Show the transaction step-up passcode sheet and return whether the
@@ -127,12 +128,12 @@ class _TransactionPasscodeSheetState
   void _onSubmit() {
     if (!_isComplete) return;
     if (_code == _expectedCode) {
-      Navigator.of(context).pop(true);
+      popAfterFrame<bool>(context, true);
       return;
     }
     _attempts += 1;
     if (_attempts >= widget.maxAttempts) {
-      Navigator.of(context).pop(false);
+      popAfterFrame<bool>(context, false);
       return;
     }
     final remaining = widget.maxAttempts - _attempts;

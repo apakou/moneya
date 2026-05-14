@@ -44,6 +44,14 @@
   "@homeActionReceive": {
     "description": "Primary action button label for the receive flow."
   },
+  "homeActionLoad": "Load Money",
+  "@homeActionLoad": {
+    "description": "Primary action button label that opens the onramp (load fiat / stablecoin into the MoneyA balance) flow."
+  },
+  "homeActionWithdraw": "Withdraw",
+  "@homeActionWithdraw": {
+    "description": "Primary action button label that opens the offramp (cash out to mobile money or bank account) flow."
+  },
 
   "homeSectionAiInsights": "AI Insights",
   "@homeSectionAiInsights": {
@@ -1137,5 +1145,269 @@
         "example": "120.00"
       }
     }
+  },
+
+  "onboardingLanguageHeadline": "Which language are you speaking?",
+  "@onboardingLanguageHeadline": {
+    "description": "Hero question on onboarding step 1, where the user picks the app language."
+  },
+  "onboardingSendMoneyHeadline": "Send money faster and cheaper",
+  "@onboardingSendMoneyHeadline": {
+    "description": "Hero headline on onboarding step 2 (value-prop: speed + low cost)."
+  },
+  "onboardingCrossCorridorHeadline": "Between African francophone\nand anglophone countries",
+  "@onboardingCrossCorridorHeadline": {
+    "description": "Hero headline on onboarding step 3. The newline is intentional and reproduces the design's two-line break; translators may move or remove the newline if their rendering needs it."
+  },
+  "onboardingNext": "Next",
+  "@onboardingNext": {
+    "description": "Primary CTA pill at the bottom-right of every onboarding step. Advances to the next step or, on the last step, finishes onboarding."
+  },
+  "onboardingSkip": "Skip",
+  "@onboardingSkip": {
+    "description": "Top-right text shortcut that bypasses the remaining onboarding steps and goes straight to the auth landing screen."
+  },
+  "onboardingBack": "Back",
+  "@onboardingBack": {
+    "description": "Bottom-left pill on onboarding steps 2 and 3 that returns to the previous step."
+  },
+
+  "loadProviderHeaderTitle": "Load money",
+  "@loadProviderHeaderTitle": {
+    "description": "Header title on step 1 of the Load Money flow (provider selection)."
+  },
+  "loadProviderSubtitle": "Pick the mobile money account you want to load from.",
+  "@loadProviderSubtitle": {
+    "description": "Sub-header explaining what the user does on the provider-selection step."
+  },
+  "loadProviderCountryLabel": "Country",
+  "@loadProviderCountryLabel": {
+    "description": "Section label above the country picker on the load-provider step."
+  },
+  "loadProviderListLabel": "Mobile money providers",
+  "@loadProviderListLabel": {
+    "description": "Section label above the list of available mobile-money rails."
+  },
+  "loadProviderEmptyMessage": "No mobile money providers are available in this country yet.",
+  "@loadProviderEmptyMessage": {
+    "description": "Empty-state message shown when the selected country has no rails wired up yet."
+  },
+
+  "loadAmountHeaderTitle": "Load money",
+  "@loadAmountHeaderTitle": {
+    "description": "Header title on step 2 of the Load Money flow (amount entry)."
+  },
+  "loadAmountTitle": "How much do you want to load?",
+  "@loadAmountTitle": {
+    "description": "Centered question above the tappable amount card."
+  },
+  "loadAmountFromLabel": "From",
+  "@loadAmountFromLabel": {
+    "description": "Section label above the locked provider summary and source-phone field."
+  },
+  "loadAmountSourcePhoneHint": "Mobile money number",
+  "@loadAmountSourcePhoneHint": {
+    "description": "Placeholder for the source-phone input — the user's own mobile-money number being debited."
+  },
+  "loadAmountSwipeLabel": "Swipe to load",
+  "@loadAmountSwipeLabel": {
+    "description": "Label on the swipe-to-confirm control at the bottom of the amount step."
+  },
+  "loadAmountOverLimit": "Amount exceeds your {tier} limit of {currency} {max}. Upgrade your account to load more.",
+  "@loadAmountOverLimit": {
+    "description": "Inline error shown when the entered amount is above the client-side KYC tier cap. Backend will revalidate.",
+    "placeholders": {
+      "currency": { "type": "String", "example": "XOF" },
+      "max": { "type": "String", "example": "1000000" },
+      "tier": { "type": "String", "example": "Tier 2" }
+    }
+  },
+  "loadAmountLimitHint": "Daily limit: {currency} {max}",
+  "@loadAmountLimitHint": {
+    "description": "Helper text under the form summarising the daily cap.",
+    "placeholders": {
+      "currency": { "type": "String", "example": "XOF" },
+      "max": { "type": "String", "example": "1000000" }
+    }
+  },
+
+  "loadSuccessTitle": "Load request sent",
+  "@loadSuccessTitle": {
+    "description": "Title of the success outcome screen after a load request is submitted. The funds are pending until the provider authorizes — the copy intentionally avoids the word 'success'."
+  },
+  "loadSuccessBodyPrefix": "You'll receive ",
+  "@loadSuccessBodyPrefix": {
+    "description": "First inline span on the success body, before the bold amount."
+  },
+  "loadSuccessBodySuffix": " in your MoneyA balance after you authorize the debit on {provider}.",
+  "@loadSuccessBodySuffix": {
+    "description": "Trailing inline span on the success body explaining the provider USSD/app authorization step.",
+    "placeholders": {
+      "provider": { "type": "String", "example": "Wave" }
+    }
+  },
+  "loadSuccessPrimaryCta": "Go back home",
+  "@loadSuccessPrimaryCta": {
+    "description": "Primary CTA on the load success screen — returns to the home shell."
+  },
+  "loadSuccessSecondaryCta": "Done",
+  "@loadSuccessSecondaryCta": {
+    "description": "Secondary CTA on the load success screen — same destination as the primary for now; kept for visual parity with the transfer outcome screens."
+  },
+
+  "withdrawProviderHeaderTitle": "Withdraw",
+  "@withdrawProviderHeaderTitle": {
+    "description": "Header title on step 1 of the Withdraw flow (destination provider selection)."
+  },
+  "withdrawProviderSubtitle": "Pick the mobile money account you want to send your funds to.",
+  "@withdrawProviderSubtitle": {
+    "description": "Sub-header explaining what the user does on the withdraw destination-provider step."
+  },
+  "withdrawProviderCountryLabel": "Country",
+  "@withdrawProviderCountryLabel": {
+    "description": "Section label above the country picker on the withdraw-provider step."
+  },
+  "withdrawProviderListLabel": "Mobile money providers",
+  "@withdrawProviderListLabel": {
+    "description": "Section label above the list of available mobile-money rails on the withdraw step."
+  },
+  "withdrawProviderEmptyMessage": "No mobile money providers are available in this country yet.",
+  "@withdrawProviderEmptyMessage": {
+    "description": "Empty-state message shown when the selected destination country has no rails wired up yet."
+  },
+
+  "withdrawAmountHeaderTitle": "Withdraw",
+  "@withdrawAmountHeaderTitle": {
+    "description": "Header title on step 2 of the Withdraw flow (amount entry)."
+  },
+  "withdrawAmountTitle": "How much do you want to withdraw?",
+  "@withdrawAmountTitle": {
+    "description": "Centered question above the tappable amount card on the withdraw step."
+  },
+  "withdrawAmountToLabel": "To",
+  "@withdrawAmountToLabel": {
+    "description": "Section label above the locked destination provider summary and recipient-phone field."
+  },
+  "withdrawAmountDestinationPhoneHint": "Mobile money number",
+  "@withdrawAmountDestinationPhoneHint": {
+    "description": "Placeholder for the destination-phone input — the account being credited."
+  },
+  "withdrawAmountSwipeLabel": "Swipe to withdraw",
+  "@withdrawAmountSwipeLabel": {
+    "description": "Label on the swipe-to-confirm control at the bottom of the withdraw amount step."
+  },
+  "withdrawAmountOverLimit": "Amount exceeds your {tier} limit of {currency} {max}. Upgrade your account to withdraw more.",
+  "@withdrawAmountOverLimit": {
+    "description": "Inline error shown when the entered withdraw amount is above the client-side KYC tier cap.",
+    "placeholders": {
+      "currency": { "type": "String", "example": "XOF" },
+      "max": { "type": "String", "example": "1000000" },
+      "tier": { "type": "String", "example": "Tier 2" }
+    }
+  },
+  "withdrawAmountInsufficientBalance": "You only have {currency} {balance} available. Lower the amount or load more money first.",
+  "@withdrawAmountInsufficientBalance": {
+    "description": "Inline error shown when the entered amount is higher than the user's current MoneyA balance. Blocks the swipe-to-pay control.",
+    "placeholders": {
+      "currency": { "type": "String", "example": "XOF" },
+      "balance": { "type": "String", "example": "13,000" }
+    }
+  },
+  "withdrawAmountLimitHint": "Available balance: {currency} {balance}",
+  "@withdrawAmountLimitHint": {
+    "description": "Helper text under the form summarising the user's current available balance.",
+    "placeholders": {
+      "currency": { "type": "String", "example": "XOF" },
+      "balance": { "type": "String", "example": "13,000" }
+    }
+  },
+
+  "withdrawSuccessTitle": "Withdrawal sent",
+  "@withdrawSuccessTitle": {
+    "description": "Title of the success outcome screen after a withdraw request is accepted. Wording avoids 'completed' because settlement is asynchronous on most rails."
+  },
+  "withdrawSuccessBodyPrefix": "We're sending ",
+  "@withdrawSuccessBodyPrefix": {
+    "description": "First inline span on the withdraw success body, before the bold amount."
+  },
+  "withdrawSuccessBodySuffix": " to your {provider} account. It usually arrives within a few minutes.",
+  "@withdrawSuccessBodySuffix": {
+    "description": "Trailing inline span on the withdraw success body naming the destination provider.",
+    "placeholders": {
+      "provider": { "type": "String", "example": "Wave" }
+    }
+  },
+  "withdrawSuccessPrimaryCta": "Go back home",
+  "@withdrawSuccessPrimaryCta": {
+    "description": "Primary CTA on the withdraw success screen — returns to the home shell."
+  },
+  "withdrawSuccessSecondaryCta": "Done",
+  "@withdrawSuccessSecondaryCta": {
+    "description": "Secondary CTA on the withdraw success screen — same destination as primary; kept for visual parity."
+  },
+
+  "withdrawPendingTitle": "Withdrawal pending",
+  "@withdrawPendingTitle": {
+    "description": "Title of the pending outcome screen when the backend has accepted the withdraw but settlement hasn't confirmed yet."
+  },
+  "withdrawPendingBodyPrefix": "Your withdrawal of ",
+  "@withdrawPendingBodyPrefix": {
+    "description": "First inline span on the pending withdraw body."
+  },
+  "withdrawPendingBodySuffix": " to {provider} is being processed. We'll notify you once it settles.",
+  "@withdrawPendingBodySuffix": {
+    "description": "Trailing inline span on the pending withdraw body.",
+    "placeholders": {
+      "provider": { "type": "String", "example": "Wave" }
+    }
+  },
+  "withdrawPendingPrimaryCta": "Go back home",
+  "@withdrawPendingPrimaryCta": {
+    "description": "Primary CTA on the pending withdraw outcome screen."
+  },
+  "withdrawPendingSecondaryCta": "View transaction",
+  "@withdrawPendingSecondaryCta": {
+    "description": "Secondary CTA on the pending withdraw outcome — opens the transaction detail once that route is wired."
+  },
+
+  "withdrawFailedTitle": "Withdrawal failed",
+  "@withdrawFailedTitle": {
+    "description": "Title of the failed outcome screen when the backend rejected the withdraw."
+  },
+  "withdrawFailedBodyPrefix": "We couldn't send ",
+  "@withdrawFailedBodyPrefix": {
+    "description": "First inline span on the failed withdraw body."
+  },
+  "withdrawFailedBodySuffix": " to your {provider} account. No funds were taken from your wallet — please try again.",
+  "@withdrawFailedBodySuffix": {
+    "description": "Trailing inline span on the failed withdraw body — reassures the user no debit happened.",
+    "placeholders": {
+      "provider": { "type": "String", "example": "Wave" }
+    }
+  },
+  "withdrawFailedPrimaryCta": "Try again",
+  "@withdrawFailedPrimaryCta": {
+    "description": "Primary CTA on the failed withdraw outcome — pops back to the amount form so the user can retry with the same idempotency key."
+  },
+  "withdrawFailedSecondaryCta": "Go back home",
+  "@withdrawFailedSecondaryCta": {
+    "description": "Secondary CTA on the failed withdraw outcome — pops to home shell."
+  },
+
+  "discardChangesTitle": "Discard changes?",
+  "@discardChangesTitle": {
+    "description": "Title of the adaptive dialog shown when the user attempts to leave a dirty form screen via back gesture or chevron."
+  },
+  "discardChangesBody": "Your entries on this screen won't be saved.",
+  "@discardChangesBody": {
+    "description": "Body of the discard-changes dialog — neutral language; do not enumerate field names."
+  },
+  "discardChangesConfirm": "Discard",
+  "@discardChangesConfirm": {
+    "description": "Destructive CTA of the discard-changes dialog — confirms abandoning the form."
+  },
+  "discardChangesCancel": "Keep editing",
+  "@discardChangesCancel": {
+    "description": "Cancel CTA of the discard-changes dialog — returns the user to the form."
   }
 }

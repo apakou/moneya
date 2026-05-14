@@ -2,6 +2,7 @@ import 'package:country_flags/country_flags.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 
@@ -9,6 +10,7 @@ import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/back_chevron_button.dart';
+import '../../../../core/widgets/dirty_form_scope.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../auth/domain/supported_country.dart';
 import '../../../home/domain/supported_currency.dart';
@@ -41,11 +43,7 @@ import 'payment_confirm_screen.dart';
 /// no real lookup, no SMS, no balance debit. Confirm just `debugPrint`s
 /// the structured intent and pops.
 class TransferMoneyScreen extends StatefulWidget {
-  const TransferMoneyScreen({
-    required this.currency,
-    this.prefill,
-    super.key,
-  });
+  const TransferMoneyScreen({required this.currency, this.prefill, super.key});
 
   /// Currency the sender is debited in. Driven by the home screen's
   /// currency pill for now; will move to a Riverpod provider later.
@@ -87,6 +85,16 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
   String _amount = '2000'; // matches the mock; numeric string.
   final _purposeController = TextEditingController();
 
+  // Initial values captured after [initState] applies the prefill,
+  // used by [_isDirty] to decide whether the system-back / chevron
+  // should prompt a discard-changes dialog. Anything the user types
+  // (or any amount edit) flips the form to dirty.
+  late String _initialAmount;
+  late String _initialRecipientPhone;
+  late String _initialRecipientName;
+  late String _initialPurpose;
+  late String _initialSenderPhone;
+
   // Recipient directory lookup.
   final _lookupService = const RecipientLookupService();
   RecipientLookupResult? _lookupResult;
@@ -118,6 +126,14 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
         });
       }
     }
+    // Snapshot the starting field values *after* prefill is applied
+    // so prefilled flows aren't already considered dirty on first
+    // frame. See [_isDirty].
+    _initialAmount = _amount;
+    _initialRecipientPhone = _recipientPhoneController.text;
+    _initialRecipientName = _recipientNameController.text;
+    _initialPurpose = _purposeController.text;
+    _initialSenderPhone = _senderPhoneController.text;
   }
 
   @override
@@ -154,6 +170,33 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
       _recipientPhoneValid &&
       _recipientNameController.text.trim().isNotEmpty &&
       !_lookingUp;
+
+  /// Dirty if any user-editable field has diverged from the value it
+  /// held after [initState] (post-prefill). The country / provider
+  /// chips aren't tracked: switching them on their own is cheap to
+  /// undo and the user has explicit affordances to do so. Drives the
+  /// discard-changes dialog in [DirtyFormScope].
+  bool get _isDirty =>
+      _amount != _initialAmount ||
+      _recipientPhoneController.text != _initialRecipientPhone ||
+      _recipientNameController.text != _initialRecipientName ||
+      _purposeController.text != _initialPurpose ||
+      _senderPhoneController.text != _initialSenderPhone;
+
+  /// Back handler shared by the chevron and (via [DirtyFormScope])
+  /// the system back gesture. Unfocus first so the keyboard collapses
+  /// before the dialog paints, then route through
+  /// [DirtyFormScope.confirmAndPopIfDirty] which captures the
+  /// navigator before the dialog `await` and defers the actual pop to
+  /// a post-frame — required to avoid the "Looking up a deactivated
+  /// widget's ancestor is unsafe" crash that fires when popping
+  /// synchronously after the dialog while the chevron's Tooltip /
+  /// gesture ancestors are still draining post-tap callbacks.
+  Future<void> _onBack() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (!mounted) return;
+    await DirtyFormScope.confirmAndPopIfDirty(context, _isDirty);
+  }
 
   // -- Actions: amount / sender chips ----------------------------------------
   Future<void> _onAmountTap() async {
@@ -314,9 +357,7 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            AppLocalizations.of(context).transferContactNoPhone,
-          ),
+          content: Text(AppLocalizations.of(context).transferContactNoPhone),
         ),
       );
       return;
@@ -429,9 +470,7 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
       );
     } else {
       messenger.showSnackBar(
-        SnackBar(
-          content: Text(l10n.transferContactPermissionNeeded),
-        ),
+        SnackBar(content: Text(l10n.transferContactPermissionNeeded)),
       );
     }
   }
@@ -447,22 +486,20 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
       '(${_recipientNameController.text.trim()}) '
       '${isInvite ? "[SMS invite + escrow]" : "[direct]"}',
     );
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => PaymentConfirmScreen(
-          amount: _amount,
-          currency: widget.currency,
-          feeAmount: _feeValue,
-          netAmount: _payoutValue,
-          provider: _provider,
-          senderCountry: _senderCountry,
-          senderPhoneLocal: _senderPhoneController.text.trim(),
-          recipientCountry: _recipientCountry,
-          recipientPhoneLocal: _recipientPhoneController.text.trim(),
-          recipientName: _recipientNameController.text.trim(),
-          lookupResult: _lookupResult,
-          purpose: _purposeController.text.trim(),
-        ),
+    Get.to<void>(
+      () => PaymentConfirmScreen(
+        amount: _amount,
+        currency: widget.currency,
+        feeAmount: _feeValue,
+        netAmount: _payoutValue,
+        provider: _provider,
+        senderCountry: _senderCountry,
+        senderPhoneLocal: _senderPhoneController.text.trim(),
+        recipientCountry: _recipientCountry,
+        recipientPhoneLocal: _recipientPhoneController.text.trim(),
+        recipientName: _recipientNameController.text.trim(),
+        lookupResult: _lookupResult,
+        purpose: _purposeController.text.trim(),
       ),
     );
   }
@@ -479,172 +516,179 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
         systemNavigationBarColor: AppColors.black,
         systemNavigationBarIconBrightness: Brightness.light,
       ),
-      child: Scaffold(
-        backgroundColor: AppColors.black,
-        body: DecoratedBox(
-          decoration: const BoxDecoration(gradient: AppColors.brandGradient),
-          child: SafeArea(
-            child: Column(
-              children: [
-                _Header(onBack: () => Navigator.of(context).maybePop()),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Center(
-                          child: Text(
-                            l10n.transferTitle,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
+      // Guard back against losing typed recipient / amount / purpose
+      // edits. The chevron's `_onBack` and the system back gesture
+      // share the same dialog so the user sees identical UX on either
+      // path. See flutter-navigation skill §3 & §7.
+      child: DirtyFormScope(
+        isDirty: _isDirty,
+        child: Scaffold(
+          backgroundColor: AppColors.black,
+          body: DecoratedBox(
+            decoration: const BoxDecoration(gradient: AppColors.brandGradient),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  _Header(onBack: _onBack),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Center(
+                            child: Text(
+                              l10n.transferTitle,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                        _AmountCard(
-                          currencyCode: widget.currency.code,
-                          amount: _amount,
-                          onTap: _onAmountTap,
-                        ),
-                        const SizedBox(height: 28),
-                        // From ------------------------------------------------
-                        _SectionLabel(l10n.transferSectionFrom),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _CountryChip(
-                                country: _senderCountry,
-                                onTap: _onSenderCountryTap,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _ProviderChip(
-                                provider: _provider,
-                                onTap: _onProviderTap,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        _PhoneInputRow(
-                          country: _senderCountry,
-                          controller: _senderPhoneController,
-                          hint: l10n.transferSenderPhoneHint,
-                          onChanged: _onSenderPhoneChanged,
-                          onClear: () {
-                            _senderPhoneController.clear();
-                            _onSenderPhoneChanged('');
-                          },
-                        ),
-                        const SizedBox(height: 28),
-                        // To --------------------------------------------------
-                        _SectionLabel(l10n.transferSectionTo),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _CountryChip(
-                                country: _recipientCountry,
-                                onTap: _onRecipientCountryTap,
-                              ),
-                            ),
-                            // Reserve balance with the From row so the
-                            // To phone field aligns under the sender phone.
-                            const SizedBox(width: 12),
-                            const Spacer(),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        _PhoneInputRow(
-                          country: _recipientCountry,
-                          controller: _recipientPhoneController,
-                          hint: l10n.transferRecipientPhoneHint,
-                          onChanged: _onRecipientPhoneChanged,
-                          onClear: () {
-                            _recipientPhoneController.clear();
-                            _onRecipientPhoneChanged('');
-                          },
-                          // Show the contacts launcher only when the
-                          // field is empty — otherwise the clear button
-                          // (×) lives in that slot.
-                          trailingWhenEmpty: _ContactsLauncherButton(
-                            onTap: _onPickFromContacts,
+                          const SizedBox(height: 24),
+                          _AmountCard(
+                            currencyCode: widget.currency.code,
+                            amount: _amount,
+                            onTap: _onAmountTap,
                           ),
-                        ),
-                        if (_lookingUp || _lookupResult != null) ...[
+                          const SizedBox(height: 28),
+                          // From ------------------------------------------------
+                          _SectionLabel(l10n.transferSectionFrom),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _CountryChip(
+                                  country: _senderCountry,
+                                  onTap: _onSenderCountryTap,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _ProviderChip(
+                                  provider: _provider,
+                                  onTap: _onProviderTap,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          _PhoneInputRow(
+                            country: _senderCountry,
+                            controller: _senderPhoneController,
+                            hint: l10n.transferSenderPhoneHint,
+                            onChanged: _onSenderPhoneChanged,
+                            onClear: () {
+                              _senderPhoneController.clear();
+                              _onSenderPhoneChanged('');
+                            },
+                          ),
+                          const SizedBox(height: 28),
+                          // To --------------------------------------------------
+                          _SectionLabel(l10n.transferSectionTo),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _CountryChip(
+                                  country: _recipientCountry,
+                                  onTap: _onRecipientCountryTap,
+                                ),
+                              ),
+                              // Reserve balance with the From row so the
+                              // To phone field aligns under the sender phone.
+                              const SizedBox(width: 12),
+                              const Spacer(),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          _PhoneInputRow(
+                            country: _recipientCountry,
+                            controller: _recipientPhoneController,
+                            hint: l10n.transferRecipientPhoneHint,
+                            onChanged: _onRecipientPhoneChanged,
+                            onClear: () {
+                              _recipientPhoneController.clear();
+                              _onRecipientPhoneChanged('');
+                            },
+                            // Show the contacts launcher only when the
+                            // field is empty — otherwise the clear button
+                            // (×) lives in that slot.
+                            trailingWhenEmpty: _ContactsLauncherButton(
+                              onTap: _onPickFromContacts,
+                            ),
+                          ),
+                          if (_lookingUp || _lookupResult != null) ...[
+                            const SizedBox(height: 8),
+                            _LookupStatus(
+                              looking: _lookingUp,
+                              result: _lookupResult,
+                            ),
+                          ],
+                          const SizedBox(height: 12),
+                          _NameField(
+                            controller: _recipientNameController,
+                            // Lock the name when MoneyA already knows the
+                            // recipient — it's the source of truth.
+                            enabled: _lookupResult is! RecipientFound,
+                            onChanged: (_) => setState(() {}),
+                            onClear: () {
+                              _recipientNameController.clear();
+                              setState(() {});
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          _PurposeField(controller: _purposeController),
+                          const SizedBox(height: 24),
+                          _FeeRow(
+                            label: l10n.transferFeeLabel,
+                            value:
+                                '${widget.currency.code} ${_formatAmount(_feeValue)}',
+                          ),
                           const SizedBox(height: 8),
-                          _LookupStatus(
-                            looking: _lookingUp,
-                            result: _lookupResult,
+                          _FeeRow(
+                            label: l10n.transferRecipientReceivesLabel,
+                            value:
+                                '${widget.currency.code} ${_formatAmount(_payoutValue)}',
                           ),
+                          const SizedBox(height: 24),
                         ],
-                        const SizedBox(height: 12),
-                        _NameField(
-                          controller: _recipientNameController,
-                          // Lock the name when MoneyA already knows the
-                          // recipient — it's the source of truth.
-                          enabled: _lookupResult is! RecipientFound,
-                          onChanged: (_) => setState(() {}),
-                          onClear: () {
-                            _recipientNameController.clear();
-                            setState(() {});
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        _PurposeField(controller: _purposeController),
-                        const SizedBox(height: 24),
-                        _FeeRow(
-                          label: l10n.transferFeeLabel,
-                          value:
-                              '${widget.currency.code} ${_formatAmount(_feeValue)}',
-                        ),
-                        const SizedBox(height: 8),
-                        _FeeRow(
-                          label: l10n.transferRecipientReceivesLabel,
-                          value:
-                              '${widget.currency.code} ${_formatAmount(_payoutValue)}',
-                        ),
-                        const SizedBox(height: 24),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: _canConfirm ? _onConfirm : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        disabledBackgroundColor: Colors.white.withValues(
-                          alpha: 0.35,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: _canConfirm ? _onConfirm : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.white.withValues(
+                            alpha: 0.35,
+                          ),
+                          foregroundColor: AppColors.actionPurple,
+                          disabledForegroundColor: AppColors.actionPurple
+                              .withValues(alpha: 0.65),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
-                        foregroundColor: AppColors.actionPurple,
-                        disabledForegroundColor: AppColors.actionPurple
-                            .withValues(alpha: 0.65),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: Text(
-                        l10n.transferConfirmCta,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                        child: Text(
+                          l10n.transferConfirmCta,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -685,10 +729,7 @@ class _Header extends StatelessWidget {
       child: Row(
         children: [
           BackChevronButton(onTap: onBack, tooltip: l10n.commonBack),
-          Text(
-            l10n.transferHeaderTitle,
-            style: AppTextStyles.screenTitle,
-          ),
+          Text(l10n.transferHeaderTitle, style: AppTextStyles.screenTitle),
         ],
       ),
     );
@@ -738,10 +779,7 @@ class _AmountCard extends StatelessWidget {
                   ),
                 ),
                 HeroTextScaleClamp(
-                  child: Text(
-                    amount,
-                    style: AppTextStyles.heroAmount,
-                  ),
+                  child: Text(amount, style: AppTextStyles.heroAmount),
                 ),
               ],
             ),
@@ -1240,14 +1278,8 @@ class _FeeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Text(
-          '$label : ',
-          style: AppTextStyles.bodyMuted,
-        ),
-        Text(
-          value,
-          style: AppTextStyles.numeric(AppTextStyles.pillLabel),
-        ),
+        Text('$label : ', style: AppTextStyles.bodyMuted),
+        Text(value, style: AppTextStyles.numeric(AppTextStyles.pillLabel)),
       ],
     );
   }

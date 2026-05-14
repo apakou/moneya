@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
@@ -280,7 +281,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              _Header(onBack: () => Navigator.of(context).maybePop()),
+              _Header(onBack: Get.back),
               const SizedBox(height: 16),
               Expanded(
                 child: LayoutBuilder(
@@ -851,12 +852,21 @@ class _PillButton extends StatelessWidget {
                 else
                   Icon(icon, color: fg, size: 20),
                 const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: fg,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                // Flexible + ellipsis: the pill renders inside a 50/50
+                // Row at ~150dp per slot, so FR labels like "Télécharger
+                // PDF" or "Partager le reçu" don't fit at 15sp without
+                // a soft cap. Without this, the right edge clips at
+                // 360dp viewports and shows overflow stripes in debug.
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: fg,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],

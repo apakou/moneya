@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -69,7 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actionsPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
+            onPressed: () => Get.back<bool>(result: false),
             child: Text(
               l10n.commonCancel,
               style: TextStyle(
@@ -79,7 +80,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
+            onPressed: () => Get.back<bool>(result: true),
             child: Text(
               l10n.commonDelete,
               style: const TextStyle(
@@ -113,9 +114,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _Header(
-                  onBack: widget.showBackButton
-                      ? () => Navigator.of(context).maybePop()
-                      : null,
+                  onBack: widget.showBackButton ? Get.back : null,
                 ),
                 const SizedBox(height: 28),
                 _SectionLabel(l10n.settingsSectionSecurity),

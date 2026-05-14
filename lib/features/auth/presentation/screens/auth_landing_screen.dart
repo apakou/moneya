@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:get/get.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -23,11 +24,9 @@ class AuthLandingScreen extends StatelessWidget {
   }
 
   void _goToCreateAccount(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const CreateAccountScreen(),
-        settings: const RouteSettings(name: CreateAccountScreen.routeName),
-      ),
+    Get.to<void>(
+      () => const CreateAccountScreen(),
+      routeName: CreateAccountScreen.routeName,
     );
   }
 

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../../core/responsive/responsive_scale.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../widgets/onboarding_hero.dart';
 
 /// Onboarding step 2 — "Send money faster and cheaper".
@@ -13,8 +15,21 @@ class SendMoneyPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mediaWidth = MediaQuery.of(context).size.width;
-    final heroSide = mediaWidth * 0.82;
+    final l10n = AppLocalizations.of(context);
+    // Hero is 82% of the viewport width on phones (matches the
+    // original design feel) but capped at 440dp so it stops growing
+    // once we cross into tablet territory. Also capped at 38% of
+    // viewport height so on short 640dp phones (Tecno, Itel — explicit
+    // MoneyA target market) the hero never crowds the headline. FR
+    // headlines wrap to 3 lines and need the breathing room.
+    final heroSide = ResponsiveScale.clampSquare(
+      context: context,
+      minWidth: 360,
+      maxWidth: 600,
+      minValue: 360 * 0.82,
+      maxValue: 440,
+      maxHeightFraction: 0.38,
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -34,8 +49,8 @@ class SendMoneyPage extends StatelessWidget {
             ),
           ),
           const Spacer(flex: 3),
-          const Text(
-            'Send money faster and cheaper',
+          Text(
+            l10n.onboardingSendMoneyHeadline,
             textAlign: TextAlign.center,
             style: AppTextStyles.heroOnboarding,
           ),

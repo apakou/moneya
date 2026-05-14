@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../../../home/domain/supported_currency.dart';
 import '../widgets/transfer_outcome_scaffold.dart';
@@ -58,13 +59,17 @@ class PaymentPendingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final navigator = Navigator.of(context);
     final amountSpan = '${currency.code} $netAmount';
     final reasonSuffix = reason == null || reason!.isEmpty
         ? ' We\'ll notify you once it settles, usually within '
               'a few minutes.'
         : ' $reason';
-    return TransferOutcomeScaffold(
+    return PopScope(
+      // Terminal screen: predictive back must not return to the
+      // (already-replaced) confirm form. Primary/secondary CTAs are
+      // the only sanctioned exits. See flutter-navigation skill §4.
+      canPop: false,
+      child: TransferOutcomeScaffold(
       // Amber/orange — neutral "in progress" tint that doesn't read
       // as success or failure.
       glyphColor: const Color(0xFFF5A524),
@@ -83,12 +88,8 @@ class PaymentPendingScreen extends StatelessWidget {
       ),
       primaryLabel: 'Send more money',
       onPrimary: () {
-        navigator.popUntil((r) => r.isFirst);
-        navigator.push(
-          MaterialPageRoute<void>(
-            builder: (_) => TransferMoneyScreen(currency: currency),
-          ),
-        );
+        Get.until((r) => r.isFirst);
+        Get.to<void>(() => TransferMoneyScreen(currency: currency));
       },
       secondaryLabel: 'View transaction',
       onSecondary: () {
@@ -98,8 +99,9 @@ class PaymentPendingScreen extends StatelessWidget {
         debugPrint(
           '[PaymentPendingScreen] TODO open transaction id=$transactionId',
         );
-        navigator.popUntil((r) => r.isFirst);
+        Get.until((r) => r.isFirst);
       },
+      ),
     );
   }
 }

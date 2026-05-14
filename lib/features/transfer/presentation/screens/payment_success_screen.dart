@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../../../home/domain/supported_currency.dart';
 import '../widgets/transfer_outcome_scaffold.dart';
@@ -49,12 +50,16 @@ class PaymentSuccessScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final navigator = Navigator.of(context);
     final amountSpan = '${currency.code} $netAmount';
     final title = isInvite
         ? 'Invite Sent Successfully'
         : 'Transfer Done Successfully';
-    return TransferOutcomeScaffold(
+    return PopScope(
+      // Terminal screen: predictive back must not return to the
+      // (already-replaced) confirm form. Primary/secondary CTAs are
+      // the only sanctioned exits. See flutter-navigation skill §4.
+      canPop: false,
+      child: TransferOutcomeScaffold(
       glyphColor: const Color(0xFF2BC46A),
       glyphIcon: Icons.check_rounded,
       title: title,
@@ -84,17 +89,14 @@ class PaymentSuccessScreen extends StatelessWidget {
         // Pop down to HomeShell, then re-open Send Money with the
         // same currency so the user lands on a fresh transfer screen
         // with one tap.
-        navigator.popUntil((r) => r.isFirst);
-        navigator.push(
-          MaterialPageRoute<void>(
-            builder: (_) => TransferMoneyScreen(currency: currency),
-          ),
-        );
+        Get.until((r) => r.isFirst);
+        Get.to<void>(() => TransferMoneyScreen(currency: currency));
       },
       secondaryLabel: 'Go back home',
       onSecondary: () {
-        navigator.popUntil((r) => r.isFirst);
+        Get.until((r) => r.isFirst);
       },
+      ),
     );
   }
 }

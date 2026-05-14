@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:get/get.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../onboarding/presentation/screens/onboarding_screen.dart';
@@ -44,9 +45,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void _goToOnboarding() {
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => const OnboardingScreen()),
-    );
+    Get.off<void>(() => const OnboardingScreen());
   }
 
   @override

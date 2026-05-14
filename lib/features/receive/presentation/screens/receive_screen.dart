@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:gal/gal.dart';
+import 'package:get/get.dart';
 import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
@@ -12,6 +13,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/back_chevron_button.dart';
+import '../../../../core/widgets/dirty_form_scope.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../home/domain/supported_currency.dart';
 import '../../../home/domain/user_profile.dart';
@@ -49,52 +51,85 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
   /// 0 = Account, 1 = QR, 2 = Request.
   int _tab = 0;
 
+  /// Whether the Request tab has any user-entered content. Reported
+  /// up from `_RequestTab` via [_onRequestDirtyChanged] so the parent
+  /// can decide whether to prompt discard-changes on back. Account /
+  /// QR tabs have no user input, so dirty-tracking is gated on
+  /// `_tab == 2` regardless.
+  bool _requestDirty = false;
+
+  void _onRequestDirtyChanged(bool dirty) {
+    if (dirty == _requestDirty) return;
+    setState(() => _requestDirty = dirty);
+  }
+
+  bool get _isDirty => _tab == 2 && _requestDirty;
+
+  /// Back handler shared by the chevron and the system back gesture
+  /// (via [DirtyFormScope]). Prompts discard-changes if the Request
+  /// tab has unsaved input; the Account / QR tabs always pop without
+  /// confirmation. Pop is deferred a frame inside
+  /// [DirtyFormScope.confirmAndPopIfDirty] to avoid the deactivated-
+  /// ancestor crash that fires when popping synchronously after the
+  /// dialog.
+  Future<void> _onBack() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (!mounted) return;
+    await DirtyFormScope.confirmAndPopIfDirty(context, _isDirty);
+  }
+
   /// Mock signed-in user. Replace with `ref.watch(userProvider)` once
   /// Riverpod lands.
   final UserProfile _user = kMockUser;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: DecoratedBox(
-        decoration: const BoxDecoration(gradient: AppColors.brandGradient),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _Header(onBack: () => Navigator.of(context).maybePop()),
-              const SizedBox(height: 4),
-              _TabSwitcher(
-                selected: _tab,
-                onChanged: (i) => setState(() => _tab = i),
-              ),
-              const SizedBox(height: 18),
-              Expanded(
-                // IndexedStack keeps all three tabs mounted simultaneously
-                // and only paints the active one. This is intentional:
-                //
-                // 1. Fixes a "Looking up a deactivated widget's ancestor
-                //    is unsafe" crash that fired when navigating
-                //    Request → QR. The previous AnimatedSwitcher tore the
-                //    outgoing tab subtree down during a cross-fade, and
-                //    descendants of the QR card (RepaintBoundary +
-                //    SvgPicture wordmark) performed inherited-widget
-                //    lookups during their dispose pass.
-                // 2. Preserves the Request tab's phone / amount / note
-                //    input state across accidental tab toggles.
-                // 3. Avoids re-decoding the QR SVG wordmark every time
-                //    the user lands on the QR tab.
-                child: IndexedStack(
-                  index: _tab,
-                  sizing: StackFit.expand,
-                  children: [
-                    _AccountTab(user: _user),
-                    _QrTab(user: _user),
-                    _RequestTab(defaultCurrency: widget.currency),
-                  ],
+    return DirtyFormScope(
+      isDirty: _isDirty,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: DecoratedBox(
+          decoration: const BoxDecoration(gradient: AppColors.brandGradient),
+          child: SafeArea(
+            child: Column(
+              children: [
+                _Header(onBack: _onBack),
+                const SizedBox(height: 4),
+                _TabSwitcher(
+                  selected: _tab,
+                  onChanged: (i) => setState(() => _tab = i),
                 ),
-              ),
-            ],
+                const SizedBox(height: 18),
+                Expanded(
+                  // IndexedStack keeps all three tabs mounted simultaneously
+                  // and only paints the active one. This is intentional:
+                  //
+                  // 1. Fixes a "Looking up a deactivated widget's ancestor
+                  //    is unsafe" crash that fired when navigating
+                  //    Request → QR. The previous AnimatedSwitcher tore the
+                  //    outgoing tab subtree down during a cross-fade, and
+                  //    descendants of the QR card (RepaintBoundary +
+                  //    SvgPicture wordmark) performed inherited-widget
+                  //    lookups during their dispose pass.
+                  // 2. Preserves the Request tab's phone / amount / note
+                  //    input state across accidental tab toggles.
+                  // 3. Avoids re-decoding the QR SVG wordmark every time
+                  //    the user lands on the QR tab.
+                  child: IndexedStack(
+                    index: _tab,
+                    sizing: StackFit.expand,
+                    children: [
+                      _AccountTab(user: _user),
+                      _QrTab(user: _user),
+                      _RequestTab(
+                        defaultCurrency: widget.currency,
+                        onDirtyChanged: _onRequestDirtyChanged,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -168,10 +203,7 @@ class _Header extends StatelessWidget {
           // "Receive, heading" — establishes navigation landmark.
           Semantics(
             header: true,
-            child: Text(
-              l10n.receiveTitle,
-              style: AppTextStyles.screenTitle,
-            ),
+            child: Text(l10n.receiveTitle, style: AppTextStyles.screenTitle),
           ),
         ],
       ),
@@ -553,8 +585,8 @@ class _QrTabState extends State<_QrTab> {
   /// the layout has settled). Uses `pixelRatio: 3.0` so the resulting
   /// image is sharp on hi-DPI receiving devices.
   Future<Uint8List?> _captureQrPng() async {
-    final boundary = _qrCardKey.currentContext?.findRenderObject()
-        as RenderRepaintBoundary?;
+    final boundary =
+        _qrCardKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
     if (boundary == null) return null;
     final image = await boundary.toImage(pixelRatio: 3.0);
     final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
@@ -885,9 +917,14 @@ class _QrCard extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _RequestTab extends StatefulWidget {
-  const _RequestTab({required this.defaultCurrency});
+  const _RequestTab({required this.defaultCurrency, this.onDirtyChanged});
 
   final SupportedCurrency defaultCurrency;
+
+  /// Bubbles the tab's dirty state up to the parent so the receive
+  /// screen can decide whether to prompt discard-changes on back.
+  /// Fires only when the boolean value flips, not on every keystroke.
+  final ValueChanged<bool>? onDirtyChanged;
 
   @override
   State<_RequestTab> createState() => _RequestTabState();
@@ -904,12 +941,29 @@ class _RequestTabState extends State<_RequestTab> {
   RecipientLookupResult? _lookupResult;
   bool _looking = false;
 
+  /// Cached last-reported dirty state so we only ping the parent on
+  /// real edge transitions (any → none, none → any).
+  bool _wasDirty = false;
+
+  bool get _isDirty =>
+      _phoneController.text.isNotEmpty ||
+      _amountController.text.isNotEmpty ||
+      _noteController.text.isNotEmpty;
+
+  void _notifyDirty() {
+    final now = _isDirty;
+    if (now == _wasDirty) return;
+    _wasDirty = now;
+    widget.onDirtyChanged?.call(now);
+  }
+
   @override
   void initState() {
     super.initState();
     _currency = widget.defaultCurrency;
     _phoneController.addListener(_onPhoneChanged);
     _amountController.addListener(_recomputeCanSubmit);
+    _noteController.addListener(_notifyDirty);
   }
 
   @override
@@ -928,6 +982,7 @@ class _RequestTabState extends State<_RequestTab> {
   /// screen owns the canonical phone parsing; for the request flow the
   /// MVP just needs a plausible MoneyA phone to attach the request to.
   void _onPhoneChanged() {
+    _notifyDirty();
     final raw = _phoneController.text;
     final digits = raw.replaceAll(RegExp(r'\D'), '');
     if (digits.length < 9) {
@@ -953,15 +1008,14 @@ class _RequestTabState extends State<_RequestTab> {
   }
 
   void _recomputeCanSubmit() {
+    _notifyDirty();
     // Touch state so the swipe button enabled/disabled mirror flips.
     setState(() {});
   }
 
   bool get _canSubmit {
     final amount = double.tryParse(_amountController.text);
-    return _lookupResult is RecipientFound &&
-        amount != null &&
-        amount > 0;
+    return _lookupResult is RecipientFound && amount != null && amount > 0;
   }
 
   Future<void> _pickCurrency() async {
@@ -989,13 +1043,11 @@ class _RequestTabState extends State<_RequestTab> {
       'amount=${_currency.code} $amount, note="$note"',
     );
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(
-        builder: (_) => _RequestSentScreen(
-          recipientName: found.displayName,
-          currencyCode: _currency.code,
-          amount: amount,
-        ),
+    Get.off<void>(
+      () => _RequestSentScreen(
+        recipientName: found.displayName,
+        currencyCode: _currency.code,
+        amount: amount,
       ),
     );
   }
@@ -1034,8 +1086,8 @@ class _RequestTabState extends State<_RequestTab> {
               ),
               const SizedBox(height: 24),
               _RequestSectionLabel(l10n.receiveRequestNoteLabel),
-               const SizedBox(height: 10),
-               _NoteField(controller: _noteController),
+              const SizedBox(height: 10),
+              _NoteField(controller: _noteController),
             ],
           ),
         ),
@@ -1080,10 +1132,7 @@ class _RequestSectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label.toUpperCase(),
-      style: AppTextStyles.trackedLabel,
-    );
+    return Text(label.toUpperCase(), style: AppTextStyles.trackedLabel);
   }
 }
 
@@ -1518,41 +1567,42 @@ class _RequestSentScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return TransferOutcomeScaffold(
-      glyphColor: AppColors.success,
-      glyphIcon: Icons.send_rounded,
-      title: l10n.receiveRequestOutcomeTitle,
-      body: TransferOutcomeBody(
-        spans: [
-          TransferOutcomeBody.muted(l10n.receiveRequestOutcomeBodyPrefix),
-          TransferOutcomeBody.bold(recipientName),
-          TransferOutcomeBody.muted(l10n.receiveRequestOutcomeBodyMiddle),
-          TransferOutcomeBody.bold('$currencyCode $amount'),
-          TransferOutcomeBody.muted(l10n.receiveRequestOutcomeBodySuffix),
-        ],
+    // Terminal outcome — back must not return to the request form
+    // (re-submission risk). Predictive back is a no-op here; the
+    // user exits via the primary CTA. See flutter-navigation §4/§5.
+    return PopScope(
+      canPop: false,
+      child: TransferOutcomeScaffold(
+        glyphColor: AppColors.success,
+        glyphIcon: Icons.send_rounded,
+        title: l10n.receiveRequestOutcomeTitle,
+        body: TransferOutcomeBody(
+          spans: [
+            TransferOutcomeBody.muted(l10n.receiveRequestOutcomeBodyPrefix),
+            TransferOutcomeBody.bold(recipientName),
+            TransferOutcomeBody.muted(l10n.receiveRequestOutcomeBodyMiddle),
+            TransferOutcomeBody.bold('$currencyCode $amount'),
+            TransferOutcomeBody.muted(l10n.receiveRequestOutcomeBodySuffix),
+          ],
+        ),
+        primaryLabel: l10n.receiveRequestOutcomePrimary,
+        onPrimary: () {
+          // Pop back to the root (HomeShell). With GetX the global
+          // navigator is stable; no need to capture state ahead of
+          // time the way Navigator.of(context) once required.
+          Get.until((r) => r.isFirst);
+        },
+        secondaryLabel: l10n.receiveRequestOutcomeSecondary,
+        onSecondary: () {
+          // Hand the request summary off to the platform share sheet so
+          // the user can also nudge the recipient via WhatsApp/SMS in
+          // case the in-app notification gets missed.
+          Share.share(
+            l10n.receiveRequestShareBody(recipientName, currencyCode, amount),
+            subject: l10n.receiveRequestShareSubject,
+          );
+        },
       ),
-      primaryLabel: l10n.receiveRequestOutcomePrimary,
-      onPrimary: () {
-        // Capture the navigator before doing anything else — the
-        // TransferOutcomeScaffold's button ripple may still be in
-        // flight when this fires, and looking up Navigator.of via the
-        // button's deactivated context throws "deactivated widget's
-        // ancestor is unsafe". Pull the navigator off this screen's
-        // own (stable) context, then pop back to root.
-        final navigator = Navigator.of(context);
-        if (!navigator.mounted) return;
-        navigator.popUntil((r) => r.isFirst);
-      },
-      secondaryLabel: l10n.receiveRequestOutcomeSecondary,
-      onSecondary: () {
-        // Hand the request summary off to the platform share sheet so
-        // the user can also nudge the recipient via WhatsApp/SMS in
-        // case the in-app notification gets missed.
-        Share.share(
-          l10n.receiveRequestShareBody(recipientName, currencyCode, amount),
-          subject: l10n.receiveRequestShareSubject,
-        );
-      },
     );
   }
 }

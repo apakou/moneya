@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -41,12 +42,10 @@ class _ChooseKycDocumentScreenState extends State<ChooseKycDocumentScreen> {
   KycDocumentType _selected = KycDocumentType.nationalId;
 
   void _onContinue() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => CaptureDocumentScreen(
-          documentType: _selected,
-          side: DocumentSide.front,
-        ),
+    Get.to<void>(
+      () => CaptureDocumentScreen(
+        documentType: _selected,
+        side: DocumentSide.front,
       ),
     );
   }
@@ -72,7 +71,7 @@ class _ChooseKycDocumentScreenState extends State<ChooseKycDocumentScreen> {
                   top: 4,
                   left: 4,
                   child: BackChevronButton(
-                    onTap: () => Navigator.of(context).maybePop(),
+                    onTap: Get.back,
                     tooltip: l10n.commonBack,
                     icon: Icons.arrow_back_ios_new_rounded,
                     iconSize: 20,

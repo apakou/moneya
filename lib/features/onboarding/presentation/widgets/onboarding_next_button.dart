@@ -3,11 +3,17 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 
 /// Primary pill-shaped "Next" action used throughout onboarding.
+///
+/// The button is purely presentational — the caller supplies the
+/// localized [label] string. We deliberately do NOT default it to
+/// "Next" or reach into `AppLocalizations` here, because that would
+/// couple this low-level widget to the l10n delegate and bake an
+/// English fallback into a translated app.
 class OnboardingNextButton extends StatelessWidget {
   const OnboardingNextButton({
     super.key,
     required this.onPressed,
-    this.label = 'Next',
+    required this.label,
   });
 
   final VoidCallback? onPressed;
@@ -64,9 +70,14 @@ class OnboardingNextButton extends StatelessWidget {
 
 /// Top-right text shortcut that skips the remaining onboarding steps.
 class OnboardingSkipButton extends StatelessWidget {
-  const OnboardingSkipButton({super.key, required this.onPressed});
+  const OnboardingSkipButton({
+    super.key,
+    required this.onPressed,
+    required this.label,
+  });
 
   final VoidCallback onPressed;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -76,9 +87,9 @@ class OnboardingSkipButton extends StatelessWidget {
         foregroundColor: AppColors.onBrand,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
-      child: const Text(
-        'Skip',
-        style: TextStyle(
+      child: Text(
+        label,
+        style: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w500,
           color: AppColors.onBrand,
@@ -90,9 +101,14 @@ class OnboardingSkipButton extends StatelessWidget {
 
 /// Bottom-left dark translucent pill used to go to the previous onboarding step.
 class OnboardingBackButton extends StatelessWidget {
-  const OnboardingBackButton({super.key, required this.onPressed});
+  const OnboardingBackButton({
+    super.key,
+    required this.onPressed,
+    required this.label,
+  });
 
   final VoidCallback onPressed;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -110,20 +126,20 @@ class OnboardingBackButton extends StatelessWidget {
               width: 1,
             ),
           ),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
+                const Icon(
                   Icons.chevron_left_rounded,
                   color: AppColors.onBrand,
                   size: 24,
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Text(
-                  'Back',
-                  style: TextStyle(
+                  label,
+                  style: const TextStyle(
                     color: AppColors.onBrand,
                     fontSize: 18,
                     fontWeight: FontWeight.w600,

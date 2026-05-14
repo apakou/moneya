@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/back_chevron_button.dart';
+import '../../../../core/widgets/safe_pop.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import 'passcode_screen.dart';
 
@@ -117,11 +119,12 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> {
     final code = _controllers.map((c) => c.text).join();
     if (code.length != VerifyPhoneScreen.codeLength) return;
     if (code == _stubCorrectCode) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(
-          builder: (_) => const PasscodeScreen(mode: PasscodeMode.set),
-        ),
-      );
+      // `Get.off` (not `Get.to`) so the verified phone screen is
+      // dropped from the stack. Once OTP is consumed it can't be
+      // re-entered — a back gesture from passcode-set should exit the
+      // auth flow entirely, not let the user resubmit the same code.
+      // See flutter-navigation skill §4 (KYC wizard pattern).
+      Get.off<void>(() => const PasscodeScreen(mode: PasscodeMode.set));
       return;
     }
     _showIncorrectCodeSheet();
@@ -197,7 +200,7 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> {
                   top: 4,
                   left: 4,
                   child: BackChevronButton(
-                    onTap: () => Navigator.of(context).maybePop(),
+                    onTap: Get.back,
                     tooltip: l10n.commonBack,
                     icon: Icons.arrow_back_ios_new_rounded,
                     iconSize: 20,
@@ -478,7 +481,7 @@ class _IncorrectCodeSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 28),
-            _GotItButton(onPressed: () => Navigator.of(context).pop()),
+            _GotItButton(onPressed: () => popAfterFrame(context)),
           ],
         ),
       ),

@@ -39,6 +39,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeActionReceive => 'Receive';
 
   @override
+  String get homeActionLoad => 'Load Money';
+
+  @override
+  String get homeActionWithdraw => 'Withdraw';
+
+  @override
   String get homeSectionAiInsights => 'AI Insights';
 
   @override
@@ -818,4 +824,193 @@ class AppLocalizationsEn extends AppLocalizations {
   String receiveRequestShareBody(String name, String currency, String amount) {
     return 'Hi $name — I just sent you a payment request for $currency $amount on MoneyA. Open the app to pay.';
   }
+
+  @override
+  String get onboardingLanguageHeadline => 'Which language are you speaking?';
+
+  @override
+  String get onboardingSendMoneyHeadline => 'Send money faster and cheaper';
+
+  @override
+  String get onboardingCrossCorridorHeadline =>
+      'Between African francophone\nand anglophone countries';
+
+  @override
+  String get onboardingNext => 'Next';
+
+  @override
+  String get onboardingSkip => 'Skip';
+
+  @override
+  String get onboardingBack => 'Back';
+
+  @override
+  String get loadProviderHeaderTitle => 'Load money';
+
+  @override
+  String get loadProviderSubtitle =>
+      'Pick the mobile money account you want to load from.';
+
+  @override
+  String get loadProviderCountryLabel => 'Country';
+
+  @override
+  String get loadProviderListLabel => 'Mobile money providers';
+
+  @override
+  String get loadProviderEmptyMessage =>
+      'No mobile money providers are available in this country yet.';
+
+  @override
+  String get loadAmountHeaderTitle => 'Load money';
+
+  @override
+  String get loadAmountTitle => 'How much do you want to load?';
+
+  @override
+  String get loadAmountFromLabel => 'From';
+
+  @override
+  String get loadAmountSourcePhoneHint => 'Mobile money number';
+
+  @override
+  String get loadAmountSwipeLabel => 'Swipe to load';
+
+  @override
+  String loadAmountOverLimit(String currency, String max, String tier) {
+    return 'Amount exceeds your $tier limit of $currency $max. Upgrade your account to load more.';
+  }
+
+  @override
+  String loadAmountLimitHint(String currency, String max) {
+    return 'Daily limit: $currency $max';
+  }
+
+  @override
+  String get loadSuccessTitle => 'Load request sent';
+
+  @override
+  String get loadSuccessBodyPrefix => 'You\'ll receive ';
+
+  @override
+  String loadSuccessBodySuffix(String provider) {
+    return ' in your MoneyA balance after you authorize the debit on $provider.';
+  }
+
+  @override
+  String get loadSuccessPrimaryCta => 'Go back home';
+
+  @override
+  String get loadSuccessSecondaryCta => 'Done';
+
+  @override
+  String get withdrawProviderHeaderTitle => 'Withdraw';
+
+  @override
+  String get withdrawProviderSubtitle =>
+      'Pick the mobile money account you want to send your funds to.';
+
+  @override
+  String get withdrawProviderCountryLabel => 'Country';
+
+  @override
+  String get withdrawProviderListLabel => 'Mobile money providers';
+
+  @override
+  String get withdrawProviderEmptyMessage =>
+      'No mobile money providers are available in this country yet.';
+
+  @override
+  String get withdrawAmountHeaderTitle => 'Withdraw';
+
+  @override
+  String get withdrawAmountTitle => 'How much do you want to withdraw?';
+
+  @override
+  String get withdrawAmountToLabel => 'To';
+
+  @override
+  String get withdrawAmountDestinationPhoneHint => 'Mobile money number';
+
+  @override
+  String get withdrawAmountSwipeLabel => 'Swipe to withdraw';
+
+  @override
+  String withdrawAmountOverLimit(String currency, String max, String tier) {
+    return 'Amount exceeds your $tier limit of $currency $max. Upgrade your account to withdraw more.';
+  }
+
+  @override
+  String withdrawAmountInsufficientBalance(String currency, String balance) {
+    return 'You only have $currency $balance available. Lower the amount or load more money first.';
+  }
+
+  @override
+  String withdrawAmountLimitHint(String currency, String balance) {
+    return 'Available balance: $currency $balance';
+  }
+
+  @override
+  String get withdrawSuccessTitle => 'Withdrawal sent';
+
+  @override
+  String get withdrawSuccessBodyPrefix => 'We\'re sending ';
+
+  @override
+  String withdrawSuccessBodySuffix(String provider) {
+    return ' to your $provider account. It usually arrives within a few minutes.';
+  }
+
+  @override
+  String get withdrawSuccessPrimaryCta => 'Go back home';
+
+  @override
+  String get withdrawSuccessSecondaryCta => 'Done';
+
+  @override
+  String get withdrawPendingTitle => 'Withdrawal pending';
+
+  @override
+  String get withdrawPendingBodyPrefix => 'Your withdrawal of ';
+
+  @override
+  String withdrawPendingBodySuffix(String provider) {
+    return ' to $provider is being processed. We\'ll notify you once it settles.';
+  }
+
+  @override
+  String get withdrawPendingPrimaryCta => 'Go back home';
+
+  @override
+  String get withdrawPendingSecondaryCta => 'View transaction';
+
+  @override
+  String get withdrawFailedTitle => 'Withdrawal failed';
+
+  @override
+  String get withdrawFailedBodyPrefix => 'We couldn\'t send ';
+
+  @override
+  String withdrawFailedBodySuffix(String provider) {
+    return ' to your $provider account. No funds were taken from your wallet — please try again.';
+  }
+
+  @override
+  String get withdrawFailedPrimaryCta => 'Try again';
+
+  @override
+  String get withdrawFailedSecondaryCta => 'Go back home';
+
+  @override
+  String get discardChangesTitle => 'Discard changes?';
+
+  @override
+  String get discardChangesBody =>
+      'Your entries on this screen won\'t be saved.';
+
+  @override
+  String get discardChangesConfirm => 'Discard';
+
+  @override
+  String get discardChangesCancel => 'Keep editing';
 }

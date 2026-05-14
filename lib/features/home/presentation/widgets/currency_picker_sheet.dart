@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/safe_pop.dart';
 import '../../domain/supported_currency.dart';
 
 /// Modal bottom sheet listing the currencies the user can switch to on
@@ -92,7 +93,7 @@ class _CurrencyPickerSheet extends StatelessWidget {
                     return _CurrencyRow(
                       currency: c,
                       isSelected: c == selected,
-                      onTap: () => Navigator.of(context).pop(c),
+                      onTap: () => popAfterFrame<SupportedCurrency>(context, c),
                     );
                   },
                 ),

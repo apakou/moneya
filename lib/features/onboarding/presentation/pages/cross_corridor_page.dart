@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/responsive/responsive_scale.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 
 /// Onboarding step 3 — "Between African francophone and anglophone countries".
 ///
@@ -11,8 +13,20 @@ class CrossCorridorPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mediaWidth = MediaQuery.of(context).size.width;
-    final heroSide = mediaWidth * 0.82;
+    final l10n = AppLocalizations.of(context);
+    // Hero scales 82% of viewport on phones, capped at 440dp on
+    // tablets, and additionally capped at 38% of viewport height so
+    // the FR headline ("Entre pays francophones et anglophones
+    // d'Afrique") — which wraps to 3 lines — never gets pushed off
+    // the bottom of a 640dp screen. See SendMoneyPage for rationale.
+    final heroSide = ResponsiveScale.clampSquare(
+      context: context,
+      minWidth: 360,
+      maxWidth: 600,
+      minValue: 360 * 0.82,
+      maxValue: 440,
+      maxHeightFraction: 0.38,
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -28,8 +42,8 @@ class CrossCorridorPage extends StatelessWidget {
             ),
           ),
           const Spacer(flex: 3),
-          const Text(
-            'Between African francophone\nand anglophone countries',
+          Text(
+            l10n.onboardingCrossCorridorHeadline,
             textAlign: TextAlign.center,
             style: AppTextStyles.heroOnboarding,
           ),

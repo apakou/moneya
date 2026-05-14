@@ -39,6 +39,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get homeActionReceive => 'Recevoir';
 
   @override
+  String get homeActionLoad => 'Recharger';
+
+  @override
+  String get homeActionWithdraw => 'Retirer';
+
+  @override
   String get homeSectionAiInsights => 'Insights IA';
 
   @override
@@ -828,4 +834,194 @@ class AppLocalizationsFr extends AppLocalizations {
   String receiveRequestShareBody(String name, String currency, String amount) {
     return 'Bonjour $name — je viens de vous envoyer une demande de paiement de $currency $amount sur MoneyA. Ouvrez l\'application pour payer.';
   }
+
+  @override
+  String get onboardingLanguageHeadline => 'Quelle langue parlez-vous ?';
+
+  @override
+  String get onboardingSendMoneyHeadline =>
+      'Envoyez de l\'argent plus vite et moins cher';
+
+  @override
+  String get onboardingCrossCorridorHeadline =>
+      'Entre pays africains francophones\net anglophones';
+
+  @override
+  String get onboardingNext => 'Suivant';
+
+  @override
+  String get onboardingSkip => 'Passer';
+
+  @override
+  String get onboardingBack => 'Retour';
+
+  @override
+  String get loadProviderHeaderTitle => 'Charger de l\'argent';
+
+  @override
+  String get loadProviderSubtitle =>
+      'Choisissez le compte mobile money à débiter.';
+
+  @override
+  String get loadProviderCountryLabel => 'Pays';
+
+  @override
+  String get loadProviderListLabel => 'Opérateurs mobile money';
+
+  @override
+  String get loadProviderEmptyMessage =>
+      'Aucun opérateur mobile money n\'est encore disponible dans ce pays.';
+
+  @override
+  String get loadAmountHeaderTitle => 'Charger de l\'argent';
+
+  @override
+  String get loadAmountTitle => 'Combien voulez-vous charger ?';
+
+  @override
+  String get loadAmountFromLabel => 'Depuis';
+
+  @override
+  String get loadAmountSourcePhoneHint => 'Numéro mobile money';
+
+  @override
+  String get loadAmountSwipeLabel => 'Glissez pour charger';
+
+  @override
+  String loadAmountOverLimit(String currency, String max, String tier) {
+    return 'Le montant dépasse votre limite $tier de $currency $max. Mettez à niveau votre compte pour charger plus.';
+  }
+
+  @override
+  String loadAmountLimitHint(String currency, String max) {
+    return 'Limite quotidienne : $currency $max';
+  }
+
+  @override
+  String get loadSuccessTitle => 'Demande de chargement envoyée';
+
+  @override
+  String get loadSuccessBodyPrefix => 'Vous recevrez ';
+
+  @override
+  String loadSuccessBodySuffix(String provider) {
+    return ' sur votre solde MoneyA après avoir autorisé le débit sur $provider.';
+  }
+
+  @override
+  String get loadSuccessPrimaryCta => 'Retour à l\'accueil';
+
+  @override
+  String get loadSuccessSecondaryCta => 'Terminé';
+
+  @override
+  String get withdrawProviderHeaderTitle => 'Retirer';
+
+  @override
+  String get withdrawProviderSubtitle =>
+      'Choisissez le compte mobile money à créditer.';
+
+  @override
+  String get withdrawProviderCountryLabel => 'Pays';
+
+  @override
+  String get withdrawProviderListLabel => 'Opérateurs mobile money';
+
+  @override
+  String get withdrawProviderEmptyMessage =>
+      'Aucun opérateur mobile money n\'est encore disponible dans ce pays.';
+
+  @override
+  String get withdrawAmountHeaderTitle => 'Retirer';
+
+  @override
+  String get withdrawAmountTitle => 'Combien voulez-vous retirer ?';
+
+  @override
+  String get withdrawAmountToLabel => 'Vers';
+
+  @override
+  String get withdrawAmountDestinationPhoneHint => 'Numéro mobile money';
+
+  @override
+  String get withdrawAmountSwipeLabel => 'Glissez pour retirer';
+
+  @override
+  String withdrawAmountOverLimit(String currency, String max, String tier) {
+    return 'Le montant dépasse votre limite $tier de $currency $max. Mettez à niveau votre compte pour retirer plus.';
+  }
+
+  @override
+  String withdrawAmountInsufficientBalance(String currency, String balance) {
+    return 'Vous disposez seulement de $currency $balance. Réduisez le montant ou chargez de l\'argent d\'abord.';
+  }
+
+  @override
+  String withdrawAmountLimitHint(String currency, String balance) {
+    return 'Solde disponible : $currency $balance';
+  }
+
+  @override
+  String get withdrawSuccessTitle => 'Retrait envoyé';
+
+  @override
+  String get withdrawSuccessBodyPrefix => 'Nous envoyons ';
+
+  @override
+  String withdrawSuccessBodySuffix(String provider) {
+    return ' sur votre compte $provider. L\'argent arrive généralement en quelques minutes.';
+  }
+
+  @override
+  String get withdrawSuccessPrimaryCta => 'Retour à l\'accueil';
+
+  @override
+  String get withdrawSuccessSecondaryCta => 'Terminé';
+
+  @override
+  String get withdrawPendingTitle => 'Retrait en attente';
+
+  @override
+  String get withdrawPendingBodyPrefix => 'Votre retrait de ';
+
+  @override
+  String withdrawPendingBodySuffix(String provider) {
+    return ' vers $provider est en cours de traitement. Nous vous informerons dès qu\'il sera finalisé.';
+  }
+
+  @override
+  String get withdrawPendingPrimaryCta => 'Retour à l\'accueil';
+
+  @override
+  String get withdrawPendingSecondaryCta => 'Voir la transaction';
+
+  @override
+  String get withdrawFailedTitle => 'Échec du retrait';
+
+  @override
+  String get withdrawFailedBodyPrefix => 'Impossible d\'envoyer ';
+
+  @override
+  String withdrawFailedBodySuffix(String provider) {
+    return ' vers votre compte $provider. Aucun montant n\'a été débité — veuillez réessayer.';
+  }
+
+  @override
+  String get withdrawFailedPrimaryCta => 'Réessayer';
+
+  @override
+  String get withdrawFailedSecondaryCta => 'Retour à l\'accueil';
+
+  @override
+  String get discardChangesTitle => 'Annuler les modifications ?';
+
+  @override
+  String get discardChangesBody =>
+      'Vos saisies sur cet écran ne seront pas enregistrées.';
+
+  @override
+  String get discardChangesConfirm => 'Annuler';
+
+  @override
+  String get discardChangesCancel => 'Continuer la saisie';
 }

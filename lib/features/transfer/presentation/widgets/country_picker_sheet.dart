@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/safe_pop.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../auth/domain/supported_country.dart';
 
@@ -80,7 +81,7 @@ class _TransferCountryPickerSheet extends StatelessWidget {
                     return _CountryRow(
                       country: c,
                       selected: c == selected,
-                      onTap: () => Navigator.of(ctx).pop(c),
+                      onTap: () => popAfterFrame<SupportedCountry>(ctx, c),
                     );
                   },
                 ),

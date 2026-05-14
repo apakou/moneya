@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../../../../core/locale/locale_controller.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -6,9 +7,11 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../../main.dart' show LocaleScope;
 import '../../../auth/domain/supported_country.dart';
+import '../../../load_money/presentation/screens/load_provider_screen.dart';
 import '../../../transfer/domain/transfer_recipient_prefill.dart';
 import '../../../transfer/presentation/screens/transfer_money_screen.dart';
 import '../../../receive/presentation/screens/receive_screen.dart';
+import '../../../withdraw/presentation/screens/withdraw_provider_screen.dart';
 import '../../domain/supported_currency.dart';
 import '../../domain/transaction.dart';
 import '../widgets/currency_picker_sheet.dart';
@@ -40,7 +43,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Hardcoded mock data. ---------------------------------------------------
   static const String _userName = 'John Doe';
-  static const String _balance = '13,000';
+
+  // Mock balance — single source of truth for the displayed amount
+  // AND the withdraw flow's insufficient-balance guard. Stored as
+  // `num` (major units of the active currency) so callers can do
+  // arithmetic without re-parsing a localized string. Display formats
+  // with `NumberFormat.decimalPattern()` via the `,` grouping in
+  // `_balanceDisplay`. When the backend lands this becomes a Riverpod
+  // provider; until then mutating this in `setState` is good enough.
+  num _balanceMinor = 13000;
+
+  /// Display string for the balance card (e.g. `'13,000'`).
+  ///
+  /// Uses a thousands-grouped int representation. We deliberately do
+  /// NOT convert across currencies on switch — the mock-faithful
+  /// behaviour is to relabel the unit and keep the digit untouched.
+  String get _balanceDisplay {
+    final n = _balanceMinor.toInt();
+    final s = n.toString();
+    // Insert thousands separators without pulling in intl just for
+    // this one helper.
+    final b = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) b.write(',');
+      b.write(s[i]);
+    }
+    return b.toString();
+  }
 
   static const List<_Favorite> _favorites = [
     // Phone numbers below are intentionally chosen from the
@@ -132,9 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Tap handlers (all stubs). ---------------------------------------------
   void _onProfileTap() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ProfileScreen()),
-    );
+    Get.to<void>(() => const ProfileScreen());
   }
   Future<void> _onLanguageTap() async {
     // Flip the app-wide locale via the InheritedNotifier handle. Every
@@ -159,17 +186,31 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _toggleBalance() => setState(() => _balanceVisible = !_balanceVisible);
   void _onSend() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => TransferMoneyScreen(currency: _currency),
-      ),
-    );
+    Get.to<void>(() => TransferMoneyScreen(currency: _currency));
   }
 
   void _onReceive() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ReceiveScreen(currency: _currency),
+    Get.to<void>(() => ReceiveScreen(currency: _currency));
+  }
+
+  // Onramp action — adds fiat or stablecoin into the user's MoneyA
+  // balance. Pushes the Load Money flow (provider → amount). The
+  // backend onramp wiring (Yellow Card / Fonbnk) lands in M2 per
+  // docs/backend/backlog.md; until then the flow ends on a stubbed
+  // success outcome screen.
+  void _onLoad() {
+    Get.to<void>(() => LoadProviderScreen(currency: _currency));
+  }
+
+  // Offramp action — moves fiat out of MoneyA into the user's mobile
+  // money wallet or bank account. Pushes the Withdraw flow
+  // (provider → amount). Carries the live numeric balance so step 2
+  // can enforce the insufficient-balance block at swipe-time.
+  void _onWithdraw() {
+    Get.to<void>(
+      () => WithdrawProviderScreen(
+        currency: _currency,
+        balanceMinor: _balanceMinor,
       ),
     );
   }
@@ -182,15 +223,13 @@ class _HomeScreenState extends State<HomeScreen> {
   /// badge resolves immediately and the canonical name overwrites the
   /// favorite's locally-stored name.
   void _onFavoriteTap(_Favorite favorite) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => TransferMoneyScreen(
-          currency: _currency,
-          prefill: TransferRecipientPrefill(
-            country: favorite.country,
-            nationalPhone: favorite.nationalPhone,
-            displayName: favorite.name,
-          ),
+    Get.to<void>(
+      () => TransferMoneyScreen(
+        currency: _currency,
+        prefill: TransferRecipientPrefill(
+          country: favorite.country,
+          nationalPhone: favorite.nationalPhone,
+          displayName: favorite.name,
         ),
       ),
     );
@@ -206,12 +245,10 @@ class _HomeScreenState extends State<HomeScreen> {
     // the home dashboard is currently displaying. The Transactions
     // tab routes through the same widget; both call sites stay in
     // sync because they share the [Transaction] model.
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => TransactionDetailScreen(
-          txn: t,
-          currencyCode: _currency.code,
-        ),
+    Get.to<void>(
+      () => TransactionDetailScreen(
+        txn: t,
+        currencyCode: _currency.code,
       ),
     );
   }
@@ -251,12 +288,17 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 28),
             _Balance(
               currency: _currency.code,
-              amount: _balance,
+              amount: _balanceDisplay,
               visible: _balanceVisible,
               onToggle: _toggleBalance,
             ),
             const SizedBox(height: 36),
-            _PrimaryActions(onSend: _onSend, onReceive: _onReceive),
+            _PrimaryActions(
+              onSend: _onSend,
+              onReceive: _onReceive,
+              onLoad: _onLoad,
+              onWithdraw: _onWithdraw,
+            ),
             const SizedBox(height: 36),
             _SectionHeader(
               icon: Icons.auto_awesome_rounded,
@@ -432,46 +474,107 @@ class _Balance extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Primary actions (Send / Receive)
+// Primary actions — Send / Receive / Load Money / Withdraw
 // ---------------------------------------------------------------------------
+//
+// Four equal-weight money-movement actions rendered as a single row
+// of round icon buttons with the label set below each. This is the
+// canonical pattern used by Cash App, Wise, Revolut, and most modern
+// fintech apps — it reads as a quick-action launcher rather than a
+// CTA hierarchy, which matches the reality that the user opens the
+// home screen specifically to perform one of these four operations.
+//
+// Sizing rationale:
+//   - 56dp circle diameter: well above the 44dp WCAG 2.2 motor-
+//     accessibility floor, and matches the existing 56dp button
+//     height used elsewhere so visual rhythm is preserved.
+//   - 8dp gap between circle + label keeps the pair perceived as a
+//     single tappable unit.
+//   - `MainAxisAlignment.spaceBetween` distributes the 4 tiles
+//     edge-to-edge so the layout breathes without needing fixed
+//     inter-tile spacers.
+//   - Whole tile (circle + label) is wrapped in one InkWell so the
+//     label region is also a hit target — important for users who
+//     read first and tap second.
 
 class _PrimaryActions extends StatelessWidget {
-  const _PrimaryActions({required this.onSend, required this.onReceive});
+  const _PrimaryActions({
+    required this.onSend,
+    required this.onReceive,
+    required this.onLoad,
+    required this.onWithdraw,
+  });
 
   final VoidCallback onSend;
   final VoidCallback onReceive;
+  final VoidCallback onLoad;
+  final VoidCallback onWithdraw;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+
+    // Color-pairing rationale:
+    //   - Send + Load Money → white circles with purple icons
+    //     ("money out / money in" \u2014 the direction-driven pair)
+    //   - Receive + Withdraw → purple circles with white icons
+    //     (the rail-touching counterpart pair)
+    // This 2-and-2 split breaks the row into visually balanced
+    // halves without imposing a hierarchy; all four remain
+    // equal-weight quick actions.
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(
-          child: _PrimaryActionButton(
-            label: l10n.homeActionSend,
-            icon: Icons.north_east_rounded,
-            background: Colors.white,
-            foreground: AppColors.actionPurple,
-            onTap: onSend,
-          ),
+        _RoundActionButton(
+          label: l10n.homeActionSend,
+          icon: Icons.north_east_rounded,
+          background: Colors.white,
+          foreground: AppColors.actionPurple,
+          onTap: onSend,
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _PrimaryActionButton(
-            label: l10n.homeActionReceive,
-            icon: Icons.south_west_rounded,
-            background: AppColors.actionPurple,
-            foreground: Colors.white,
-            onTap: onReceive,
-          ),
+        _RoundActionButton(
+          label: l10n.homeActionReceive,
+          icon: Icons.south_west_rounded,
+          background: AppColors.actionPurple,
+          foreground: Colors.white,
+          onTap: onReceive,
+        ),
+        _RoundActionButton(
+          label: l10n.homeActionLoad,
+          icon: Icons.add_rounded,
+          background: Colors.white,
+          foreground: AppColors.actionPurple,
+          onTap: onLoad,
+        ),
+        _RoundActionButton(
+          label: l10n.homeActionWithdraw,
+          icon: Icons.account_balance_wallet_rounded,
+          background: AppColors.actionPurple,
+          foreground: Colors.white,
+          onTap: onWithdraw,
         ),
       ],
     );
   }
 }
 
-class _PrimaryActionButton extends StatelessWidget {
-  const _PrimaryActionButton({
+/// Round icon button + label, used for the home dashboard's primary
+/// money-movement quick actions.
+///
+/// Visual spec:
+///   - 56dp circle filled with [background]
+///   - 24sp [foreground]-tinted rounded icon, centered
+///   - 8dp gap below the circle
+///   - 12sp w500 [AppColors.onBrand] label, single line, centered
+///   - Whole stack is one [InkWell] so the label is part of the
+///     affordance (improves a11y + matches user expectations from
+///     Cash App / Wise / Revolut)
+///
+/// The label color stays [AppColors.onBrand] (light) regardless of
+/// the circle fill because the label sits on the dark brand-gradient
+/// home background, not on the circle.
+class _RoundActionButton extends StatelessWidget {
+  const _RoundActionButton({
     required this.label,
     required this.icon,
     required this.background,
@@ -481,43 +584,55 @@ class _PrimaryActionButton extends StatelessWidget {
 
   final String label;
   final IconData icon;
+
+  /// Fill color of the 56dp circle.
   final Color background;
+
+  /// Icon tint inside the circle.
   final Color foreground;
+
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: background,
-      borderRadius: BorderRadius.circular(28),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(28),
-        child: SizedBox(
-          height: 56,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: foreground,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                ),
+    return InkWell(
+      // Pull the splash radius in so the highlight tracks the circle
+      // rather than spilling over onto the label. Using a square
+      // bounding box (the InkWell's natural shape) with a rounded
+      // corner gives a soft splash without escaping the button area.
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: background,
               ),
-              const SizedBox(width: 8),
-              Container(
-                width: 26,
-                height: 26,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: foreground, width: 1.5),
-                ),
-                child: Icon(icon, color: foreground, size: 16),
+              alignment: Alignment.center,
+              child: Icon(
+                icon,
+                color: foreground,
+                size: 24,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.onBrand,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -43,9 +44,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _onChangePhoto() => debugPrint('TODO: pick & upload profile photo');
   void _onReferAndEarn() => debugPrint('TODO: open refer-and-earn flow');
   void _onSettings() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+    Get.to<void>(() => const SettingsScreen());
   }
 
   void _onLogout() => debugPrint('TODO: logout (clear secure storage + nav)');
@@ -63,7 +62,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _Header(onBack: () => Navigator.of(context).maybePop()),
+                _Header(onBack: Get.back),
                 const SizedBox(height: 28),
                 _AvatarBlock(
                   initials: _user.initials,

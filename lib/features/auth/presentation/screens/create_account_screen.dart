@@ -1,10 +1,12 @@
 import 'package:country_flags/country_flags.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/safe_pop.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../domain/supported_country.dart';
 import 'verify_phone_screen.dart';
@@ -137,12 +139,10 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     );
     if (!mounted) return;
     if (confirmed == true) {
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => VerifyPhoneScreen(
-            dialCode: _country.dialCode,
-            nationalNumber: _phoneController.text,
-          ),
+      Get.to<void>(
+        () => VerifyPhoneScreen(
+          dialCode: _country.dialCode,
+          nationalNumber: _phoneController.text,
         ),
       );
     }
@@ -217,8 +217,14 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   const SizedBox(height: 16),
 
                   // --- "Already have an account ? Login" inline link ---
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
+                  // Wrap (not Row) so the link drops to a second line on
+                  // 360dp viewports with FR copy ("Vous avez déjà un
+                  // compte ? Se connecter" is ~325dp at 14sp, > the
+                  // 312dp content width). Wrap with crossAxisAlignment:
+                  // center keeps the baseline aligned when both fit on
+                  // one line.
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text(
                         l10n.createAccountAlreadyHaveAccount,
@@ -524,7 +530,7 @@ class _CountryPickerSheet extends StatelessWidget {
                         fontFeatures: AppTextStyles.tabular,
                       ),
                     ),
-                    onTap: () => Navigator.of(context).pop(c),
+                    onTap: () => popAfterFrame<SupportedCountry>(context, c),
                   );
                 },
               ),
@@ -631,7 +637,7 @@ class _ConfirmNumberSheet extends StatelessWidget {
             _PrimaryPillButton(
               label: l10n.createAccountConfirmCta,
               enabled: true,
-              onPressed: () => Navigator.of(context).pop(true),
+              onPressed: () => popAfterFrame<bool>(context, true),
             ),
             const SizedBox(height: 12),
 
@@ -647,7 +653,7 @@ class _ConfirmNumberSheet extends StatelessWidget {
                 ),
                 child: InkWell(
                   customBorder: const StadiumBorder(),
-                  onTap: () => Navigator.of(context).pop(false),
+                  onTap: () => popAfterFrame<bool>(context, false),
                   child: Center(
                     child: Text(
                       l10n.createAccountGoBack,

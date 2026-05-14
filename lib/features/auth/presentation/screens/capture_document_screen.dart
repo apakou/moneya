@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -175,22 +176,23 @@ class _CaptureDocumentScreenState extends State<CaptureDocumentScreen>
   }
 
   void _advance() {
-    final nav = Navigator.of(context);
+    // `Get.off` between document-capture steps (front → back → selfie)
+    // so each captured page is dropped from the stack as we advance.
+    // The KYC wizard treats committed captures as immutable from the
+    // wizard's perspective — re-entry would mean re-taking the photo,
+    // which is an explicit "Retake" affordance on the review step, not
+    // a system-back gesture. See flutter-navigation skill §4.
     if (widget.side == DocumentSide.front &&
         documentRequiresBackSide(widget.documentType)) {
-      nav.pushReplacement(
-        MaterialPageRoute<void>(
-          builder: (_) => CaptureDocumentScreen(
-            documentType: widget.documentType,
-            side: DocumentSide.back,
-          ),
+      Get.off<void>(
+        () => CaptureDocumentScreen(
+          documentType: widget.documentType,
+          side: DocumentSide.back,
         ),
       );
     } else {
-      nav.pushReplacement(
-        MaterialPageRoute<void>(
-          builder: (_) => const SelfieCaptureScreen(),
-        ),
+      Get.off<void>(
+        () => const SelfieCaptureScreen(),
       );
     }
   }
@@ -227,7 +229,7 @@ class _CaptureDocumentScreenState extends State<CaptureDocumentScreen>
               child: Align(
                 alignment: Alignment.topLeft,
                 child: BackChevronButton(
-                  onTap: () => Navigator.of(context).maybePop(),
+                  onTap: Get.back,
                   tooltip: l10n.commonBack,
                   icon: Icons.arrow_back_ios_new_rounded,
                   iconSize: 22,

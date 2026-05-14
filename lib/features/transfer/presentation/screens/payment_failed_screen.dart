@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../../../home/domain/supported_currency.dart';
 import '../widgets/transfer_outcome_scaffold.dart';
@@ -47,10 +48,15 @@ class PaymentFailedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final navigator = Navigator.of(context);
     final amountSpan = '${currency.code} $amount';
     final hasReason = reason != null && reason!.isNotEmpty;
-    return TransferOutcomeScaffold(
+    return PopScope(
+      // Terminal screen: predictive back must not return to the
+      // (already-replaced) confirm form. Even "Try again" is an
+      // explicit user choice via the primary CTA, not a back gesture.
+      // See flutter-navigation skill §4.
+      canPop: false,
+      child: TransferOutcomeScaffold(
       // Brand-friendly red — readable on the brand gradient without
       // clashing with the purple.
       glyphColor: const Color(0xFFE5484D),
@@ -78,12 +84,13 @@ class PaymentFailedScreen extends StatelessWidget {
       onPrimary: () {
         // Pop back to PaymentConfirmScreen so the original
         // idempotency key is preserved on retry. See class docs.
-        if (navigator.canPop()) navigator.pop();
+        if (Get.key.currentState?.canPop() ?? false) Get.back<void>();
       },
       secondaryLabel: 'Go back home',
       onSecondary: () {
-        navigator.popUntil((r) => r.isFirst);
+        Get.until((r) => r.isFirst);
       },
+      ),
     );
   }
 }

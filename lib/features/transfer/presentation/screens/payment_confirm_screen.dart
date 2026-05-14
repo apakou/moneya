@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -134,7 +135,6 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
   Future<void> _onSwipeCompleted() async {
     if (_authInFlight) return;
     _authInFlight = true;
-    final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final isInvite = widget.lookupResult is RecipientNotFound;
     try {
@@ -145,15 +145,13 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
           // Stub: no backend call yet. The idempotency key is logged
           // in initState and would be the `Idempotency-Key` HTTP
           // header on `POST /transfers`.
-          navigator.pushReplacement(
-            MaterialPageRoute<void>(
-              builder: (_) => PaymentSuccessScreen(
-                amount: widget.amount,
-                currency: widget.currency,
-                netAmount: _formattedNet,
-                recipientName: widget.recipientName,
-                isInvite: isInvite,
-              ),
+          Get.off<void>(
+            () => PaymentSuccessScreen(
+              amount: widget.amount,
+              currency: widget.currency,
+              netAmount: _formattedNet,
+              recipientName: widget.recipientName,
+              isInvite: isInvite,
             ),
           );
           return;
@@ -178,13 +176,15 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Capture the NavigatorState once so callbacks fired after this
-    // route starts popping (e.g., a second tap on a pencil while the
-    // pop animation is mid-flight) don't have to re-resolve
-    // `Navigator.of(context)` against a deactivated element.
-    final navigator = Navigator.of(context);
+    // Pop helper used by both pencil affordances. `Get.back()` is the
+    // GetX wrapper around `Navigator.pop`; safe here because the
+    // pencils use `GestureDetector` (no Material splash), so the
+    // "deactivated widget's ancestor" race doesn't apply — see
+    // `popAfterFrame` for the splash-callsite variant.
     void popToTransfer() {
-      if (navigator.canPop()) navigator.pop();
+      if (Get.key.currentState?.canPop() ?? false) {
+        Get.back<void>();
+      }
     }
     final l10n = AppLocalizations.of(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -205,7 +205,7 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
           child: SafeArea(
             child: Column(
               children: [
-                _Header(onBack: () => navigator.maybePop()),
+                _Header(onBack: Get.back),
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),

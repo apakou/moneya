@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/safe_pop.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../domain/funding_provider.dart';
 import '../screens/transfer_money_screen.dart' show fundingProviderLabel;
@@ -81,7 +82,7 @@ class _FundingProviderPickerSheet extends StatelessWidget {
                     return _ProviderRow(
                       provider: p,
                       selected: p == selected,
-                      onTap: () => Navigator.of(ctx).pop(p),
+                      onTap: () => popAfterFrame<FundingProvider>(ctx, p),
                     );
                   },
                 ),

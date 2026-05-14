@@ -13,6 +13,8 @@
 
   "homeActionSend": "Envoyer",
   "homeActionReceive": "Recevoir",
+  "homeActionLoad": "Recharger",
+  "homeActionWithdraw": "Retirer",
 
   "homeSectionAiInsights": "Insights IA",
   "homeSectionFavorites": "Vos favoris",
@@ -276,5 +278,70 @@
 
   "kycSelfieInstruction": "Gardez votre visage dans l'ovale",
 
-  "cameraShutterLabel": "Prendre une photo"
+  "cameraShutterLabel": "Prendre une photo",
+
+  "onboardingLanguageHeadline": "Quelle langue parlez-vous ?",
+  "onboardingSendMoneyHeadline": "Envoyez de l'argent plus vite et moins cher",
+  "onboardingCrossCorridorHeadline": "Entre pays africains francophones\net anglophones",
+  "onboardingNext": "Suivant",
+  "onboardingSkip": "Passer",
+  "onboardingBack": "Retour",
+
+  "loadProviderHeaderTitle": "Charger de l'argent",
+  "loadProviderSubtitle": "Choisissez le compte mobile money à débiter.",
+  "loadProviderCountryLabel": "Pays",
+  "loadProviderListLabel": "Opérateurs mobile money",
+  "loadProviderEmptyMessage": "Aucun opérateur mobile money n'est encore disponible dans ce pays.",
+
+  "loadAmountHeaderTitle": "Charger de l'argent",
+  "loadAmountTitle": "Combien voulez-vous charger ?",
+  "loadAmountFromLabel": "Depuis",
+  "loadAmountSourcePhoneHint": "Numéro mobile money",
+  "loadAmountSwipeLabel": "Glissez pour charger",
+  "loadAmountOverLimit": "Le montant dépasse votre limite {tier} de {currency} {max}. Mettez à niveau votre compte pour charger plus.",
+  "loadAmountLimitHint": "Limite quotidienne : {currency} {max}",
+
+  "loadSuccessTitle": "Demande de chargement envoyée",
+  "loadSuccessBodyPrefix": "Vous recevrez ",
+  "loadSuccessBodySuffix": " sur votre solde MoneyA après avoir autorisé le débit sur {provider}.",
+  "loadSuccessPrimaryCta": "Retour à l'accueil",
+  "loadSuccessSecondaryCta": "Terminé",
+
+  "withdrawProviderHeaderTitle": "Retirer",
+  "withdrawProviderSubtitle": "Choisissez le compte mobile money à créditer.",
+  "withdrawProviderCountryLabel": "Pays",
+  "withdrawProviderListLabel": "Opérateurs mobile money",
+  "withdrawProviderEmptyMessage": "Aucun opérateur mobile money n'est encore disponible dans ce pays.",
+
+  "withdrawAmountHeaderTitle": "Retirer",
+  "withdrawAmountTitle": "Combien voulez-vous retirer ?",
+  "withdrawAmountToLabel": "Vers",
+  "withdrawAmountDestinationPhoneHint": "Numéro mobile money",
+  "withdrawAmountSwipeLabel": "Glissez pour retirer",
+  "withdrawAmountOverLimit": "Le montant dépasse votre limite {tier} de {currency} {max}. Mettez à niveau votre compte pour retirer plus.",
+  "withdrawAmountInsufficientBalance": "Vous disposez seulement de {currency} {balance}. Réduisez le montant ou chargez de l'argent d'abord.",
+  "withdrawAmountLimitHint": "Solde disponible : {currency} {balance}",
+
+  "withdrawSuccessTitle": "Retrait envoyé",
+  "withdrawSuccessBodyPrefix": "Nous envoyons ",
+  "withdrawSuccessBodySuffix": " sur votre compte {provider}. L'argent arrive généralement en quelques minutes.",
+  "withdrawSuccessPrimaryCta": "Retour à l'accueil",
+  "withdrawSuccessSecondaryCta": "Terminé",
+
+  "withdrawPendingTitle": "Retrait en attente",
+  "withdrawPendingBodyPrefix": "Votre retrait de ",
+  "withdrawPendingBodySuffix": " vers {provider} est en cours de traitement. Nous vous informerons dès qu'il sera finalisé.",
+  "withdrawPendingPrimaryCta": "Retour à l'accueil",
+  "withdrawPendingSecondaryCta": "Voir la transaction",
+
+  "withdrawFailedTitle": "Échec du retrait",
+  "withdrawFailedBodyPrefix": "Impossible d'envoyer ",
+  "withdrawFailedBodySuffix": " vers votre compte {provider}. Aucun montant n'a été débité — veuillez réessayer.",
+  "withdrawFailedPrimaryCta": "Réessayer",
+  "withdrawFailedSecondaryCta": "Retour à l'accueil",
+
+  "discardChangesTitle": "Annuler les modifications ?",
+  "discardChangesBody": "Vos saisies sur cet écran ne seront pas enregistrées.",
+  "discardChangesConfirm": "Annuler",
+  "discardChangesCancel": "Continuer la saisie"
 }

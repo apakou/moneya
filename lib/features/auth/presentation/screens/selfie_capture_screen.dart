@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -150,10 +151,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
     // onboarding stack so back-navigation can't return here.
     debugPrint('KYC selfie submitted; navigating to home.');
     if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const HomeShell()),
-      (route) => false,
-    );
+    Get.offAll<void>(() => const HomeShell());
   }
 
   @override
@@ -198,7 +196,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
               child: Align(
                 alignment: Alignment.topLeft,
                 child: BackChevronButton(
-                  onTap: () => Navigator.of(context).maybePop(),
+                  onTap: Get.back,
                   tooltip: l10n.commonBack,
                   icon: Icons.arrow_back_ios_new_rounded,
                   iconSize: 22,

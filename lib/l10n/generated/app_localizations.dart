@@ -158,6 +158,18 @@ abstract class AppLocalizations {
   /// **'Receive'**
   String get homeActionReceive;
 
+  /// Primary action button label that opens the onramp (load fiat / stablecoin into the MoneyA balance) flow.
+  ///
+  /// In en, this message translates to:
+  /// **'Load Money'**
+  String get homeActionLoad;
+
+  /// Primary action button label that opens the offramp (cash out to mobile money or bank account) flow.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw'**
+  String get homeActionWithdraw;
+
   /// Section header above the AI insights card carousel.
   ///
   /// In en, this message translates to:
@@ -1561,6 +1573,336 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hi {name} — I just sent you a payment request for {currency} {amount} on MoneyA. Open the app to pay.'**
   String receiveRequestShareBody(String name, String currency, String amount);
+
+  /// Hero question on onboarding step 1, where the user picks the app language.
+  ///
+  /// In en, this message translates to:
+  /// **'Which language are you speaking?'**
+  String get onboardingLanguageHeadline;
+
+  /// Hero headline on onboarding step 2 (value-prop: speed + low cost).
+  ///
+  /// In en, this message translates to:
+  /// **'Send money faster and cheaper'**
+  String get onboardingSendMoneyHeadline;
+
+  /// Hero headline on onboarding step 3. The newline is intentional and reproduces the design's two-line break; translators may move or remove the newline if their rendering needs it.
+  ///
+  /// In en, this message translates to:
+  /// **'Between African francophone\nand anglophone countries'**
+  String get onboardingCrossCorridorHeadline;
+
+  /// Primary CTA pill at the bottom-right of every onboarding step. Advances to the next step or, on the last step, finishes onboarding.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get onboardingNext;
+
+  /// Top-right text shortcut that bypasses the remaining onboarding steps and goes straight to the auth landing screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get onboardingSkip;
+
+  /// Bottom-left pill on onboarding steps 2 and 3 that returns to the previous step.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get onboardingBack;
+
+  /// Header title on step 1 of the Load Money flow (provider selection).
+  ///
+  /// In en, this message translates to:
+  /// **'Load money'**
+  String get loadProviderHeaderTitle;
+
+  /// Sub-header explaining what the user does on the provider-selection step.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the mobile money account you want to load from.'**
+  String get loadProviderSubtitle;
+
+  /// Section label above the country picker on the load-provider step.
+  ///
+  /// In en, this message translates to:
+  /// **'Country'**
+  String get loadProviderCountryLabel;
+
+  /// Section label above the list of available mobile-money rails.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile money providers'**
+  String get loadProviderListLabel;
+
+  /// Empty-state message shown when the selected country has no rails wired up yet.
+  ///
+  /// In en, this message translates to:
+  /// **'No mobile money providers are available in this country yet.'**
+  String get loadProviderEmptyMessage;
+
+  /// Header title on step 2 of the Load Money flow (amount entry).
+  ///
+  /// In en, this message translates to:
+  /// **'Load money'**
+  String get loadAmountHeaderTitle;
+
+  /// Centered question above the tappable amount card.
+  ///
+  /// In en, this message translates to:
+  /// **'How much do you want to load?'**
+  String get loadAmountTitle;
+
+  /// Section label above the locked provider summary and source-phone field.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get loadAmountFromLabel;
+
+  /// Placeholder for the source-phone input — the user's own mobile-money number being debited.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile money number'**
+  String get loadAmountSourcePhoneHint;
+
+  /// Label on the swipe-to-confirm control at the bottom of the amount step.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe to load'**
+  String get loadAmountSwipeLabel;
+
+  /// Inline error shown when the entered amount is above the client-side KYC tier cap. Backend will revalidate.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount exceeds your {tier} limit of {currency} {max}. Upgrade your account to load more.'**
+  String loadAmountOverLimit(String currency, String max, String tier);
+
+  /// Helper text under the form summarising the daily cap.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily limit: {currency} {max}'**
+  String loadAmountLimitHint(String currency, String max);
+
+  /// Title of the success outcome screen after a load request is submitted. The funds are pending until the provider authorizes — the copy intentionally avoids the word 'success'.
+  ///
+  /// In en, this message translates to:
+  /// **'Load request sent'**
+  String get loadSuccessTitle;
+
+  /// First inline span on the success body, before the bold amount.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll receive '**
+  String get loadSuccessBodyPrefix;
+
+  /// Trailing inline span on the success body explaining the provider USSD/app authorization step.
+  ///
+  /// In en, this message translates to:
+  /// **' in your MoneyA balance after you authorize the debit on {provider}.'**
+  String loadSuccessBodySuffix(String provider);
+
+  /// Primary CTA on the load success screen — returns to the home shell.
+  ///
+  /// In en, this message translates to:
+  /// **'Go back home'**
+  String get loadSuccessPrimaryCta;
+
+  /// Secondary CTA on the load success screen — same destination as the primary for now; kept for visual parity with the transfer outcome screens.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get loadSuccessSecondaryCta;
+
+  /// Header title on step 1 of the Withdraw flow (destination provider selection).
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw'**
+  String get withdrawProviderHeaderTitle;
+
+  /// Sub-header explaining what the user does on the withdraw destination-provider step.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the mobile money account you want to send your funds to.'**
+  String get withdrawProviderSubtitle;
+
+  /// Section label above the country picker on the withdraw-provider step.
+  ///
+  /// In en, this message translates to:
+  /// **'Country'**
+  String get withdrawProviderCountryLabel;
+
+  /// Section label above the list of available mobile-money rails on the withdraw step.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile money providers'**
+  String get withdrawProviderListLabel;
+
+  /// Empty-state message shown when the selected destination country has no rails wired up yet.
+  ///
+  /// In en, this message translates to:
+  /// **'No mobile money providers are available in this country yet.'**
+  String get withdrawProviderEmptyMessage;
+
+  /// Header title on step 2 of the Withdraw flow (amount entry).
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw'**
+  String get withdrawAmountHeaderTitle;
+
+  /// Centered question above the tappable amount card on the withdraw step.
+  ///
+  /// In en, this message translates to:
+  /// **'How much do you want to withdraw?'**
+  String get withdrawAmountTitle;
+
+  /// Section label above the locked destination provider summary and recipient-phone field.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get withdrawAmountToLabel;
+
+  /// Placeholder for the destination-phone input — the account being credited.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile money number'**
+  String get withdrawAmountDestinationPhoneHint;
+
+  /// Label on the swipe-to-confirm control at the bottom of the withdraw amount step.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe to withdraw'**
+  String get withdrawAmountSwipeLabel;
+
+  /// Inline error shown when the entered withdraw amount is above the client-side KYC tier cap.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount exceeds your {tier} limit of {currency} {max}. Upgrade your account to withdraw more.'**
+  String withdrawAmountOverLimit(String currency, String max, String tier);
+
+  /// Inline error shown when the entered amount is higher than the user's current MoneyA balance. Blocks the swipe-to-pay control.
+  ///
+  /// In en, this message translates to:
+  /// **'You only have {currency} {balance} available. Lower the amount or load more money first.'**
+  String withdrawAmountInsufficientBalance(String currency, String balance);
+
+  /// Helper text under the form summarising the user's current available balance.
+  ///
+  /// In en, this message translates to:
+  /// **'Available balance: {currency} {balance}'**
+  String withdrawAmountLimitHint(String currency, String balance);
+
+  /// Title of the success outcome screen after a withdraw request is accepted. Wording avoids 'completed' because settlement is asynchronous on most rails.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawal sent'**
+  String get withdrawSuccessTitle;
+
+  /// First inline span on the withdraw success body, before the bold amount.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'re sending '**
+  String get withdrawSuccessBodyPrefix;
+
+  /// Trailing inline span on the withdraw success body naming the destination provider.
+  ///
+  /// In en, this message translates to:
+  /// **' to your {provider} account. It usually arrives within a few minutes.'**
+  String withdrawSuccessBodySuffix(String provider);
+
+  /// Primary CTA on the withdraw success screen — returns to the home shell.
+  ///
+  /// In en, this message translates to:
+  /// **'Go back home'**
+  String get withdrawSuccessPrimaryCta;
+
+  /// Secondary CTA on the withdraw success screen — same destination as primary; kept for visual parity.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get withdrawSuccessSecondaryCta;
+
+  /// Title of the pending outcome screen when the backend has accepted the withdraw but settlement hasn't confirmed yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawal pending'**
+  String get withdrawPendingTitle;
+
+  /// First inline span on the pending withdraw body.
+  ///
+  /// In en, this message translates to:
+  /// **'Your withdrawal of '**
+  String get withdrawPendingBodyPrefix;
+
+  /// Trailing inline span on the pending withdraw body.
+  ///
+  /// In en, this message translates to:
+  /// **' to {provider} is being processed. We\'ll notify you once it settles.'**
+  String withdrawPendingBodySuffix(String provider);
+
+  /// Primary CTA on the pending withdraw outcome screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Go back home'**
+  String get withdrawPendingPrimaryCta;
+
+  /// Secondary CTA on the pending withdraw outcome — opens the transaction detail once that route is wired.
+  ///
+  /// In en, this message translates to:
+  /// **'View transaction'**
+  String get withdrawPendingSecondaryCta;
+
+  /// Title of the failed outcome screen when the backend rejected the withdraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawal failed'**
+  String get withdrawFailedTitle;
+
+  /// First inline span on the failed withdraw body.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t send '**
+  String get withdrawFailedBodyPrefix;
+
+  /// Trailing inline span on the failed withdraw body — reassures the user no debit happened.
+  ///
+  /// In en, this message translates to:
+  /// **' to your {provider} account. No funds were taken from your wallet — please try again.'**
+  String withdrawFailedBodySuffix(String provider);
+
+  /// Primary CTA on the failed withdraw outcome — pops back to the amount form so the user can retry with the same idempotency key.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get withdrawFailedPrimaryCta;
+
+  /// Secondary CTA on the failed withdraw outcome — pops to home shell.
+  ///
+  /// In en, this message translates to:
+  /// **'Go back home'**
+  String get withdrawFailedSecondaryCta;
+
+  /// Title of the adaptive dialog shown when the user attempts to leave a dirty form screen via back gesture or chevron.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes?'**
+  String get discardChangesTitle;
+
+  /// Body of the discard-changes dialog — neutral language; do not enumerate field names.
+  ///
+  /// In en, this message translates to:
+  /// **'Your entries on this screen won\'t be saved.'**
+  String get discardChangesBody;
+
+  /// Destructive CTA of the discard-changes dialog — confirms abandoning the form.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get discardChangesConfirm;
+
+  /// Cancel CTA of the discard-changes dialog — returns the user to the form.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep editing'**
+  String get discardChangesCancel;
 }
 
 class _AppLocalizationsDelegate

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/locale/locale_controller.dart';
@@ -335,9 +336,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   void _onProfileTap() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ProfileScreen()),
-    );
+    Get.to<void>(() => const ProfileScreen());
   }
   void _onLanguageTap() {
     // Flip app-wide locale; the InheritedNotifier surfaces the
@@ -348,12 +347,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   void _onNotificationsTap() => showNotificationsSheet(context);
   void _onExportTap() => debugPrint('TODO: export transactions CSV');
   void _onTxnTap(Transaction t) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => TransactionDetailScreen(
-          txn: t,
-          currencyCode: _currencyCode,
-        ),
+    Get.to<void>(
+      () => TransactionDetailScreen(
+        txn: t,
+        currencyCode: _currencyCode,
       ),
     );
   }

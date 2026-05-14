@@ -19,7 +19,8 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.11.0-93.0.dev
+  sdk: ^3.11.0
+  flutter: ">=3.41.0"
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -54,6 +55,19 @@ dependencies:
   pdf: ^3.12.0
   printing: ^5.14.3
 
+  # GetX — navigation + routing + utilities. Adopted project-wide so
+  # every back affordance, forward route, and outcome-screen
+  # popUntil resolves through a single navigator without threading
+  # `BuildContext` to the call site. `GetMaterialApp` in main.dart
+  # supplies the global navigator key Get.back() needs.
+  #
+  # Important: keep using the `popAfterFrame()` helper for any
+  # back-action invoked from a Material splash (`InkWell`,
+  # `ListTile`, pill buttons, `Tooltip`-wrapped widgets). Calling
+  # `Get.back()` synchronously from those sites re-introduces the
+  # deactivated-widget crash class — see core/widgets/safe_pop.dart.
+  get: ^4.6.6
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -64,6 +78,34 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+
+  # Launcher icon generator. Sourced from assets/launcher/app-launcher.png.
+  # Run `dart run flutter_launcher_icons` after changes to regenerate
+  # Android mipmaps + iOS AppIcon.appiconset.
+  flutter_launcher_icons: ^0.14.4
+
+# Launcher icon configuration. The source PNG is 4096×4096 RGBA which is
+# well above the 1024×1024 floor iOS wants and the 432×432 floor Android
+# adaptive icons want — flutter_launcher_icons downsamples to each density.
+#
+# Adaptive icon strategy (Android 8+): the same PNG is used as the
+# foreground over a solid brand-deep-purple background. The OS masks the
+# foreground to a circle / squircle / teardrop per device, so the inner
+# safe zone (~66dp of the 108dp canvas) is what's actually visible. The
+# current art has enough margin around the mark to survive that masking.
+#
+# iOS: a single 1024×1024 icon is rasterized into AppIcon.appiconset for
+# every required size (iPhone, iPad, App Store, settings, notifications).
+# `remove_alpha_ios: true` strips the alpha channel because the App Store
+# rejects icons with transparency.
+flutter_launcher_icons:
+  image_path: "assets/launcher/app-launcher.png"
+  android: "ic_launcher"
+  ios: true
+  remove_alpha_ios: true
+  min_sdk_android: 21
+  adaptive_icon_background: "#2B0033"
+  adaptive_icon_foreground: "assets/launcher/app-launcher.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
