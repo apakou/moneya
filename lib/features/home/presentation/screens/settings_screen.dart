@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/logging/app_logger.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/back_chevron_button.dart';
@@ -40,11 +41,11 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _biometricsEnabled = true;
 
-  void _onChangePassword() => debugPrint('TODO: open change-password flow');
-  void _onLoginOptions() => debugPrint('TODO: open login options');
+  void _onChangePassword() => AppLogger.i('settings.change_password.tap', const {});
+  void _onLoginOptions() => AppLogger.i('settings.login_options.tap', const {});
   void _onPhoneNumberAccount() =>
-      debugPrint('TODO: open phone-number-account settings');
-  void _onUssdBanking() => debugPrint('TODO: open USSD banking settings');
+      AppLogger.i('settings.phone_account.tap', const {});
+  void _onUssdBanking() => AppLogger.i('settings.ussd_banking.tap', const {});
 
   Future<void> _onDeleteAccount() async {
     final l10n = AppLocalizations.of(context);
@@ -95,7 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (confirmed == true) {
       // TODO: call DELETE /users/me, clear flutter_secure_storage,
       // navigate back to splash + onboarding entry.
-      debugPrint('TODO: delete account confirmed');
+      AppLogger.i('settings.delete_account.confirmed', const {});
     }
   }
 

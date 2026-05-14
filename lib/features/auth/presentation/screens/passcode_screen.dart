@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:local_auth/local_auth.dart';
 
+import '../../../../core/logging/app_logger.dart';
+import '../../../../core/preferences/app_prefs.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/back_chevron_button.dart';
@@ -190,8 +192,11 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
     }
 
     if (!mounted) return;
-    // TODO: persist `enabled` flag to flutter_secure_storage.
-    debugPrint('Biometric enrolled: $enabled');
+    // Persist the user's biometric opt-in so TransactionAuthService can
+    // gate step-up prompts on it without re-asking. Fire-and-forget;
+    // the value is only consulted on the next transaction screen.
+    Get.find<AppPrefs>().setBiometricEnabled(enabled);
+    AppLogger.i('biometric.enrolled', {'enabled': enabled});
     // `Get.off` (not `Get.to`) drops the passcode-set step so the
     // user can't navigate back into it after committing a PIN. The
     // KYC wizard treats each completed step as immutable from the

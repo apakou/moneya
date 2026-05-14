@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/logging/app_logger.dart';
+import '../../../../core/preferences/app_prefs.dart';
+import '../../../../core/session/session_controller.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/back_chevron_button.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../favorites/presentation/screens/favorites_screen.dart';
+import '../../../splash/presentation/screens/splash_screen.dart';
 import '../../domain/user_profile.dart';
 import 'settings_screen.dart';
 
@@ -42,8 +46,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // lookup lands.
   final UserProfile _user = kMockUser;
 
-  void _onChangePhoto() => debugPrint('TODO: pick & upload profile photo');
-  void _onReferAndEarn() => debugPrint('TODO: open refer-and-earn flow');
+  void _onChangePhoto() => AppLogger.i('profile.change_photo.tap', const {});
+  void _onReferAndEarn() => AppLogger.i('profile.refer_and_earn.tap', const {});
   void _onFavorites() {
     Get.to<void>(() => const FavoritesScreen());
   }
@@ -51,7 +55,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Get.to<void>(() => const SettingsScreen());
   }
 
-  void _onLogout() => debugPrint('TODO: logout (clear secure storage + nav)');
+  void _onLogout() {
+    // Fire-and-forget the async confirmation flow. The
+    // `unawaited`-equivalent pattern is fine here: the actual logout
+    // work is gated behind the dialog's `confirmed` result and any
+    // failure surfaces via AppLogger.
+    _confirmAndLogout();
+  }
+
+  Future<void> _confirmAndLogout() async {
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showAdaptiveDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog.adaptive(
+        title: Text(l10n.logoutDialogTitle),
+        content: Text(l10n.logoutDialogBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.commonCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.logoutDialogConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    if (!mounted) return;
+
+    // Clear in the right order:
+    //   1. SessionController.clear() — wipes access/refresh tokens
+    //      and the persisted AuthSession blob.
+    //   2. AppPrefs.clear()        — drops onboarding.complete and
+    //      biometric.enabled so the next user on this device is
+    //      walked through KYC again.
+    // device.id is intentionally preserved (see SessionStore.clear)
+    // so server-side device fingerprinting is stable across logouts.
+    //
+    // Server-side POST /v1/auth/logout is deferred to W2 once the
+    // auth repository lands — the endpoint isn't strictly required
+    // for correctness (refresh tokens self-expire) and we'd rather
+    // not ship a half-wired call.
+    AppLogger.i('logout.confirmed', const {});
+    await Get.find<SessionController>().clear();
+    await Get.find<AppPrefs>().clear();
+    Get.offAll<void>(() => const SplashScreen());
+  }
 
   @override
   Widget build(BuildContext context) {

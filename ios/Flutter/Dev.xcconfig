@@ -1,0 +1,11 @@
+// Per-flavor overrides for the "dev" flavor.
+//
+// Wire this into Xcode by creating two configurations
+// (`Debug-dev` and `Release-dev`) that include this file in addition
+// to `Generated.xcconfig`.  See `ios/README-flavors.md`.
+
+#include "Generated.xcconfig"
+
+FLAVOR = dev
+PRODUCT_BUNDLE_IDENTIFIER = com.moneya.app.dev
+APP_DISPLAY_NAME = MoneyA Dev

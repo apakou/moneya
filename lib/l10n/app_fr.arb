@@ -69,6 +69,10 @@
   "deleteAccountDialogTitle": "Supprimer le compte ?",
   "deleteAccountDialogBody": "Cela supprime définitivement votre compte MoneyA, vos soldes et votre historique de transactions. Cette action est irréversible.",
 
+  "logoutDialogTitle": "Se déconnecter ?",
+  "logoutDialogBody": "Vous devrez vous reconnecter pour envoyer ou recevoir de l'argent. Votre compte et vos soldes restent intacts.",
+  "logoutDialogConfirm": "Se déconnecter",
+
   "profileTitle": "Détails du profil",
   "profileSectionPersonal": "Informations personnelles",
   "profileSectionActions": "Actions",

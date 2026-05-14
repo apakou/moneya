@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/locale/locale_controller.dart';
+import '../../../../core/logging/app_logger.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../l10n/generated/app_localizations.dart';
@@ -214,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     if (picked == null || picked == _currency) return;
     setState(() => _currency = picked);
-    debugPrint('Currency switched to ${_currency.code}');
+    AppLogger.i('home.currency.switched', {'currency': _currency.code});
     // TODO: re-fetch the displayed balance in the new currency once we
     // have an FX/balance backend. The hardcoded "13,000" stays for now.
   }
@@ -249,8 +250,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-  void _onSmartRate() => debugPrint('Smart Rate tapped');
-  void _onTrustScore() => debugPrint('Trust Score tapped');
+  void _onSmartRate() => AppLogger.i('home.smart_rate.tap', const {});
+  void _onTrustScore() => AppLogger.i('home.trust_score.tap', const {});
   void _onFavoritesViewAll() {
     Get.to<void>(() => FavoritesScreen(currency: _currency));
   }
@@ -867,7 +868,7 @@ class _InsightsStrip extends StatelessWidget {
         metric: '-18%',
         icon: Icons.insights_rounded,
         accent: _amberAccent,
-        onTap: () => debugPrint('Spending pulse tapped'),
+        onTap: () => AppLogger.i('home.spending_pulse.tap', const {}),
       ),
     ];
 

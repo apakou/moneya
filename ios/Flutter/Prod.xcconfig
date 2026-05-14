@@ -1,0 +1,7 @@
+// Per-flavor overrides for the "prod" flavor.
+
+#include "Generated.xcconfig"
+
+FLAVOR = prod
+PRODUCT_BUNDLE_IDENTIFIER = com.moneya.app
+APP_DISPLAY_NAME = MoneyA

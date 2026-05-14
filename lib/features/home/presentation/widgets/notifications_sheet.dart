@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/logging/app_logger.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../l10n/generated/app_localizations.dart';
@@ -125,7 +126,7 @@ class _NotificationsSheetState extends State<_NotificationsSheet> {
     // TODO: route per kind — moneyReceived/transferSent/transferFailed →
     // TransactionDetailScreen, securityAlert → SettingsScreen,
     // kycApproved → ProfileScreen, promo → refer flow.
-    debugPrint('Notification tapped: ${n.id} (${n.kind.name})');
+    AppLogger.i('notifications.tap', {'id': n.id, 'kind': n.kind.name});
   }
 
   @override

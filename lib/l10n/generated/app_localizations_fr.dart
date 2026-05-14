@@ -181,6 +181,16 @@ class AppLocalizationsFr extends AppLocalizations {
       'Cela supprime définitivement votre compte MoneyA, vos soldes et votre historique de transactions. Cette action est irréversible.';
 
   @override
+  String get logoutDialogTitle => 'Se déconnecter ?';
+
+  @override
+  String get logoutDialogBody =>
+      'Vous devrez vous reconnecter pour envoyer ou recevoir de l\'argent. Votre compte et vos soldes restent intacts.';
+
+  @override
+  String get logoutDialogConfirm => 'Se déconnecter';
+
+  @override
   String get profileTitle => 'Détails du profil';
 
   @override

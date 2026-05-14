@@ -428,6 +428,24 @@ abstract class AppLocalizations {
   /// **'This permanently removes your MoneyA account, balances, and transaction history. This action cannot be undone.'**
   String get deleteAccountDialogBody;
 
+  /// Title of the logout confirmation dialog opened from Profile → Logout.
+  ///
+  /// In en, this message translates to:
+  /// **'Log out?'**
+  String get logoutDialogTitle;
+
+  /// Body copy of the logout confirmation dialog. Reassures the user that logging out is reversible and non-destructive.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll need to sign in again to send or receive money. Your account and balances stay safe.'**
+  String get logoutDialogBody;
+
+  /// Destructive CTA of the logout confirmation dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Log out'**
+  String get logoutDialogConfirm;
+
   /// Screen title at the top of the Profile screen.
   ///
   /// In en, this message translates to:

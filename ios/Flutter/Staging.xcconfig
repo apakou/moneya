@@ -1,0 +1,7 @@
+// Per-flavor overrides for the "staging" flavor.
+
+#include "Generated.xcconfig"
+
+FLAVOR = staging
+PRODUCT_BUNDLE_IDENTIFIER = com.moneya.app.staging
+APP_DISPLAY_NAME = MoneyA Staging

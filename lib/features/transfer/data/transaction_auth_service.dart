@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:local_auth/local_auth.dart';
 
+import '../../../core/logging/app_logger.dart';
+import '../../../core/preferences/app_prefs.dart';
 import '../presentation/widgets/transaction_passcode_sheet.dart';
 
 /// Outcome of a step-up authentication challenge.
@@ -31,18 +34,21 @@ enum TransactionAuthResult {
 ///    entries it returns [TransactionAuthResult.failed] so the caller
 ///    can spring the swipe button back to start.
 ///
-/// The biometric-enabled flag is currently hardcoded to `true` — once
-/// `flutter_secure_storage` is wired up we'll read the persisted
-/// `is_biometric_enabled` value here instead.
+/// The biometric-enabled flag is read from [AppPrefs] (persisted to
+/// secure storage by the passcode/biometric enrollment screen). If
+/// [AppPrefs] hasn't been registered with GetX (e.g. inside a widget
+/// test that didn't bootstrap it) we default to `true` so existing
+/// transfer-flow tests still exercise the biometric branch.
 class TransactionAuthService {
   TransactionAuthService({LocalAuthentication? localAuth})
       : _localAuth = localAuth ?? LocalAuthentication();
 
   final LocalAuthentication _localAuth;
 
-  /// Hardcoded for now. Replace with a `flutter_secure_storage` read
-  /// once the onboarding biometric screen persists the flag.
-  static const bool _biometricEnabledHardcoded = true;
+  bool get _biometricEnabled {
+    if (!Get.isRegistered<AppPrefs>()) return true;
+    return Get.find<AppPrefs>().biometricEnabled;
+  }
 
   /// Run the full auth challenge for a transaction. [context] is used
   /// to show the passcode bottom sheet when biometric isn't available
@@ -63,7 +69,7 @@ class TransactionAuthService {
   }
 
   Future<bool> _tryBiometric() async {
-    if (!_biometricEnabledHardcoded) return false;
+    if (!_biometricEnabled) return false;
     try {
       final supported =
           await _localAuth.isDeviceSupported() &&
@@ -80,7 +86,7 @@ class TransactionAuthService {
         ),
       );
     } catch (e, st) {
-      debugPrint('Biometric auth threw: $e\n$st');
+      AppLogger.w('biometric.auth.failed', const {}, e, st);
       return false;
     }
   }

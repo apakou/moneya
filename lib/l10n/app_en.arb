@@ -239,6 +239,19 @@
     "description": "Body copy of the delete-account confirmation dialog."
   },
 
+  "logoutDialogTitle": "Log out?",
+  "@logoutDialogTitle": {
+    "description": "Title of the logout confirmation dialog opened from Profile → Logout."
+  },
+  "logoutDialogBody": "You'll need to sign in again to send or receive money. Your account and balances stay safe.",
+  "@logoutDialogBody": {
+    "description": "Body copy of the logout confirmation dialog. Reassures the user that logging out is reversible and non-destructive."
+  },
+  "logoutDialogConfirm": "Log out",
+  "@logoutDialogConfirm": {
+    "description": "Destructive CTA of the logout confirmation dialog."
+  },
+
   "profileTitle": "Profile Details",
   "@profileTitle": {
     "description": "Screen title at the top of the Profile screen."

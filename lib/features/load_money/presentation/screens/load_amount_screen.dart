@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 
+import '../../../../core/logging/app_logger.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/back_chevron_button.dart';
@@ -196,10 +197,12 @@ class _LoadAmountScreenState extends State<LoadAmountScreen> {
           // key + X-Txn-Token from the auth service, persist intent,
           // and wait for the provider USSD push to land. Stub below
           // shortcuts straight to the success outcome.
-          debugPrint(
-            'Load Money: ${widget.currency.code} $_amount via '
-            '${widget.provider.id} (${widget.country.isoCode})',
-          );
+          AppLogger.i('load_money.submit.stub', {
+            'currency': widget.currency.code,
+            'amount': _amount,
+            'provider': widget.provider.id,
+            'country': widget.country.isoCode,
+          });
           Get.off<void>(
             () => _LoadSuccessScreen(
               amount: _amount,

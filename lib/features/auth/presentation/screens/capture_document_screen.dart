@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../../../core/logging/app_logger.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/back_chevron_button.dart';
@@ -121,8 +122,13 @@ class _CaptureDocumentScreenState extends State<CaptureDocumentScreen>
       }
       _controller = controller;
       setState(() => _status = _CameraStatus.ready);
-    } catch (e) {
-      debugPrint('Camera init failed: $e');
+    } catch (e, st) {
+      AppLogger.w(
+        'kyc.document.camera_init.failed',
+        {'document': widget.documentType.name, 'side': widget.side.name},
+        e,
+        st,
+      );
       if (!mounted) return;
       setState(() => _status = _CameraStatus.unavailable);
     }
@@ -141,13 +147,14 @@ class _CaptureDocumentScreenState extends State<CaptureDocumentScreen>
     if (c == null || !c.value.isInitialized || _isCapturing) return;
     setState(() => _isCapturing = true);
     try {
-      final file = await c.takePicture();
-      // TODO: upload `file.path` (or its bytes) to the KYC backend with the
-      // current session's idempotency key.
-      debugPrint(
-        'Captured ${widget.documentType.name} '
-        '${widget.side.name}: ${file.path}',
-      );
+      await c.takePicture();
+      // TODO: upload the captured file to the KYC backend with the
+      // current session's idempotency key. Path intentionally not
+      // logged — it's a device filesystem path with weak PII surface.
+      AppLogger.i('kyc.document.captured', {
+        'document': widget.documentType.name,
+        'side': widget.side.name,
+      });
       if (!mounted) return;
 
       // Switch to the Processing state FIRST so the build no longer reads
@@ -168,8 +175,13 @@ class _CaptureDocumentScreenState extends State<CaptureDocumentScreen>
       await Future<void>.delayed(const Duration(milliseconds: 1500));
       if (!mounted) return;
       _advance();
-    } catch (e) {
-      debugPrint('Capture failed: $e');
+    } catch (e, st) {
+      AppLogger.w(
+        'kyc.document.capture.failed',
+        {'document': widget.documentType.name, 'side': widget.side.name},
+        e,
+        st,
+      );
       if (!mounted) return;
       setState(() => _isCapturing = false);
     }

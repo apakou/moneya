@@ -1,11 +1,21 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
+import 'core/config/env.dart';
 import 'core/locale/locale_controller.dart';
+import 'core/network/api_client.dart';
+import 'core/network/dio_session_refresher.dart';
+import 'core/observability/analytics.dart';
+import 'core/observability/crash_reporter.dart';
+import 'core/preferences/app_prefs.dart';
 import 'core/responsive/breakpoints.dart';
+import 'core/session/session_controller.dart';
+import 'core/session/session_store.dart';
+import 'core/session/step_up_controller.dart';
+import 'core/storage/secure_storage.dart';
 import 'core/theme/app_colors.dart';
 import 'features/home/presentation/screens/home_shell.dart';
 import 'features/splash/presentation/screens/splash_screen.dart';
@@ -44,24 +54,63 @@ Future<void> main() async {
   // the English UI for one frame and then swap to French.
   await localeController.load();
 
+  // --- Foundations bootstrap (W1) -------------------------------------
+  // Install no-op observability up-front so any subsequent code that
+  // logs through AppLogger.w/e has a sink to talk to. PR7 will swap in
+  // real Sentry + PostHog implementations once DSN / key envs are wired.
+  CrashReporter.installNoop();
+  Analytics.installNoop();
+
+  // SessionController is the single source of truth for auth state. Its
+  // SessionRefresher is wired against a BARE Dio (no interceptors) to
+  // break the AuthInterceptor → refresh → AuthInterceptor cycle.
+  final secureStorage = SecureStorageImpl();
+  final sessionStore = SessionStore(secureStorage);
+  final session = SessionController(
+    store: sessionStore,
+    refresher: DioSessionRefresher(baseUrl: Env.apiBaseUrl),
+  );
+  await session.bootstrap();
+  Get.put<SessionController>(session, permanent: true);
+
+  // Hydrate persistent UI flags (onboarding completion + biometric
+  // opt-in) so the first frame can route correctly without an async
+  // gap that would flash the wrong screen.
+  final prefs = AppPrefs(secureStorage);
+  await prefs.load();
+  Get.put<AppPrefs>(prefs, permanent: true);
+
+  // ApiClient depends on SessionController.deviceId being populated, so
+  // it must be constructed AFTER bootstrap completes.
+  final packageInfo = await PackageInfo.fromPlatform();
+  final appVersion = '${packageInfo.version}+${packageInfo.buildNumber}';
+  final api = ApiClient.build(
+    session: session,
+    appVersion: appVersion,
+    localeProvider: () => localeController.current.locale.toLanguageTag(),
+  );
+  Get.put<ApiClient>(api, permanent: true);
+  Get.put<StepUpController>(StepUpController(api), permanent: true);
+  // --------------------------------------------------------------------
+
   runApp(MoneyaApp(localeController: localeController));
 }
 
 /// Dev-only flag to bypass the splash → onboarding → auth → KYC chain
 /// and land directly on [HomeShell].
 ///
-/// Set to `false` so the app boots into the full splash → onboarding →
-/// auth → KYC flow (the canonical first-run experience). Flip back to
-/// `true` temporarily when iterating on post-onboarding screens (home,
-/// transfer, confirm, success/pending/failed, transactions) to avoid
-/// re-walking the auth chain on every hot restart.
+/// Sourced from [Env.bypassOnboarding], which itself is triple-guarded:
+///   - debug build (`kDebugMode`);
+///   - flavor != prod;
+///   - `--dart-define=BYPASS_ONBOARDING=true` is supplied.
 ///
-/// Override at run-time without code edits via:
-/// `flutter run --dart-define=BYPASS_ONBOARDING=true`
-const bool _bypassOnboarding = bool.fromEnvironment(
-  'BYPASS_ONBOARDING',
-  defaultValue: true,
-);
+/// Production cannot be tricked into skipping KYC: even if a dart-define
+/// leaks in, the `kDebugMode` and flavor checks reject it.
+///
+/// Override at run-time for local iteration:
+/// `./scripts/run_dev.sh` already sets it to true; pass
+/// `BYPASS_ONBOARDING=false ./scripts/run_dev.sh` to opt out.
+bool get _bypassOnboarding => Env.bypassOnboarding;
 
 class MoneyaApp extends StatelessWidget {
   const MoneyaApp({required this.localeController, super.key});
@@ -74,9 +123,9 @@ class MoneyaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // In release builds we ALWAYS run the real flow regardless of the
-    // dart-define — this prevents us shipping a build that skips KYC.
-    final useBypass = _bypassOnboarding && !kReleaseMode;
+    // `Env.bypassOnboarding` is already triple-guarded (debug + non-prod
+    // + dart-define). No additional release-mode check needed.
+    final useBypass = _bypassOnboarding;
 
     // Rebuild on locale change. AnimatedBuilder + a Listenable is the
     // lightest pattern that does not pull in a state-management dep;

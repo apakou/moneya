@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/logging/app_logger.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/back_chevron_button.dart';
@@ -103,7 +104,7 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
   void initState() {
     super.initState();
     _idempotencyKey = const Uuid().v4();
-    debugPrint('[PaymentConfirmScreen] idempotency-key=$_idempotencyKey');
+    AppLogger.d('payment_confirm.init', {'idempotency_key': _idempotencyKey});
   }
 
   String get _formattedFee => _stripDot(widget.feeAmount);

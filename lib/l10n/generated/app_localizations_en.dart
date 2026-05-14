@@ -178,6 +178,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'This permanently removes your MoneyA account, balances, and transaction history. This action cannot be undone.';
 
   @override
+  String get logoutDialogTitle => 'Log out?';
+
+  @override
+  String get logoutDialogBody =>
+      'You\'ll need to sign in again to send or receive money. Your account and balances stay safe.';
+
+  @override
+  String get logoutDialogConfirm => 'Log out';
+
+  @override
   String get profileTitle => 'Profile Details';
 
   @override

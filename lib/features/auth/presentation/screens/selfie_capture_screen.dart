@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../../../core/logging/app_logger.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/back_chevron_button.dart';
@@ -98,8 +99,8 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
       }
       _controller = controller;
       setState(() => _status = _CameraStatus.ready);
-    } catch (e) {
-      debugPrint('Selfie camera init failed: $e');
+    } catch (e, st) {
+      AppLogger.w('kyc.selfie.camera_init.failed', const {}, e, st);
       if (!mounted) return;
       setState(() => _status = _CameraStatus.unavailable);
     }
@@ -118,10 +119,11 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
     if (c == null || !c.value.isInitialized || _isCapturing) return;
     setState(() => _isCapturing = true);
     try {
-      final file = await c.takePicture();
-      // TODO: upload `file.path` to the KYC backend along with the
-      // previously captured document images, under one idempotency key.
-      debugPrint('Captured selfie: ${file.path}');
+      await c.takePicture();
+      // TODO: upload the captured selfie to the KYC backend along
+      // with the previously captured document images, under one
+      // idempotency key. Path intentionally not logged.
+      AppLogger.i('kyc.selfie.captured', const {});
       if (!mounted) return;
 
       // Switch to processing state BEFORE disposing the controller so the
@@ -137,8 +139,8 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
       await Future<void>.delayed(const Duration(milliseconds: 1500));
       if (!mounted) return;
       _onSubmitted();
-    } catch (e) {
-      debugPrint('Selfie capture failed: $e');
+    } catch (e, st) {
+      AppLogger.w('kyc.selfie.capture.failed', const {}, e, st);
       if (!mounted) return;
       setState(() => _isCapturing = false);
     }
@@ -149,7 +151,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
     // an "under review" screen while the backend confirms the upload;
     // for now we land directly on the home screen and clear the entire
     // onboarding stack so back-navigation can't return here.
-    debugPrint('KYC selfie submitted; navigating to home.');
+    AppLogger.i('kyc.selfie.submitted', const {});
     if (!mounted) return;
     Get.offAll<void>(() => const HomeShell());
   }

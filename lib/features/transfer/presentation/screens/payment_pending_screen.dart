@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/logging/app_logger.dart';
 import '../../../home/domain/supported_currency.dart';
 import '../widgets/transfer_outcome_scaffold.dart';
 import 'transfer_money_screen.dart';
@@ -96,9 +97,9 @@ class PaymentPendingScreen extends StatelessWidget {
         // TODO(transactions): replace with a push to the transaction
         // detail screen once that lands. For now log the id we'd open
         // and pop to home so the user isn't stranded.
-        debugPrint(
-          '[PaymentPendingScreen] TODO open transaction id=$transactionId',
-        );
+        AppLogger.i('payment.pending.view_tx.tap', {
+          'tx_id': transactionId,
+        });
         Get.until((r) => r.isFirst);
       },
       ),

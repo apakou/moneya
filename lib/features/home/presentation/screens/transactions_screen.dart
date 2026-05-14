@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/locale/locale_controller.dart';
+import '../../../../core/logging/app_logger.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../l10n/generated/app_localizations.dart';
@@ -345,7 +346,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     LocaleScope.of(context, listen: false).toggle();
   }
   void _onNotificationsTap() => showNotificationsSheet(context);
-  void _onExportTap() => debugPrint('TODO: export transactions CSV');
+  void _onExportTap() => AppLogger.i('transactions.export.tap', const {});
   void _onTxnTap(Transaction t) {
     Get.to<void>(
       () => TransactionDetailScreen(

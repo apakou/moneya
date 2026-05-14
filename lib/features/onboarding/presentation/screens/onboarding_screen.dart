@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/preferences/app_prefs.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../../main.dart' show LocaleScope;
@@ -95,8 +96,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _skip() => _finishOnboarding();
 
   void _finishOnboarding() {
-    // TODO: persist that onboarding has been completed (e.g. SharedPreferences)
-    // before routing.
+    // Mark onboarding complete BEFORE navigating so a forced restart
+    // (e.g. process kill mid-route) doesn't drop the user back into
+    // step 1. Fire-and-forget is safe: the write goes to secure
+    // storage and the next splash boot reads the same key.
+    Get.find<AppPrefs>().setOnboardingComplete(true);
     Get.off<void>(
       () => const AuthLandingScreen(),
       routeName: AuthLandingScreen.routeName,

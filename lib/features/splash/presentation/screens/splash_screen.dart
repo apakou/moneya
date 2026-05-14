@@ -5,7 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/preferences/app_prefs.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../auth/presentation/screens/auth_landing_screen.dart';
 import '../../../onboarding/presentation/screens/onboarding_screen.dart';
 
 /// Path to the MoneyA mark (white version) used on dark/brand surfaces.
@@ -45,7 +47,25 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void _goToOnboarding() {
     if (!mounted) return;
-    Get.off<void>(() => const OnboardingScreen());
+    // If the user has already completed onboarding on this install
+    // (flag persisted in secure storage, hydrated at boot), skip
+    // straight to the auth landing. Onboarding is a first-run
+    // experience and re-walking it on every cold start would be jarring.
+    //
+    // `Get.isRegistered` guards against test harnesses that don't
+    // bootstrap AppPrefs — in that case we fall back to onboarding,
+    // which is the safe default.
+    final completed = Get.isRegistered<AppPrefs>()
+        ? Get.find<AppPrefs>().onboardingComplete
+        : false;
+    if (completed) {
+      Get.off<void>(
+        () => const AuthLandingScreen(),
+        routeName: AuthLandingScreen.routeName,
+      );
+    } else {
+      Get.off<void>(() => const OnboardingScreen());
+    }
   }
 
   @override

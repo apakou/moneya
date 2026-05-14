@@ -7,6 +7,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 
 import '../../../../core/format/money_format.dart';
+import '../../../../core/logging/app_logger.dart';
+import '../../../../core/logging/pii.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/back_chevron_button.dart';
@@ -315,7 +317,7 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
     try {
       picked = await FlutterContacts.openExternalPick();
     } catch (e, st) {
-      debugPrint('openExternalPick threw: $e\n$st');
+      AppLogger.w('contacts.openExternalPick.failed', const {}, e, st);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -348,7 +350,7 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
         withPhoto: false,
       );
     } catch (e, st) {
-      debugPrint('getContact threw: $e\n$st');
+      AppLogger.w('contacts.getContact.failed', const {}, e, st);
     }
     final contact = full ?? picked;
 
@@ -405,10 +407,10 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
         nationalDigits = parsed.nsn;
         final matched = _supportedCountryForIso(parsed.isoCode.name);
         if (matched != null && matched != _recipientCountry) {
-          debugPrint(
-            'Contact prefix switched recipient country: '
-            '${_recipientCountry.isoCode} → ${matched.isoCode}',
-          );
+          AppLogger.d('transfer.contact_prefix.country_switch', {
+            'from': _recipientCountry.isoCode,
+            'to': matched.isoCode,
+          });
           country = matched;
         }
       } catch (_) {
@@ -478,14 +480,21 @@ class _TransferMoneyScreenState extends State<TransferMoneyScreen> {
   void _onConfirm() {
     if (!_canConfirm) return;
     final isInvite = _lookupResult is RecipientNotFound;
-    debugPrint(
-      'Transfer confirm: ${widget.currency.code} $_amount '
-      'from +${_senderCountry.dialCode}${_senderPhoneController.text} '
-      '(${_provider.label}) → '
-      '+${_recipientCountry.dialCode}${_recipientPhoneController.text} '
-      '(${_recipientNameController.text.trim()}) '
-      '${isInvite ? "[SMS invite + escrow]" : "[direct]"}',
-    );
+    AppLogger.i('transfer.confirm.tap', {
+      'currency': widget.currency.code,
+      'amount': _amount,
+      // Country + provider are non-PII; phones go through the redactor.
+      'sender_country': _senderCountry.isoCode,
+      'sender_phone': maskPhone(
+        '+${_senderCountry.dialCode}${_senderPhoneController.text}',
+      ),
+      'recipient_country': _recipientCountry.isoCode,
+      'recipient_phone': maskPhone(
+        '+${_recipientCountry.dialCode}${_recipientPhoneController.text}',
+      ),
+      'provider': _provider.label,
+      'mode': isInvite ? 'invite_escrow' : 'direct',
+    });
     Get.to<void>(
       () => PaymentConfirmScreen(
         amount: _amount,

@@ -3,6 +3,8 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../logging/app_logger.dart';
+
 /// Locales the app currently ships translations for.
 ///
 /// Order matters for the language picker UI (English first because the
@@ -62,7 +64,7 @@ class LocaleController extends ChangeNotifier {
       }
     } catch (e, st) {
       // Storage failure must not crash startup — fall back silently.
-      debugPrint('LocaleController.load failed: $e\n$st');
+      AppLogger.w('locale.load.failed', const {}, e, st);
     }
   }
 
@@ -79,7 +81,7 @@ class LocaleController extends ChangeNotifier {
       // Persistence failure is non-fatal — the in-memory switch
       // already happened and the user sees the new language. We just
       // won't remember it on next launch.
-      debugPrint('LocaleController.setLocale persist failed: $e\n$st');
+      AppLogger.w('locale.persist.failed', {'tag': next.tag}, e, st);
     }
   }
 

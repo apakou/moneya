@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 
+import '../../../../core/logging/app_logger.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/back_chevron_button.dart';
@@ -188,10 +189,12 @@ class _WithdrawAmountScreenState extends State<WithdrawAmountScreen> {
           // stub below goes straight to success so the happy path is
           // demo-able; flip the constant locally to exercise the
           // other two outcomes when designing copy.
-          debugPrint(
-            'Withdraw: ${widget.currency.code} $_amount to '
-            '${widget.provider.id} (${widget.country.isoCode})',
-          );
+          AppLogger.i('withdraw.submit.stub', {
+            'currency': widget.currency.code,
+            'amount': _amount,
+            'provider': widget.provider.id,
+            'country': widget.country.isoCode,
+          });
           Get.off<void>(
             () => _WithdrawSuccessScreen(
               amount: _amount,

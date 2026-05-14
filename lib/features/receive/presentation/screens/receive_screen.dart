@@ -10,6 +10,7 @@ import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../../core/logging/app_logger.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/back_chevron_button.dart';
@@ -1038,10 +1039,12 @@ class _RequestTabState extends State<_RequestTab> {
     final note = _noteController.text.trim();
 
     // TODO: POST /payment-requests with idempotency key.
-    debugPrint(
-      'TODO: submit payment request — to=${_phoneController.text}, '
-      'amount=${_currency.code} $amount, note="$note"',
-    );
+    AppLogger.i('receive.submit.stub', {
+      'to': _phoneController.text,
+      'currency': _currency.code,
+      'amount': amount,
+      'note_present': note.isNotEmpty,
+    });
 
     Get.off<void>(
       () => _RequestSentScreen(

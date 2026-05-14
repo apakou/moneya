@@ -55,6 +55,38 @@ dependencies:
   pdf: ^3.12.0
   printing: ^5.14.3
 
+  # ---------------------------------------------------------------------------
+  # W1 Foundations — network, secure storage, money, logging, app metadata.
+  # See docs/backend/client-integration-notes.md for how these are wired up.
+  # ---------------------------------------------------------------------------
+
+  # HTTP client. Used by core/network/api_client.dart with 5 interceptors
+  # (logging → auth → idempotency → trace → error-mapping) per the integration
+  # notes §2. No raw DioException ever crosses the network-layer boundary;
+  # callers receive ApiResult<T>.
+  dio: ^5.7.0
+
+  # Encrypted-at-rest key/value storage. Backs SessionStore (access + refresh
+  # tokens, deviceId) and small client-only flags (onboarding-complete,
+  # biometric-enabled, currency-preferred, locale-override) per integration
+  # notes §3 + §12. SharedPreferences is intentionally NOT used for any of
+  # these — fintech preference is encrypted KV.
+  flutter_secure_storage: ^9.2.2
+
+  # Arbitrary-precision decimal arithmetic. Server money fields are
+  # decimal strings with ≤6 dp (Money schema in openapi.yaml). The client
+  # never parses to double — see integration notes §10.
+  decimal: ^3.0.2
+
+  # App version + build number for the X-App-Version request header
+  # (integration notes §2).
+  package_info_plus: ^8.1.2
+
+  # Structured leveled logging used by core/logging/app_logger.dart. Debug
+  # builds print to console; release builds suppress info/debug and forward
+  # errors to CrashReporter (no-op until PR7).
+  logger: ^2.4.0
+
   # GetX — navigation + routing + utilities. Adopted project-wide so
   # every back affordance, forward route, and outcome-screen
   # popUntil resolves through a single navigator without threading
@@ -71,6 +103,10 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+  # Mocking framework for unit/widget tests. Used by test/core/** to
+  # fake Dio adapters, SecureStorage, and SessionController collaborators.
+  mocktail: ^1.0.4
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
