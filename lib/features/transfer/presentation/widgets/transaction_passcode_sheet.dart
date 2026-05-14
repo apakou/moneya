@@ -1,43 +1,67 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 
+import '../../../../core/network/api_error.dart';
+import '../../../../core/network/api_result.dart';
+import '../../../../core/session/step_up_controller.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/safe_pop.dart';
 import '../../../auth/domain/passcode_policy.dart';
+import '../../data/transaction_auth_outcome.dart';
 
-/// Show the transaction step-up passcode sheet and return whether the
-/// user authenticated.
+/// Show the transaction step-up passcode sheet and return the resulting
+/// [TransactionAuthOutcome].
 ///
-/// * `true`  — passcode matched the expected value.
-/// * `false` — user exhausted [maxAttempts] (3) wrong entries; the
-///   caller should soft-fail.
-/// * `null`  — user dismissed the sheet (cancelled).
+/// Behaviour:
+/// * The sheet calls [StepUpController.fresh] with the entered passcode.
+/// * On success → pops with [TransactionAuthAuthorised] carrying the
+///   minted `X-Txn-Token`.
+/// * On wrong passcode ([AuthError]) → stays open, shows remaining
+///   attempts, lets the user re-enter. After [maxAttempts] consecutive
+///   wrong entries the sheet pops with [TransactionAuthLockedOut].
+/// * On server-side lockout ([AuthError] with status 423) → pops
+///   immediately with [TransactionAuthLockedOut].
+/// * On any other [ApiError] (network drop, 5xx, malformed body) →
+///   pops with [TransactionAuthNetworkError].
+/// * On dismiss (drag-down / tap outside / back) → pops with
+///   [TransactionAuthCancelled].
 ///
-/// **Stub authentication.** The "correct" passcode is hardcoded to
-/// `123456` until we wire `flutter_secure_storage` + Argon2id hashing.
-/// The fintech-security skill explicitly forbids storing the raw
-/// passcode anywhere — once the backend lands we'll send the entered
-/// digits + server salt through Argon2id and POST the hash to a
-/// `/auth/verify-passcode` endpoint that returns a short-lived
-/// transaction-confirm token.
-Future<bool?> showTransactionPasscodeSheet({
+/// The actual passcode is sent plaintext over TLS; the server hashes
+/// it with Argon2id (see `client-integration-notes.md` §3 and the
+/// fintech-security skill). The sheet never persists the digits — they
+/// only live in the [TextEditingController]s for the lifetime of the
+/// modal, and the controllers are disposed when it closes.
+///
+/// [stepUp] override exists for widget tests; production callers omit
+/// it and the sheet resolves the singleton via `Get.find`.
+Future<TransactionAuthOutcome> showTransactionPasscodeSheet({
   required BuildContext context,
   int maxAttempts = 3,
-}) {
-  return showModalBottomSheet<bool>(
+  StepUpController? stepUp,
+}) async {
+  final outcome = await showModalBottomSheet<TransactionAuthOutcome>(
     context: context,
     isScrollControlled: true,
     isDismissible: true,
     enableDrag: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => _TransactionPasscodeSheet(maxAttempts: maxAttempts),
+    builder: (_) => _TransactionPasscodeSheet(
+      maxAttempts: maxAttempts,
+      stepUp: stepUp ?? Get.find<StepUpController>(),
+    ),
   );
+  return outcome ?? const TransactionAuthCancelled();
 }
 
 class _TransactionPasscodeSheet extends StatefulWidget {
-  const _TransactionPasscodeSheet({required this.maxAttempts});
+  const _TransactionPasscodeSheet({
+    required this.maxAttempts,
+    required this.stepUp,
+  });
 
   final int maxAttempts;
+  final StepUpController stepUp;
 
   @override
   State<_TransactionPasscodeSheet> createState() =>
@@ -46,12 +70,11 @@ class _TransactionPasscodeSheet extends StatefulWidget {
 
 class _TransactionPasscodeSheetState
     extends State<_TransactionPasscodeSheet> {
-  static const String _expectedCode = '123456';
-
   late final List<TextEditingController> _controllers;
   late final List<FocusNode> _focusNodes;
   String? _error;
   int _attempts = 0;
+  bool _submitting = false;
 
   @override
   void initState() {
@@ -125,24 +148,57 @@ class _TransactionPasscodeSheetState
     _focusNodes.first.requestFocus();
   }
 
-  void _onSubmit() {
-    if (!_isComplete) return;
-    if (_code == _expectedCode) {
-      popAfterFrame<bool>(context, true);
-      return;
+  /// Submit the entered digits to `/v1/auth/step-up` via
+  /// [StepUpController]. Pops the sheet on terminal outcomes; clears
+  /// and re-focuses on retryable wrong-passcode errors.
+  Future<void> _onSubmit() async {
+    if (!_isComplete || _submitting) return;
+    setState(() => _submitting = true);
+
+    final result = await widget.stepUp.fresh(passcode: _code);
+    if (!mounted) return;
+
+    switch (result) {
+      case Success(:final value):
+        _popWith(TransactionAuthAuthorised(value));
+        return;
+      case Failure(:final error):
+        if (error is AuthError) {
+          // 423 / server-side lockout: pop immediately. 401 / wrong
+          // passcode: in-place retry up to [maxAttempts]; after that
+          // we surface a generic lockout so the caller can prompt
+          // the user to wait and retry.
+          if (error.statusCode == 423) {
+            _popWith(TransactionAuthLockedOut(
+              error.detail ?? error.title,
+            ));
+            return;
+          }
+          _attempts += 1;
+          if (_attempts >= widget.maxAttempts) {
+            _popWith(TransactionAuthLockedOut(
+              error.detail ?? error.title,
+            ));
+            return;
+          }
+          final remaining = widget.maxAttempts - _attempts;
+          setState(() {
+            _submitting = false;
+            _error = remaining == 1
+                ? 'Wrong passcode. 1 attempt left.'
+                : 'Wrong passcode. $remaining attempts left.';
+          });
+          _clearAndRefocus();
+          return;
+        }
+        // Any other ApiError (network, 5xx, unknown) — let the caller
+        // surface it and the user retry by re-swiping.
+        _popWith(TransactionAuthNetworkError(error));
     }
-    _attempts += 1;
-    if (_attempts >= widget.maxAttempts) {
-      popAfterFrame<bool>(context, false);
-      return;
-    }
-    final remaining = widget.maxAttempts - _attempts;
-    setState(() {
-      _error = remaining == 1
-          ? 'Wrong passcode. 1 attempt left.'
-          : 'Wrong passcode. $remaining attempts left.';
-    });
-    _clearAndRefocus();
+  }
+
+  void _popWith(TransactionAuthOutcome outcome) {
+    popAfterFrame<TransactionAuthOutcome>(context, outcome);
   }
 
   @override
@@ -196,6 +252,7 @@ class _TransactionPasscodeSheetState
                 focusNodes: _focusNodes,
                 onChanged: _onDigitChanged,
                 onKey: _onKey,
+                enabled: !_submitting,
               ),
               const SizedBox(height: 12),
               SizedBox(
@@ -221,7 +278,8 @@ class _TransactionPasscodeSheetState
                 width: double.infinity,
                 height: 56,
                 child: _ConfirmButton(
-                  enabled: _isComplete,
+                  enabled: _isComplete && !_submitting,
+                  loading: _submitting,
                   onPressed: _onSubmit,
                 ),
               ),
@@ -239,6 +297,7 @@ class _PasscodeBoxes extends StatelessWidget {
     required this.focusNodes,
     required this.onChanged,
     required this.onKey,
+    required this.enabled,
   });
 
   final List<TextEditingController> controllers;
@@ -246,6 +305,7 @@ class _PasscodeBoxes extends StatelessWidget {
   final void Function(int index, String value) onChanged;
   final KeyEventResult Function(int index, FocusNode node, KeyEvent event)
       onKey;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -262,6 +322,7 @@ class _PasscodeBoxes extends StatelessWidget {
             child: _PasscodeBox(
               controller: controllers[i],
               focusNode: focusNodes[i],
+              enabled: enabled,
               onChanged: (v) => onChanged(i, v),
               onKey: (node, event) => onKey(i, node, event),
             ),
@@ -276,12 +337,14 @@ class _PasscodeBox extends StatelessWidget {
   const _PasscodeBox({
     required this.controller,
     required this.focusNode,
+    required this.enabled,
     required this.onChanged,
     required this.onKey,
   });
 
   final TextEditingController controller;
   final FocusNode focusNode;
+  final bool enabled;
   final ValueChanged<String> onChanged;
   final KeyEventResult Function(FocusNode node, KeyEvent event) onKey;
 
@@ -292,6 +355,7 @@ class _PasscodeBox extends StatelessWidget {
       child: TextField(
         controller: controller,
         focusNode: focusNode,
+        enabled: enabled,
         textAlign: TextAlign.center,
         keyboardType: TextInputType.number,
         maxLength: 1,
@@ -338,9 +402,14 @@ class _PasscodeBox extends StatelessWidget {
 }
 
 class _ConfirmButton extends StatelessWidget {
-  const _ConfirmButton({required this.enabled, required this.onPressed});
+  const _ConfirmButton({
+    required this.enabled,
+    required this.loading,
+    required this.onPressed,
+  });
 
   final bool enabled;
+  final bool loading;
   final VoidCallback onPressed;
 
   @override
@@ -357,15 +426,24 @@ class _ConfirmButton extends StatelessWidget {
         customBorder: const StadiumBorder(),
         onTap: enabled ? onPressed : null,
         child: Center(
-          child: Text(
-            'Confirm',
-            style: TextStyle(
-              color: fg,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.2,
-            ),
-          ),
+          child: loading
+              ? SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    valueColor: AlwaysStoppedAnimation<Color>(fg),
+                  ),
+                )
+              : Text(
+                  'Confirm',
+                  style: TextStyle(
+                    color: fg,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
+                  ),
+                ),
         ),
       ),
     );

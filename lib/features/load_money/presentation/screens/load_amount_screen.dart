@@ -12,6 +12,7 @@ import '../../../../core/widgets/dirty_form_scope.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../auth/domain/supported_country.dart';
 import '../../../home/domain/supported_currency.dart';
+import '../../../transfer/data/transaction_auth_outcome.dart';
 import '../../../transfer/data/transaction_auth_service.dart';
 import '../../../transfer/presentation/widgets/amount_keypad_sheet.dart';
 import '../../../transfer/presentation/widgets/swipe_to_pay_button.dart';
@@ -77,7 +78,7 @@ class _LoadAmountScreenState extends State<LoadAmountScreen> {
   // Same instance pattern as PaymentConfirmScreen so the Load flow
   // inherits any future changes to the step-up policy without
   // diverging.
-  final TransactionAuthService _authService = TransactionAuthService();
+  final TransactionAuthService _authService = const TransactionAuthService();
 
   // Re-entrancy guard. Swipe gestures can fire twice if the user
   // releases at exactly the completion threshold; without this the
@@ -184,24 +185,26 @@ class _LoadAmountScreenState extends State<LoadAmountScreen> {
   Future<void> _onConfirm() async {
     if (_authInFlight) return;
     _authInFlight = true;
+    final messenger = ScaffoldMessenger.of(context);
     try {
-      // Step-up auth — biometric first, single 6-digit passcode entry
-      // as fallback. The fintech-security skill requires step-up on
-      // every debit; Load is a debit on the user's external MoMo
-      // wallet, so the gate is identical to Send.
-      final result = await _authService.authenticate(context);
+      // Step-up auth — single 6-digit passcode entry against the
+      // server step-up endpoint. The fintech-security skill requires
+      // step-up on every debit; Load is a debit on the user's
+      // external MoMo wallet, so the gate is identical to Send.
+      final outcome = await _authService.authenticate(context);
       if (!mounted) return;
-      switch (result) {
-        case TransactionAuthResult.success:
+      switch (outcome) {
+        case TransactionAuthAuthorised(:final txnToken):
           // TODO(load-money): call `POST /v1/loads` with idempotency
-          // key + X-Txn-Token from the auth service, persist intent,
-          // and wait for the provider USSD push to land. Stub below
-          // shortcuts straight to the success outcome.
+          // key + [txnToken] in `Options.extra[AuthInterceptor.txnTokenKey]`,
+          // persist intent, and wait for the provider USSD push to
+          // land. Stub below shortcuts straight to the success outcome.
           AppLogger.i('load_money.submit.stub', {
             'currency': widget.currency.code,
             'amount': _amount,
             'provider': widget.provider.id,
             'country': widget.country.isoCode,
+            'txn_token_len': txnToken.length,
           });
           Get.off<void>(
             () => _LoadSuccessScreen(
@@ -211,13 +214,23 @@ class _LoadAmountScreenState extends State<LoadAmountScreen> {
             ),
           );
           return;
-        case TransactionAuthResult.cancelled:
-        case TransactionAuthResult.failed:
-          // Silent reset on cancel; on `failed` (3 wrong passcode
-          // tries) we also stay on the screen so the user can re-
-          // swipe and retry. A snackbar is overkill for the stub —
-          // wire one in once the backend tells us *why* it failed.
+        case TransactionAuthCancelled():
+          // Silent reset on cancel — the user dismissed the sheet.
           break;
+        case TransactionAuthLockedOut(:final message):
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(message),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        case TransactionAuthNetworkError(:final error):
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(error.title),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
       }
     } finally {
       _authInFlight = false;

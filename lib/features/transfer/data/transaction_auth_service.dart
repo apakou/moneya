@@ -1,93 +1,46 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:local_auth/local_auth.dart';
 
-import '../../../core/logging/app_logger.dart';
-import '../../../core/preferences/app_prefs.dart';
 import '../presentation/widgets/transaction_passcode_sheet.dart';
+import 'transaction_auth_outcome.dart';
 
-/// Outcome of a step-up authentication challenge.
-enum TransactionAuthResult {
-  /// User authenticated successfully (via biometric or passcode).
-  success,
-
-  /// User dismissed / cancelled the prompt without completing.
-  cancelled,
-
-  /// User exhausted retry budget. Caller should soft-fail and let the
-  /// user re-attempt by re-swiping (no real lockout yet — that lives
-  /// server-side per the fintech-security skill).
-  failed,
-}
-
-/// Step-up authentication for a single transaction (the swipe-to-pay
-/// confirmation on `PaymentConfirmScreen`).
+/// Step-up authentication for a single money-moving operation (the
+/// swipe-to-pay / swipe-to-confirm gesture on PaymentConfirmScreen,
+/// WithdrawAmountScreen, LoadAmountScreen).
 ///
-/// Flow per the fintech-security skill:
-/// 1. If the user enrolled biometric login during onboarding AND the
-///    device still has biometrics registered, prompt biometric with
-///    `sensitiveTransaction: true`.
-/// 2. On biometric success → return [TransactionAuthResult.success].
-/// 3. On biometric cancel / hardware failure / not-enrolled → fall
-///    through to a 6-digit passcode bottom sheet.
-/// 4. The passcode sheet enforces a 3-attempt soft cap; after 3 wrong
-///    entries it returns [TransactionAuthResult.failed] so the caller
-///    can spring the swipe button back to start.
+/// **W2 contract — passcode only.** The previous biometric short-circuit
+/// has been removed: the server treats step-up as an explicit passcode
+/// challenge that produces a single-use `X-Txn-Token`, and biometric
+/// alone cannot mint that token. When the backend lands a
+/// `/auth/biometric-attest` endpoint we'll route through it again and
+/// fall back to passcode; for now every step-up goes through the
+/// passcode sheet, which calls [StepUpController.fresh] and emits one
+/// of the [TransactionAuthOutcome] variants.
 ///
-/// The biometric-enabled flag is read from [AppPrefs] (persisted to
-/// secure storage by the passcode/biometric enrollment screen). If
-/// [AppPrefs] hasn't been registered with GetX (e.g. inside a widget
-/// test that didn't bootstrap it) we default to `true` so existing
-/// transfer-flow tests still exercise the biometric branch.
+/// Biometric is still used for **app unlock** (passcode lock screen)
+/// via [AppPrefs.biometricEnabled] — that path is unchanged.
+///
+/// Usage:
+/// ```dart
+/// final outcome = await _authService.authenticate(context);
+/// switch (outcome) {
+///   case TransactionAuthAuthorised(:final txnToken):
+///     await repo.create(req, txnToken: txnToken);
+///   case TransactionAuthCancelled():
+///     // user dismissed — silent reset
+///   case TransactionAuthLockedOut(:final message):
+///     messenger.showSnackBar(SnackBar(content: Text(message)));
+///   case TransactionAuthNetworkError(:final error):
+///     messenger.showSnackBar(SnackBar(content: Text(error.title)));
+/// }
+/// ```
 class TransactionAuthService {
-  TransactionAuthService({LocalAuthentication? localAuth})
-      : _localAuth = localAuth ?? LocalAuthentication();
+  const TransactionAuthService();
 
-  final LocalAuthentication _localAuth;
-
-  bool get _biometricEnabled {
-    if (!Get.isRegistered<AppPrefs>()) return true;
-    return Get.find<AppPrefs>().biometricEnabled;
-  }
-
-  /// Run the full auth challenge for a transaction. [context] is used
-  /// to show the passcode bottom sheet when biometric isn't available
-  /// or is rejected.
-  Future<TransactionAuthResult> authenticate(BuildContext context) async {
-    final biometricOk = await _tryBiometric();
-    if (biometricOk) return TransactionAuthResult.success;
-
-    // Either biometrics aren't enrolled / supported, or the user
-    // failed / cancelled the biometric prompt. Fall through to the
-    // passcode bottom sheet.
-    if (!context.mounted) return TransactionAuthResult.cancelled;
-    final passcodeOk = await showTransactionPasscodeSheet(context: context);
-    if (passcodeOk == null) return TransactionAuthResult.cancelled;
-    return passcodeOk
-        ? TransactionAuthResult.success
-        : TransactionAuthResult.failed;
-  }
-
-  Future<bool> _tryBiometric() async {
-    if (!_biometricEnabled) return false;
-    try {
-      final supported =
-          await _localAuth.isDeviceSupported() &&
-          await _localAuth.canCheckBiometrics;
-      if (!supported) return false;
-      final available = await _localAuth.getAvailableBiometrics();
-      if (available.isEmpty) return false;
-      return await _localAuth.authenticate(
-        localizedReason: 'Confirm your transfer',
-        options: const AuthenticationOptions(
-          biometricOnly: true,
-          stickyAuth: true,
-          sensitiveTransaction: true,
-        ),
-      );
-    } catch (e, st) {
-      AppLogger.w('biometric.auth.failed', const {}, e, st);
-      return false;
-    }
+  /// Run the step-up challenge. [context] is used to show the
+  /// passcode bottom sheet. Returns a terminal [TransactionAuthOutcome]
+  /// — the sheet handles in-place retry for wrong-passcode itself.
+  Future<TransactionAuthOutcome> authenticate(BuildContext context) async {
+    if (!context.mounted) return const TransactionAuthCancelled();
+    return showTransactionPasscodeSheet(context: context);
   }
 }

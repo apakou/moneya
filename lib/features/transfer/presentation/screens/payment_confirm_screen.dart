@@ -10,6 +10,7 @@ import '../../../../core/widgets/back_chevron_button.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../auth/domain/supported_country.dart';
 import '../../../home/domain/supported_currency.dart';
+import '../../data/transaction_auth_outcome.dart';
 import '../../data/transaction_auth_service.dart';
 import '../../domain/funding_provider.dart';
 import '../../domain/recipient_lookup.dart';
@@ -94,7 +95,7 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
   final GlobalKey<SwipeToPayButtonState> _swipeKey =
       GlobalKey<SwipeToPayButtonState>();
 
-  final TransactionAuthService _authService = TransactionAuthService();
+  final TransactionAuthService _authService = const TransactionAuthService();
 
   /// Guards against double-firing while the auth sheet / biometric
   /// prompt is on screen.
@@ -139,13 +140,22 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final isInvite = widget.lookupResult is RecipientNotFound;
     try {
-      final result = await _authService.authenticate(context);
+      final outcome = await _authService.authenticate(context);
       if (!mounted) return;
-      switch (result) {
-        case TransactionAuthResult.success:
-          // Stub: no backend call yet. The idempotency key is logged
-          // in initState and would be the `Idempotency-Key` HTTP
-          // header on `POST /transfers`.
+      switch (outcome) {
+        case TransactionAuthAuthorised(:final txnToken):
+          // TODO(payment-confirm): call `POST /v1/transfers` with
+          // [_idempotencyKey] as `Idempotency-Key` and [txnToken] in
+          // `Options.extra[AuthInterceptor.txnTokenKey]`. The stub
+          // below short-cuts straight to the success outcome so the
+          // happy path is demo-able; once the repo lands, map the
+          // ApiResult onto success / pending / failed screens.
+          AppLogger.i('payment_confirm.submit.stub', {
+            'idempotency_key': _idempotencyKey,
+            'txn_token_len': txnToken.length,
+            'currency': widget.currency.code,
+            'amount': widget.amount,
+          });
           Get.off<void>(
             () => PaymentSuccessScreen(
               amount: widget.amount,
@@ -158,15 +168,20 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
             ),
           );
           return;
-        case TransactionAuthResult.cancelled:
+        case TransactionAuthCancelled():
           // User dismissed the passcode sheet — silent reset.
           break;
-        case TransactionAuthResult.failed:
+        case TransactionAuthLockedOut(:final message):
           messenger.showSnackBar(
             SnackBar(
-              content: Text(
-                AppLocalizations.of(context).confirmPaymentAuthFailedSnack,
-              ),
+              content: Text(message),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        case TransactionAuthNetworkError(:final error):
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(error.title),
               behavior: SnackBarBehavior.floating,
             ),
           );

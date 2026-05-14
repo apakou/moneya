@@ -14,6 +14,7 @@ import '../../../auth/domain/supported_country.dart';
 import '../../../home/domain/supported_currency.dart';
 import '../../../load_money/domain/load_money_limits.dart';
 import '../../../load_money/domain/momo_provider.dart';
+import '../../../transfer/data/transaction_auth_outcome.dart';
 import '../../../transfer/data/transaction_auth_service.dart';
 import '../../../transfer/presentation/widgets/amount_keypad_sheet.dart';
 import '../../../transfer/presentation/widgets/swipe_to_pay_button.dart';
@@ -80,7 +81,7 @@ class _WithdrawAmountScreenState extends State<WithdrawAmountScreen> {
     widget.currency,
   );
 
-  final TransactionAuthService _authService = TransactionAuthService();
+  final TransactionAuthService _authService = const TransactionAuthService();
   bool _authInFlight = false;
 
   @override
@@ -178,15 +179,17 @@ class _WithdrawAmountScreenState extends State<WithdrawAmountScreen> {
   Future<void> _onConfirm() async {
     if (_authInFlight) return;
     _authInFlight = true;
+    final messenger = ScaffoldMessenger.of(context);
     try {
-      final result = await _authService.authenticate(context);
+      final outcome = await _authService.authenticate(context);
       if (!mounted) return;
-      switch (result) {
-        case TransactionAuthResult.success:
+      switch (outcome) {
+        case TransactionAuthAuthorised(:final txnToken):
           // TODO(withdraw): call `POST /v1/withdrawals` with the
-          // Idempotency-Key + X-Txn-Token from the auth service.
-          // Map response → success / pending / failed outcome. The
-          // stub below goes straight to success so the happy path is
+          // Idempotency-Key + [txnToken] in
+          // `Options.extra[AuthInterceptor.txnTokenKey]`. Map
+          // response → success / pending / failed outcome. The stub
+          // below goes straight to success so the happy path is
           // demo-able; flip the constant locally to exercise the
           // other two outcomes when designing copy.
           AppLogger.i('withdraw.submit.stub', {
@@ -194,6 +197,7 @@ class _WithdrawAmountScreenState extends State<WithdrawAmountScreen> {
             'amount': _amount,
             'provider': widget.provider.id,
             'country': widget.country.isoCode,
+            'txn_token_len': txnToken.length,
           });
           Get.off<void>(
             () => _WithdrawSuccessScreen(
@@ -203,9 +207,22 @@ class _WithdrawAmountScreenState extends State<WithdrawAmountScreen> {
             ),
           );
           return;
-        case TransactionAuthResult.cancelled:
-        case TransactionAuthResult.failed:
+        case TransactionAuthCancelled():
           break;
+        case TransactionAuthLockedOut(:final message):
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(message),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        case TransactionAuthNetworkError(:final error):
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(error.title),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
       }
     } finally {
       _authInFlight = false;
