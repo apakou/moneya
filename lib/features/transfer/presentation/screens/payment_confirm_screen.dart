@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/logging/app_logger.dart';
+import '../../../../core/network/api_error.dart';
+import '../../../../core/network/api_result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/back_chevron_button.dart';
@@ -12,9 +14,13 @@ import '../../../auth/domain/supported_country.dart';
 import '../../../home/domain/supported_currency.dart';
 import '../../data/transaction_auth_outcome.dart';
 import '../../data/transaction_auth_service.dart';
+import '../../data/transfer_dtos.dart';
+import '../../data/transfer_repository.dart';
 import '../../domain/funding_provider.dart';
 import '../../domain/recipient_lookup.dart';
 import '../widgets/swipe_to_pay_button.dart';
+import 'payment_failed_screen.dart';
+import 'payment_pending_screen.dart';
 import 'payment_success_screen.dart';
 import 'transfer_money_screen.dart' show fundingProviderLabel;
 
@@ -54,6 +60,7 @@ class PaymentConfirmScreen extends StatefulWidget {
     required this.recipientName,
     required this.lookupResult,
     required this.purpose,
+    this.repository,
     super.key,
   });
 
@@ -82,6 +89,11 @@ class PaymentConfirmScreen extends StatefulWidget {
   /// so we can show it later if design adds a "Note" row.
   final String purpose;
 
+  /// Override for tests. When `null`, a default
+  /// [TransferRepository] is constructed inside the state — it
+  /// resolves the shared `ApiClient` from GetX lazily on first use.
+  final TransferRepository? repository;
+
   @override
   State<PaymentConfirmScreen> createState() => _PaymentConfirmScreenState();
 }
@@ -97,6 +109,12 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
 
   final TransactionAuthService _authService = const TransactionAuthService();
 
+  /// Repository for `POST /v1/transfers`. In production we lazily
+  /// resolve the shared `ApiClient` from GetX (see [TransferRepository]
+  /// default ctor). Tests inject a scripted-adapter-backed repo via
+  /// `widget.repository`.
+  late final TransferRepository _repository;
+
   /// Guards against double-firing while the auth sheet / biometric
   /// prompt is on screen.
   bool _authInFlight = false;
@@ -105,6 +123,7 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
   void initState() {
     super.initState();
     _idempotencyKey = const Uuid().v4();
+    _repository = widget.repository ?? TransferRepository();
     AppLogger.d('payment_confirm.init', {'idempotency_key': _idempotencyKey});
   }
 
@@ -144,29 +163,15 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
       if (!mounted) return;
       switch (outcome) {
         case TransactionAuthAuthorised(:final txnToken):
-          // TODO(payment-confirm): call `POST /v1/transfers` with
-          // [_idempotencyKey] as `Idempotency-Key` and [txnToken] in
-          // `Options.extra[AuthInterceptor.txnTokenKey]`. The stub
-          // below short-cuts straight to the success outcome so the
-          // happy path is demo-able; once the repo lands, map the
-          // ApiResult onto success / pending / failed screens.
-          AppLogger.i('payment_confirm.submit.stub', {
-            'idempotency_key': _idempotencyKey,
-            'txn_token_len': txnToken.length,
-            'currency': widget.currency.code,
-            'amount': widget.amount,
-          });
-          Get.off<void>(
-            () => PaymentSuccessScreen(
-              amount: widget.amount,
-              currency: widget.currency,
-              netAmount: _formattedNet,
-              recipientName: widget.recipientName,
-              recipientCountry: widget.recipientCountry,
-              recipientPhoneLocal: widget.recipientPhoneLocal,
-              isInvite: isInvite,
-            ),
+          await _submitTransfer(
+            txnToken: txnToken,
+            isInvite: isInvite,
+            messenger: messenger,
           );
+          // _submitTransfer navigates away on every terminal outcome
+          // except NetworkError, where it resets the swipe itself.
+          // The fall-through `_swipeKey.reset()` below is for the
+          // non-Authorised cases only.
           return;
         case TransactionAuthCancelled():
           // User dismissed the passcode sheet — silent reset.
@@ -190,6 +195,210 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
     } finally {
       _authInFlight = false;
     }
+  }
+
+  /// Invoke `POST /v1/transfers` and route to the appropriate terminal
+  /// screen.
+  ///
+  /// Navigation contract:
+  /// - `COMPLETED` → [PaymentSuccessScreen] via `Get.off`
+  ///   (pushReplacement). Wallet has been debited; no retry semantics.
+  /// - `PROCESSING` / `AWAITING_CLAIM` → [PaymentPendingScreen] via
+  ///   `Get.off`. The pending screen handles polling and is also
+  ///   terminal for this flow.
+  /// - `FAILED` (server returned 202 with status=FAILED, or a 4xx
+  ///   business error) → [PaymentFailedScreen] via `Get.to` (push,
+  ///   NOT pushReplacement) so this confirm screen stays underneath
+  ///   and "Try again" pops back here — preserving the original
+  ///   [_idempotencyKey]. See `payment_failed_screen.dart` docs.
+  /// - [NetworkError] → snackbar + swipe reset. The user can re-swipe;
+  ///   the idempotency key is still good so the server will dedupe if
+  ///   the prior request actually reached it before the socket died.
+  /// - [AuthError] → snackbar (token was invalid despite the fresh
+  ///   step-up; usually means the user re-keyed mid-flight or device
+  ///   clock skew). The auth interceptor already attempted refresh;
+  ///   bubbling up is the right call.
+  /// - All other [ApiError] subtypes → [PaymentFailedScreen] with the
+  ///   server-supplied title, never raw codes.
+  ///
+  /// We **never** show raw server error codes in the failure reason.
+  /// `ApiError.title` is the localised user-facing copy resolved by
+  /// `error_mapping_interceptor.dart`.
+  Future<void> _submitTransfer({
+    required String txnToken,
+    required bool isInvite,
+    required ScaffoldMessengerState messenger,
+  }) async {
+    // E.164 = "+" + dialCode + national digits. Both halves are
+    // already digit-only by the time they reach this screen.
+    final recipientE164 =
+        '+${widget.recipientCountry.dialCode}${widget.recipientPhoneLocal}';
+
+    // W3 scope: there's no FX quote step yet, so we ship the local
+    // amount as `amount_usdc`. Backend dev env accepts this; W4 will
+    // add `/v1/fx/quote` and lock a rate before this screen.
+    // See client-integration-notes Q-FX (to be filed).
+    final request = TransferRequest(
+      recipientPhone: recipientE164,
+      amountUsdc: widget.amount,
+      note: widget.purpose.isEmpty ? null : widget.purpose,
+    );
+
+    AppLogger.i('payment_confirm.submit', {
+      'idempotency_key': _idempotencyKey,
+      'recipient_phone_redacted': _redactPhone(recipientE164),
+      'amount': widget.amount,
+      'currency': widget.currency.code,
+      'is_invite': isInvite,
+    });
+
+    final result = await _repository.createTransfer(
+      request: request,
+      txnToken: txnToken,
+      idempotencyKey: _idempotencyKey,
+    );
+
+    if (!mounted) return;
+
+    switch (result) {
+      case Success(:final value):
+        _routeByStatus(value, isInvite: isInvite);
+      case Failure(:final error):
+        _routeByError(error, messenger: messenger);
+    }
+  }
+
+  void _routeByStatus(Transfer transfer, {required bool isInvite}) {
+    AppLogger.i('payment_confirm.submit.ok', {
+      'transfer_id': transfer.id,
+      'status': transfer.status.wire,
+      'is_invite': isInvite,
+    });
+    switch (transfer.status) {
+      case TransferStatus.completed:
+        Get.off<void>(
+          () => PaymentSuccessScreen(
+            amount: widget.amount,
+            currency: widget.currency,
+            netAmount: _formattedNet,
+            recipientName: widget.recipientName,
+            recipientCountry: widget.recipientCountry,
+            recipientPhoneLocal: widget.recipientPhoneLocal,
+            isInvite: isInvite,
+          ),
+        );
+      case TransferStatus.processing:
+      case TransferStatus.awaitingClaim:
+        Get.off<void>(
+          () => PaymentPendingScreen(
+            amount: widget.amount,
+            currency: widget.currency,
+            netAmount: _formattedNet,
+            recipientName: widget.recipientName,
+            transactionId: transfer.id,
+          ),
+        );
+      case TransferStatus.failed:
+      case TransferStatus.expiredRefunded:
+      case TransferStatus.cancelled:
+      case TransferStatus.unknown:
+        // 202-with-status=FAILED, or a status we don't recognise.
+        // Push (not replace) so "Try again" preserves idempotency.
+        Get.to<void>(
+          () => PaymentFailedScreen(
+            amount: widget.amount,
+            currency: widget.currency,
+            recipientName: widget.recipientName,
+            reason: _failureReasonCopy(transfer.failureReason),
+          ),
+        );
+    }
+  }
+
+  void _routeByError(
+    ApiError error, {
+    required ScaffoldMessengerState messenger,
+  }) {
+    AppLogger.w('payment_confirm.submit.err', {
+      'idempotency_key': _idempotencyKey,
+      'error_type': error.runtimeType.toString(),
+      'code': error.code,
+    });
+    switch (error) {
+      case NetworkError():
+        // Transient — let the user re-swipe; idempotency key is
+        // stable so the server will dedupe if needed.
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(error.title),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        _swipeKey.currentState?.reset();
+      case AuthError():
+        // Auth interceptor already tried refresh. Surfacing means the
+        // session is unrecoverable on this device — show the message
+        // and reset; a higher-level auth listener will route to login.
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(error.title),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        _swipeKey.currentState?.reset();
+      case PaymentError():
+      case ValidationError():
+      case ConflictError():
+      case RateLimitError():
+      case ServerError():
+      case UnknownError():
+        Get.to<void>(
+          () => PaymentFailedScreen(
+            amount: widget.amount,
+            currency: widget.currency,
+            recipientName: widget.recipientName,
+            reason: error.title,
+          ),
+        );
+    }
+  }
+
+  /// Map the structured `TransferFailureReason` enum onto the short
+  /// user-facing copy `PaymentFailedScreen` injects between the
+  /// amount and the "no funds were taken" reassurance. Returning
+  /// `null` lets the failure screen fall back to its generic message.
+  String? _failureReasonCopy(TransferFailureReason? reason) {
+    if (reason == null) return null;
+    switch (reason) {
+      case TransferFailureReason.insufficientFunds:
+        return 'Insufficient funds';
+      case TransferFailureReason.complianceBlock:
+        return 'Compliance review required';
+      case TransferFailureReason.velocityLimit:
+        return 'Daily limit reached';
+      case TransferFailureReason.quoteExpired:
+        return 'Rate expired';
+      case TransferFailureReason.providerRejected:
+        return 'Provider declined';
+      case TransferFailureReason.signingFailed:
+      case TransferFailureReason.rpcFailed:
+        // On-chain plumbing failure — don't expose chain mechanics
+        // to the end user.
+        return 'Network unavailable';
+      case TransferFailureReason.unknown:
+        // Never expose the raw wire value — fall back to generic.
+        return null;
+    }
+  }
+
+  /// Phone redaction for structured logs. Keeps country code + last 2
+  /// digits, masks the middle, e.g. `+225********65`. Required by
+  /// fintech-security skill — never log full PII.
+  static String _redactPhone(String e164) {
+    if (e164.length <= 5) return '***';
+    final dial = e164.substring(0, 4); // "+225"
+    final tail = e164.substring(e164.length - 2);
+    return '$dial${'*' * (e164.length - 6)}$tail';
   }
 
   @override
