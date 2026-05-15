@@ -30,7 +30,10 @@ The backend `architecture.md` (line 82) assumes the Flutter client uses **Riverp
 | Navigation | (unspecified) | `Get.to/back/offAll` everywhere (no `Navigator.pop`) |
 | DI | (unspecified) | `Get.put`/`Get.find` (no `get_it`/`riverpod`) |
 
-The 14 in-code `// TODO(riverpod): ...` comments are obsolete and will be removed during the W3 mock-killing sweep.
+No Riverpod dependency or `// TODO(riverpod)` markers remain in the
+codebase. If a code reviewer suggests reintroducing `flutter_riverpod` /
+`riverpod_annotation` / `riverpod_generator`, push back: state management
+is GetX everywhere, by decision recorded in this row.
 
 ---
 
