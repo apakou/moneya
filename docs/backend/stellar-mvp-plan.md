@@ -33,7 +33,8 @@ AWS migration, tier-2 KYC.
 | # | Decision | Recommendation | Why it matters |
 |---|----------|----------------|----------------|
 | D1 | **Custody model** | **Pooled custody.** One Stellar treasury setup (hot + cold) holds all USDC. Users have ledger balances only; MoneyA→MoneyA sends are ledger-only. Chain is touched at onramp credit and offramp debit. | Removes per-user accounts, trustlines, reserves, sponsored-reserve logic and per-user key provisioning. Cuts ≈ 10 IED and most chain failure modes. Matches the `usdc-stablecoin-ops` skill's "pooled custodial wallet with per-user ledger". |
-| D2 | **Ramp provider(s)** | Confirm which provider can **deliver and receive USDC on Stellar** for the launch corridor: Yellow Card, or a SEP-24/SEP-6 anchor (e.g. MoneyGram Ramps, local anchors). Pick one primary. | This is the highest-risk unknown. If Yellow Card does not settle on Stellar for your corridor, the ramp integration changes (SEP-24 client instead of YC REST). |
+| D2 | **Ramp provider(s)** | **DECIDED: Yellow Card is the primary** (already in every spec, one aggregator across XOF/XAF/NGN/GHS/KES, announced USDC-on-Stellar support in Feb 2024). **Fallback:** a licensed SEP-24 anchor for the launch corridor (SEP-10 auth + SEP-24 interactive flow + SEP-38 quotes). MoneyGram Ramps is **not** chosen: it is no longer Stellar-only and its African cash-in coverage is thin. | The Feb 2024 announcement covers Yellow Card's app. **Its Payments API on Stellar is not confirmed.** Ticket **RMP-00** (below) must confirm it with Yellow Card (written answer: Stellar USDC deposit address + memo on collect, Stellar payout `txProof`, sandbox access, corridor list) **before** M6/M7 start. If the answer is no, switch to the fallback; this is already covered by the contingency. |
+| D6 | **Where the backend lives** | **DECIDED: monorepo.** NestJS backend in `backend/` at the root of this repository (pnpm workspace: `backend/apps/api`, `backend/packages/{chain,ledger,infra,infra-supabase}`), next to the Flutter app. | `docs/backend/openapi.yaml` is the contract the client already codes against; one repo means one PR can change the contract, the API and the client, and one branch/CI view for the small team. Matches the `packages/infra` layout already described in `architecture.md` §11. Split into its own repo only if the team grows or release cadences diverge. |
 | D3 | **Launch corridor(s)** | One corridor first (pick the one with the confirmed D2 provider), second corridor in the hardening phase. | Limits compliance, liquidity and support scope. |
 | D4 | **Signing / key custody** | Treasury keys in a KMS/HSM-backed signer (cloud KMS with Ed25519, Turnkey, or Fireblocks — verify current Stellar support). Use native Stellar **multisig thresholds** on the cold/treasury account. Do **not** assume Privy supports Stellar; verify before keeping it. | Replaces Privy + Squads/Safe. Key handling is the main security risk. |
 | D5 | **Legal / licensing** | Confirm VASP/MTL posture for the launch jurisdiction before mainnet. | Stellar does not change this. It can block launch regardless of engineering. |
@@ -95,7 +96,7 @@ a second chain is a drop-in later, not a rewrite.
 - Mismatches (no memo, wrong asset, short amount) go to a **suspense** ledger account + ops alert, never auto-credited.
 
 ### 4.4 Ramps
-- **If the provider is Yellow Card on Stellar:** same REST/webhook flow as today; only the deposit address/memo and `txProof` change (tx hash instead of Solana signature).
+- **Primary (decided): Yellow Card on Stellar:** same REST/webhook flow as today; only the deposit address/memo and `txProof` change (tx hash instead of Solana signature). Gated by RMP-00.
 - **If a SEP-24 anchor:** backend implements the SEP-10 client auth and the SEP-24 interactive flow (webview in the Flutter app) with SEP-38 quotes where the anchor supports them. This is a **different integration**, budgeted in the contingency in §7.
 
 ### 4.5 Reconciliation
@@ -129,9 +130,10 @@ numbering so the two plans can be run together.
 
 | Ticket | Description | Size | Deps |
 |--------|-------------|------|------|
-| DEC-01 | Close D1–D5; written ADR in `docs/backend/adr/` | 2 | — |
+| DEC-01 | Record D1–D6 in an ADR in `docs/backend/adr/` (D2 and D6 are decided above; D1, D3, D4, D5 still need the owner's confirmation) | 1 | — |
+| RMP-00 | **Yellow Card Stellar confirmation** (see D2): written confirmation + sandbox keys, or trigger the SEP-24 fallback. Start in day 1; it is lead-time, not engineering. | 1 | — |
 | STL-00 | **Spike on testnet:** create accounts, trustline, payment, fee-bump, channel account, stream, `tx_bad_seq` retry. Throwaway scripts. | 2 | — |
-| FND-01..05 | NestJS skeleton, Supabase staging, CI, `0001` deployed, Sentry (unchanged from backlog M0) | 4 | — |
+| FND-01..05 | NestJS skeleton **in `backend/`** (D6), Supabase staging, CI (path-filtered: `backend/**` vs `lib/**`), `0001` deployed, Sentry (unchanged from backlog M0) | 4 | — |
 | STL-01 | `ChainAdapter` interface + `StellarAdapter` skeleton + config (network passphrase, issuer, RPC URLs) | 2 | FND-01 |
 | DB-01 | `0003_stellar_chain.sql` + OpenAPI/doc updates (§5) | 2 | FND-03 |
 
