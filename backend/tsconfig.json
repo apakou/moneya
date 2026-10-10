@@ -9,5 +9,11 @@
       "@moneya/invisibility": ["packages/invisibility/src/index.ts"]
     }
   },
-  "include": ["apps/*/src/**/*", "apps/*/test/**/*", "packages/*/src/**/*", "packages/*/test/**/*"]
+  "include": [
+    "scripts/**/*",
+    "apps/*/src/**/*",
+    "apps/*/test/**/*",
+    "packages/*/src/**/*",
+    "packages/*/test/**/*"
+  ]
 }
