@@ -1,6 +1,5 @@
 -- 0004_auth_sessions.sql — M1 auth: refresh-token families + OTP failure log.
 -- Append-only; applies on top of 0001. Idempotent.
-BEGIN;
 
 -- Refresh rotation with reuse detection (backlog AUTH-05): every token belongs
 -- to a family; presenting a rotated (revoked) token revokes the whole family.
@@ -19,4 +18,3 @@ CREATE TABLE IF NOT EXISTS app.otp_failures (
 );
 CREATE INDEX IF NOT EXISTS otp_failures_phone_idx ON app.otp_failures (phone, created_at DESC);
 
-COMMIT;

@@ -653,13 +653,17 @@ Runs at 02:00 UTC daily (off-peak for African corridors):
 | L7 | Every journal references a real business entity (`ref_id` exists in `ref_type`'s table). | App-level; consider per-`ref_type` FK. |
 | L8 | A user's balance never goes negative. | App-level pre-condition + monitoring query. |
 
-> **Migration `0002_state_machine.sql` action items consolidated:**
-> 1. Allowlist trigger for transfer state transitions (state-machine.md §10.1)
-> 2. `app.user_available_balance(uuid, text)` function (this doc §6.2)
-> 3. `app.posted_journals` dedupe table (§5.3)
-> 4. `parent_transfer_id` column on `transfers` for mirror RECEIVED rows
-> 5. Per-currency journal trigger (L6)
-> 6. (Optional) `kind` immutability trigger (L4)
+> **Migration `0002_state_machine.sql` — DONE** (see `docs/backend/migrations/0002_state_machine.sql`,
+> tests in `migrations/tests/0002_ledger.test.sql`). Delivered: transition allowlist trigger,
+> `app.user_available_balance(uuid, text)` (holds now carry a `currency`), `app.posted_journals`
+> dedupe (entries must reference a registered journal), `transfers.parent_transfer_id`,
+> `kind` immutability (L4), `app.v_ledger_imbalance`.
+>
+> **ADR 0001 D7 changes L1/L6:** user accounts are fiat-denominated; a journal may span
+> currencies (conversion through `FX_POSITION` accounts) and must balance **per currency**;
+> every entry's currency must equal its account's currency. The `'USDC'` column defaults are
+> dropped — callers state the currency. `amount_usdc` is a historical column name: it holds an
+> amount in the row's `currency`.
 
 ---
 

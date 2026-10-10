@@ -88,8 +88,12 @@ jobs:
           for f in docs/backend/migrations/*.sql; do
             echo "== $f (single transaction)"; psql -h localhost -U postgres -d moneya_ci -v ON_ERROR_STOP=1 -1 -f "$f"
           done
-          echo "== re-apply 0003 (idempotent)"
-          psql -h localhost -U postgres -d moneya_ci -v ON_ERROR_STOP=1 -f docs/backend/migrations/0003_stellar_chain.sql
+          for f in 0002_state_machine 0003_stellar_chain 0004_auth_sessions; do
+            echo "== re-apply $f (idempotent)"
+            psql -h localhost -U postgres -d moneya_ci -v ON_ERROR_STOP=1 -1 -f "docs/backend/migrations/$f.sql"
+          done
+      - name: Ledger behaviour tests (0002)
+        run: psql -h localhost -U postgres -d moneya_ci -v ON_ERROR_STOP=1 -f docs/backend/migrations/tests/0002_ledger.test.sql
 
   app:
     needs: changes
