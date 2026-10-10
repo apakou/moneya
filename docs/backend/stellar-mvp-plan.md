@@ -20,6 +20,7 @@
 | INV-02 | `scripts/lint_copy.py` (+ 7 self-tests) over `.arb`, Dart string literals and asset names; wired in CI | passes on the repo; fails on a planted `Send USDC` |
 | INV-03 (core) | `@moneya/invisibility` guard + `InvisibilityInterceptor` (non-production) | unit + e2e tests; the e2e suite grows with every endpoint |
 | APP-00 | Client DTOs/copy/assets moved to the fiat-only contract (V1–V5 fixed) | `flutter analyze`: only the 1 pre-existing info; `flutter test`: 119 pass (117 before + 2 new) |
+| M1 (auth, logic + API) | OTP request/verify (HMAC'd codes, 3/10 min rate limit, 5-failure lockout), HS256 access JWT + opaque rotating refresh tokens with family reuse-revocation, Argon2id passcode (weak-code rejection, lockout), step-up `txn_token` (60 s, single-use, bound to user+device) + `AuthGuard`/`TxnTokenGuard`; `0004_auth_sessions.sql` | 79 backend tests (18 new e2e in `auth.e2e.spec.ts`, response guard active); 0004 applied twice on PostgreSQL 16 after `0001`+`0003`. **Storage is in-memory and SMS is a fake**: the app refuses to boot in production until a Postgres `AuthStore` and a real SMS adapter exist |
 | CI | `.github/workflows/ci.yml` (copy-lint, backend, migrations, app) | **YAML parses; has NOT run on GitHub yet** |
 
 **Not verifiable here, implemented but unproven:** the network half of `StellarAdapter`
