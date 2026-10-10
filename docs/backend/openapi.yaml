@@ -3,8 +3,21 @@ info:
   title: MoneyA API
   version: 1.0.0
   description: |
-    REST + WebSocket API for MoneyA — custodial Solana-USDC remittance for West
-    & Central Africa. See `docs/backend/architecture.md` for system design.
+    REST + WebSocket API for MoneyA — mobile-money remittance for West &
+    Central Africa. See `docs/backend/architecture.md` and
+    `docs/backend/stellar-mvp-plan.md` for system design.
+
+    ## Fiat-only contract (non-negotiable)
+
+    **The client must never learn that stablecoins or a blockchain are used.**
+    This API therefore exposes **fiat amounts only**: every amount carries an
+    ISO 4217 currency, and no response contains a stablecoin amount, a chain
+    name, an address, a transaction hash or a custody-provider name. Any
+    conversion to or from the settlement asset happens server-side and is
+    folded into `rate` / `fee`. Enum values (statuses, failure reasons) are
+    **never rendered to users**; the client maps them to localised copy.
+    A contract test (see plan ticket INV-01) fails the build if a forbidden
+    term appears in a response schema.
 
     ## Conventions
 
@@ -28,9 +41,10 @@ info:
     token is bound to `user_id + device_id` and consumed on first use.
 
     ### Money amounts
-    All amounts are JSON **strings** with up to 6 decimal places (USDC is 6-dp
-    natively). Never floats. Currencies are ISO 4217 (`USDC`, `XOF`, `NGN`,
-    `GHS`, `KES`, `XAF`).
+    All amounts are JSON **strings** in **fiat major units** with up to 6
+    decimal places of tolerance (display rounding is the client's job: XOF/XAF
+    0 dp, NGN/GHS/KES 2 dp). Never floats. Currencies are ISO 4217 (`XOF`,
+    `XAF`, `NGN`, `GHS`, `KES`).
 
     ### Errors
     All errors follow RFC 7807 Problem Details (`application/problem+json`).
@@ -42,7 +56,7 @@ info:
 
     ### Tracing
     `traceparent` (W3C) is accepted on every request and propagated to all
-    downstream calls (Privy, Yellow Card, Solana RPC, Smile ID).
+    downstream calls (Yellow Card, Stellar RPC, Smile ID).
 
 servers:
   - url: https://api.moneya.app
@@ -60,15 +74,15 @@ tags:
   - name: KYC
     description: Identity verification (tier 1)
   - name: Wallet
-    description: USDC balance + address
+    description: Account balance (fiat). Path kept as `/v1/wallet` for stability; never shown to users.
   - name: Recipients
     description: Lookup + address book
   - name: Onramp
-    description: Mobile money → USDC
+    description: Mobile money → MoneyA balance
   - name: Offramp
-    description: USDC → mobile money
+    description: MoneyA balance → mobile money
   - name: Transfers
-    description: P2P USDC transfers
+    description: P2P transfers
   - name: PaymentRequests
     description: Request money from another user
   - name: Claims
@@ -275,7 +289,7 @@ paths:
       tags: [Users]
       summary: Request account deletion
       description: |
-        Soft-deletes the user. Wallet must have zero USDC. Deletion
+        Soft-deletes the user. The balance must be zero. Deletion
         completes after a 30-day cooling-off period (regulatory).
       operationId: deleteMe
       security: [{ bearerAuth: [] }]
@@ -289,7 +303,7 @@ paths:
                 properties:
                   scheduled_for: { type: string, format: date-time }
         '409':
-          description: Wallet not empty
+          description: Balance not empty
           content:
             application/problem+json:
               schema:
@@ -365,11 +379,11 @@ paths:
   /v1/wallet:
     get:
       tags: [Wallet]
-      summary: Get wallet balance and address
+      summary: Get account balance
       description: |
-        Returns the user's custodial Solana wallet. Balance is read from
-        Solana RPC (cached 30s server-side). If the wallet hasn't been
-        provisioned yet (KYC tier 0), `address` is null.
+        Returns the user's balance in their home currency, read from the
+        ledger. `provisioned` is false until KYC tier 1 completes. No
+        address, chain or asset information is ever returned.
       operationId: getWallet
       security: [{ bearerAuth: [] }]
       responses:
@@ -462,10 +476,11 @@ paths:
   /v1/onramp/quote:
     post:
       tags: [Onramp]
-      summary: Quote a fiat → USDC conversion
+      summary: Quote a top-up
       description: |
-        Returns the USDC amount the user will receive for a given fiat
-        amount via Yellow Card. Quote is locked for 60 seconds.
+        Returns the amount that will be credited to the user's balance for
+        a given mobile-money payment, with the all-in fee. Quote is locked
+        for 60 seconds.
       operationId: quoteOnramp
       security: [{ bearerAuth: [] }]
       requestBody:
@@ -555,7 +570,7 @@ paths:
   /v1/offramp/quote:
     post:
       tags: [Offramp]
-      summary: Quote a USDC → fiat conversion
+      summary: Quote a cash-out
       operationId: quoteOfframp
       security: [{ bearerAuth: [] }]
       requestBody:
@@ -579,7 +594,7 @@ paths:
       description: |
         1. Locks the quote (60s).
         2. Compliance pre-flight.
-        3. Signs SPL transfer from user wallet → MoneyA hot wallet.
+        3. Debits the user's balance (ledger) and settles server-side.
         4. Calls Yellow Card payout.
         5. Returns `PROCESSING`. Settlement event arrives via webhook.
 
@@ -605,7 +620,7 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
         '402':
-          description: Insufficient USDC balance
+          description: Insufficient balance
           content:
             application/problem+json:
               schema:
@@ -681,11 +696,11 @@ paths:
       tags: [Transfers]
       summary: Create a P2P transfer
       description: |
-        Sends USDC from the caller's wallet to a recipient identified by
+        Sends money from the caller's balance to a recipient identified by
         E.164 phone. If the recipient is a MoneyA user (in-network), the
         transfer settles in seconds. Otherwise an unclaimed transfer is
-        created: USDC moves to a server-managed escrow wallet, and an
-        SMS claim link is sent to the recipient (TTL 7 days).
+        created: the amount is held in escrow (ledger), and an SMS claim
+        link is sent to the recipient (TTL 7 days).
       operationId: createTransfer
       security: [{ bearerAuth: [] }]
       parameters:
@@ -707,7 +722,7 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
         '402':
-          description: Insufficient USDC balance
+          description: Insufficient balance
           content:
             application/problem+json:
               schema:
@@ -751,8 +766,8 @@ paths:
       tags: [Transfers]
       summary: Cancel an unclaimed transfer
       description: |
-        Only valid when status is `AWAITING_CLAIM`. Reverses the SPL
-        leg back to the sender's wallet, marks the claim link revoked.
+        Only valid when status is `AWAITING_CLAIM`. Returns the held amount
+        to the sender's balance and marks the claim link revoked.
       operationId: cancelTransfer
       security: [{ bearerAuth: [] }]
       parameters:
@@ -802,7 +817,7 @@ paths:
       tags: [PaymentRequests]
       summary: Create a payment request
       description: |
-        Asks another MoneyA user (or non-user via SMS) to send USDC.
+        Asks another MoneyA user (or non-user via SMS) to send money.
         Recipient gets a push (or SMS) with a deep link that prefills
         the transfer screen with the requested amount.
       operationId: createPaymentRequest
@@ -894,7 +909,7 @@ paths:
       description: |
         Caller must be authenticated as a MoneyA user with KYC tier ≥ 1.
         The phone on the claim must match the caller's verified phone.
-        Server moves USDC from escrow → caller's wallet.
+        Server moves the held amount from escrow → caller's balance.
       operationId: redeemClaim
       security: [{ bearerAuth: [] }]
       parameters:
@@ -1055,8 +1070,9 @@ paths:
 
   /webhooks/privy:
     post:
+      deprecated: true
       tags: [Webhooks]
-      summary: Privy wallet events
+      summary: Custody-provider wallet events (only if decision D4 keeps a hosted custodian)
       operationId: privyWebhook
       security: []
       requestBody:
@@ -1187,7 +1203,7 @@ components:
         code:
           type: string
           description: Machine-readable error code (stable across versions)
-          example: 'WALLET_INSUFFICIENT_FUNDS'
+          example: 'INSUFFICIENT_FUNDS'
         trace_id: { type: string }
 
     Money:
@@ -1198,7 +1214,7 @@ components:
 
     Currency:
       type: string
-      enum: [USDC, XOF, XAF, NGN, GHS, KES]
+      enum: [XOF, XAF, NGN, GHS, KES]
 
     Phone:
       type: string
@@ -1347,17 +1363,11 @@ components:
 
     Wallet:
       type: object
-      required: [provisioned, balance_usdc, currency]
+      required: [provisioned, balance, currency]
       properties:
         provisioned: { type: boolean }
-        address:
-          type: [string, "null"]
-          description: Solana base58 public key
-        chain:
-          type: string
-          enum: [SOLANA]
-          default: SOLANA
-        balance_usdc: { $ref: '#/components/schemas/Money' }
+        balance: { $ref: '#/components/schemas/Money' }
+        currency: { $ref: '#/components/schemas/Currency' }
         balance_cached_at:
           type: string
           format: date-time
@@ -1410,19 +1420,25 @@ components:
 
     Quote:
       type: object
-      required: [id, kind, fiat_currency, fiat_amount, usdc_amount, rate, fee_usdc, expires_at]
+      required: [id, kind, from_currency, from_amount, to_currency, to_amount, rate, fee, expires_at]
       properties:
         id: { type: string, format: uuid }
         kind:
           type: string
           enum: [ONRAMP, OFFRAMP]
-        fiat_currency: { $ref: '#/components/schemas/Currency' }
-        fiat_amount: { $ref: '#/components/schemas/Money' }
-        usdc_amount: { $ref: '#/components/schemas/Money' }
+        from_currency: { $ref: '#/components/schemas/Currency' }
+        from_amount: { $ref: '#/components/schemas/Money' }
+        to_currency: { $ref: '#/components/schemas/Currency' }
+        to_amount: { $ref: '#/components/schemas/Money' }
         rate:
           type: string
-          description: 'fiat per 1 USDC, decimal string'
-        fee_usdc: { $ref: '#/components/schemas/Money' }
+          description: >-
+            Effective rate: units of `to_currency` per 1 `from_currency`
+            (`1` when currencies match). Any internal conversion leg is
+            folded in; it is never exposed.
+        fee:
+          $ref: '#/components/schemas/Money'
+          description: All-in fee, in `from_currency`.
         expires_at: { type: string, format: date-time }
 
     OnrampQuoteRequest:
@@ -1485,10 +1501,15 @@ components:
 
     OfframpQuoteRequest:
       type: object
-      required: [usdc_amount, fiat_currency]
+      required: [amount, currency, payout_currency]
       properties:
-        usdc_amount: { $ref: '#/components/schemas/Money' }
-        fiat_currency: { $ref: '#/components/schemas/Currency' }
+        amount: { $ref: '#/components/schemas/Money' }
+        currency:
+          $ref: '#/components/schemas/Currency'
+          description: Currency of the balance being debited.
+        payout_currency:
+          $ref: '#/components/schemas/Currency'
+          description: Currency the recipient of the cash-out receives.
 
     OfframpOrderRequest:
       type: object
@@ -1522,9 +1543,6 @@ components:
             - REFUNDED
         quote: { $ref: '#/components/schemas/Quote' }
         provider_reference: { type: [string, "null"] }
-        solana_signature:
-          type: [string, "null"]
-          description: SPL signature for the user → hot-wallet leg
         failure_reason:
           type: [string, "null"]
           enum:
@@ -1541,21 +1559,24 @@ components:
 
     TransferRequest:
       type: object
-      required: [recipient_phone, amount_usdc]
+      required: [recipient_phone, amount, currency]
       properties:
         recipient_phone: { $ref: '#/components/schemas/Phone' }
-        amount_usdc: { $ref: '#/components/schemas/Money' }
+        amount: { $ref: '#/components/schemas/Money' }
+        currency:
+          $ref: '#/components/schemas/Currency'
+          description: Currency of `amount`; must be the sender's balance currency.
         note:
           type: string
           maxLength: 140
-          description: User-supplied memo. Stored, not on-chain.
+          description: User-supplied note, max 140 chars.
         save_recipient:
           type: boolean
           default: false
 
     Transfer:
       type: object
-      required: [id, kind, status, amount_usdc, fee_usdc, created_at]
+      required: [id, kind, status, amount, fee, currency, created_at]
       properties:
         id: { type: string, format: uuid }
         kind:
@@ -1574,19 +1595,17 @@ components:
           $ref: '#/components/schemas/TransferParty'
         recipient:
           $ref: '#/components/schemas/TransferParty'
-        amount_usdc: { $ref: '#/components/schemas/Money' }
-        fee_usdc: { $ref: '#/components/schemas/Money' }
+        amount: { $ref: '#/components/schemas/Money' }
+        fee: { $ref: '#/components/schemas/Money' }
+        currency: { $ref: '#/components/schemas/Currency' }
         note:
-          type: [string, "null"]
-        solana_signature:
           type: [string, "null"]
         failure_reason:
           type: [string, "null"]
           enum:
             - INSUFFICIENT_FUNDS
             - COMPLIANCE_BLOCK
-            - SIGNING_FAILED
-            - RPC_FAILED
+            - SERVICE_UNAVAILABLE
             - PROVIDER_REJECTED
             - QUOTE_EXPIRED
             - VELOCITY_LIMIT
@@ -1622,10 +1641,11 @@ components:
 
     PaymentRequestCreate:
       type: object
-      required: [from_phone, amount_usdc]
+      required: [from_phone, amount, currency]
       properties:
         from_phone: { $ref: '#/components/schemas/Phone' }
-        amount_usdc: { $ref: '#/components/schemas/Money' }
+        amount: { $ref: '#/components/schemas/Money' }
+        currency: { $ref: '#/components/schemas/Currency' }
         note:
           type: string
           maxLength: 140
@@ -1637,7 +1657,7 @@ components:
 
     PaymentRequest:
       type: object
-      required: [id, direction, status, from, to, amount_usdc, created_at, expires_at]
+      required: [id, direction, status, from, to, amount, currency, created_at, expires_at]
       properties:
         id: { type: string, format: uuid }
         direction:
@@ -1648,7 +1668,8 @@ components:
           enum: [PENDING, PAID, DECLINED, CANCELLED, EXPIRED]
         from: { $ref: '#/components/schemas/TransferParty' }
         to: { $ref: '#/components/schemas/TransferParty' }
-        amount_usdc: { $ref: '#/components/schemas/Money' }
+        amount: { $ref: '#/components/schemas/Money' }
+        currency: { $ref: '#/components/schemas/Currency' }
         note:
           type: [string, "null"]
         transfer_id:
@@ -1671,13 +1692,14 @@ components:
 
     ClaimSummary:
       type: object
-      required: [token, status, amount_usdc, expires_at]
+      required: [token, status, amount, currency, expires_at]
       properties:
         token: { type: string }
         status:
           type: string
           enum: [PENDING, REDEEMED, EXPIRED, CANCELLED]
-        amount_usdc: { $ref: '#/components/schemas/Money' }
+        amount: { $ref: '#/components/schemas/Money' }
+        currency: { $ref: '#/components/schemas/Currency' }
         sender:
           $ref: '#/components/schemas/TransferParty'
         note:
@@ -1779,7 +1801,8 @@ components:
         transfer_id: { type: string, format: uuid }
         status:
           type: string
-        amount_usdc: { $ref: '#/components/schemas/Money' }
+        amount: { $ref: '#/components/schemas/Money' }
+        currency: { $ref: '#/components/schemas/Currency' }
         counterparty:
           $ref: '#/components/schemas/TransferParty'
         at: { type: string, format: date-time }

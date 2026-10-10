@@ -1,5 +1,7 @@
 # MoneyA — Transfer State Machine
 
+> ⚠️ **Partially superseded.** MoneyA now settles on **Stellar** with **pooled custody**, and the API is **fiat-only** — users must never learn that stablecoins are used. Solana / Privy / SPL parts of this document no longer apply. See [`stellar-mvp-plan.md`](./stellar-mvp-plan.md) §1.1 and **Appendix B** for exactly what changed.
+
 > **Status:** v1 (Phase 1 / Supabase deployment)
 > **Owner:** Backend
 > **Companion docs:** [`architecture.md`](./architecture.md) §6, [`openapi.yaml`](./openapi.yaml), [`migrations/0001_init.sql`](./migrations/0001_init.sql)

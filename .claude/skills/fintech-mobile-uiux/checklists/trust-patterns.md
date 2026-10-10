@@ -99,8 +99,8 @@ If a quote is involved (FX, fee tier, dynamic pricing):
 - 0 s: re-quote automatically AND show the diff explicitly.
 
 ```
-"Rate changed: 615 XOF/USDC → 616 XOF/USDC.
-You'll receive 8.13 USDC instead of 8.14.
+"Rate changed.
+They'll now receive 8,130 XOF instead of 8,140.
 [Confirm new rate]  [Cancel]"
 ```
 

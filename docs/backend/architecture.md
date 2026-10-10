@@ -1,5 +1,7 @@
 # MoneyA Backend Architecture — v1
 
+> ⚠️ **Partially superseded.** MoneyA now settles on **Stellar** with **pooled custody**, and the API is **fiat-only** — users must never learn that stablecoins are used. Solana / Privy / SPL parts of this document no longer apply. See [`stellar-mvp-plan.md`](./stellar-mvp-plan.md) §1.1 and **Appendix B** for exactly what changed.
+
 **Status:** Specification for backend implementation
 **Audience:** Backend engineer building the v1 API
 **Last updated:** Phase 1 hand-off

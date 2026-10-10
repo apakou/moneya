@@ -1,5 +1,7 @@
 # MoneyA — Backend Architecture Diagram
 
+> ⚠️ **Partially superseded.** MoneyA now settles on **Stellar** with **pooled custody**, and the API is **fiat-only** — users must never learn that stablecoins are used. Solana / Privy / SPL parts of this document no longer apply. See [`stellar-mvp-plan.md`](./stellar-mvp-plan.md) §1.1 and **Appendix B** for exactly what changed.
+
 > **Audience:** backend developer building Phase 1.
 > **Purpose:** single-page visual reference. Pin this on the wall.
 > **Companion docs:** [`architecture.md`](./architecture.md) (prose), [`openapi.yaml`](./openapi.yaml) (wire contract), [`transfer-state-machine.md`](./transfer-state-machine.md) (FSM), [`ledger.md`](./ledger.md) (journals), [`webhooks.md`](./webhooks.md) (inbound), [`backlog.md`](./backlog.md) (sprint plan).

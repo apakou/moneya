@@ -112,7 +112,7 @@ Never show fake amounts during loading. Use `—` or skeleton.
 - **Recipient KYC:** "{name} needs to complete KYC before they can receive this. We've sent them a link."
 
 ### Quote expiry
-- "Rate updated: 615 → 616 XOF/USDC. Confirm new amount?"
+- "Rate updated: they'll now receive 8,130 XOF (was 8,140). Confirm new amount?"
 
 ---
 

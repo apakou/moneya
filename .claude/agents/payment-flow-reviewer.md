@@ -1,6 +1,6 @@
 ---
 name: payment-flow-reviewer
-description: Reviews code that touches money movement (transfer, onramp, offramp, escrow, quote, passcode, biometric, idempotency) for security, correctness, and regulatory issues specific to MoneyA's African corridors and USDC backbone. Use BEFORE merging any PR touching these paths, or when the user asks to "audit", "review the transfer flow", or "check for fraud issues".
+description: Reviews code that touches money movement (transfer, onramp, offramp, escrow, quote, passcode, biometric, idempotency) for security, correctness, and regulatory issues specific to MoneyA's African corridors and Stellar-USDC settlement backbone (which must stay invisible to users). Use BEFORE merging any PR touching these paths, or when the user asks to "audit", "review the transfer flow", or "check for fraud issues".
 tools: read_file, file_search, grep_search, list_dir, get_errors
 ---
 
@@ -29,7 +29,7 @@ Read these skills before reviewing:
 ### A. Money representation
 - [ ] No `double` or `num` used for amounts. Must be `int` minor units + currency.
 - [ ] No floating-point arithmetic on amounts anywhere.
-- [ ] XOF/XAF treated as 0-decimal (not 2). NGN, GHS, KES as 2-decimal. USDC as 6-decimal on-chain but 2 for display.
+- [ ] XOF/XAF treated as 0-decimal (not 2). NGN, GHS, KES as 2-decimal. Settlement asset is 7-dp on Stellar but never exposed: ledger 6 dp internally, fiat display only.
 - [ ] Rounding mode explicit at every conversion (banker's rounding for FX).
 
 ### B. Idempotency & retries
@@ -77,7 +77,10 @@ Read these skills before reviewing:
 - [ ] Swipe-to-confirm requires ≥70% swipe + haptic.
 - [ ] Currency symbol matches currency code everywhere (no "FCFA" for XAF in a XOF screen).
 - [ ] FX rate shown in user's locale number format (`1 234,56` in FR vs `1,234.56` in EN).
-- [ ] Stablecoin/USDC never mentioned in normal-user UI.
+- [ ] **Stablecoin invisibility (blocker):** no "USDC", "USD Coin", "stablecoin", "crypto", "blockchain", "Stellar", "XLM", "wallet", "gas", "hash", "address" in UI copy (FR+EN), notifications, SMS, receipts/PDF, errors, store text or onboarding art.
+- [ ] API/DTOs are fiat-only: no `amount_usdc`, `fee_usdc`, `solana_signature`/chain tx hash, `chain`, `address` fields; every amount has a fiat `currency`; rates are fiat→fiat, never `X/USDC`.
+- [ ] Chain errors (bad sequence, timeout, trustline, low XLM) map to generic localized copy; no chain terms in `ApiError.title`/`detail`.
+- [ ] Backend chain code: tx hash + signed XDR persisted before submit; resubmit-same-XDR rule; timebounds set; inbound credit keyed on `(tx_hash, op_index)`; unmatched deposits go to suspense.
 
 ### J. Regulatory
 - [ ] KYC tier checked against amount and cumulative period volume BEFORE initiating transfer.

@@ -1,92 +1,94 @@
 ---
 name: usdc-stablecoin-ops
-description: USDC stablecoin operations for MoneyA — chain selection (Solana vs Base), SPL/ERC-20 transfer mechanics, gas/fee economics, escrow patterns for unclaimed transfers, RPC provider choices, and custody models. USE WHEN the user mentions USDC, stablecoin, on-chain, wallet, escrow, Solana, Base, blockchain, RPC, gas fees, or custody. DO NOT USE FOR fiat-only flows (see african-payment-rails) or KYC (see fintech-security).
+description: Stablecoin settlement operations for MoneyA on Stellar — USDC on Stellar, pooled custody, treasury/channel accounts, tx submission and confirmation, deposit detection, ledger-only escrow for unclaimed transfers, RPC providers, key custody, and the rule that users never see any of it. USE WHEN the user mentions USDC, stablecoin, Stellar, XLM, Horizon, trustline, on-chain, wallet, escrow, blockchain, RPC, fees, treasury or custody. DO NOT USE FOR fiat-only flows (see african-payment-rails) or KYC (see fintech-security).
 ---
 
-# USDC Stablecoin Operations
+# Stablecoin Operations (Stellar, invisible to users)
 
-## Chain decision: Solana (primary), Base (fallback)
+Full plan: `docs/backend/stellar-mvp-plan.md`. This skill is the short operating guide.
 
-| Criterion | Solana | Base | Ethereum L1 |
-|---|---|---|---|
-| Avg tx fee | ~$0.00025 | ~$0.01 | $1–20 ❌ |
-| Finality | ~0.4s | ~2s (soft), 10min (hard) | 12+ min |
-| USDC native | ✅ Circle-issued SPL | ✅ Circle-issued ERC-20 | ✅ |
-| SDK maturity | `solana_web3` Dart is weak → use backend | `web3dart` works | `web3dart` works |
-| Africa latency | Acceptable via EU RPC | Acceptable | Acceptable |
+## Rule 0 — The user must never know (non-negotiable)
 
-**Rule**: Never touch chain from the Flutter client. All on-chain ops go through our backend; the app sees only fiat-denominated balances and fiat-denominated quotes.
+MoneyA users see **money in their own currency** (XOF, XAF, NGN, GHS, KES), a
+**MoneyA balance**, and **mobile money**. Never in any user-facing surface —
+UI copy (FR/EN), notifications, SMS, receipts/PDF, error messages, store
+listing, onboarding art, support macros, API responses:
 
-## Custody model (recommended for MVP)
+- ❌ "USDC", "USD Coin", "stablecoin", "crypto", "blockchain", "Stellar", "XLM", "on-chain", "wallet", "gas", "hash", "address"
+- ❌ A rate shown as `XOF/USDC`. Show the all-in rate fiat→fiat, or just the amount received.
+- ❌ Coin/crypto imagery (e.g. a USD Coin illustration).
 
-**Pooled custodial wallet with per-user ledger.**
+How it is enforced: fiat-only API contract (`docs/backend/openapi.yaml`), copy lint
+over `lib/l10n/*.arb` and assets, a contract test over response schemas, and the
+`payment-flow-reviewer` / `fintech-uiux-reviewer` checklists. See plan §0.
 
-- One master hot wallet + one warm/cold treasury wallet.
-- User balances tracked in **Postgres ledger** (double-entry), not on-chain.
-- On-chain moves happen only at onramp settlement and offramp initiation.
-- Internal MoneyA → MoneyA transfers are **ledger-only** (instant, free).
+Legal note: hiding this from the **UX** is not hiding it from **legal documents**.
+The Terms of Service / privacy notice must truthfully describe how funds are held
+and settled (counsel decides the wording). Do not remove disclosures regulators require.
 
-Trade-offs:
-- ✅ Instant UX, no gas per transfer, simpler key mgmt.
-- ❌ You are a money transmitter / VASP in most jurisdictions — need licensing.
-- ❌ Must pass proof-of-reserves audits.
+## Chain decision: Stellar
 
-**Non-custodial alternative** (post-MVP): MPC wallets via Privy / Web3Auth / Turnkey, keyed by passcode + device. Defer until regulatory path is clear.
+| Criterion | Stellar |
+|---|---|
+| Asset | Circle-issued native USDC (`USDC:<issuer>`), 7 decimals on-chain; ledger keeps 6 dp, convert at the adapter |
+| Fee | ~0.00001 XLM per op (paid by MoneyA via fee-bump; users never hold XLM) |
+| Finality | ~5 s ledger close |
+| Backend SDK | `@stellar/stellar-sdk` (backend only) |
+| Ramps | Yellow Card (primary, Stellar support to be confirmed — ticket RMP-00); SEP-24/SEP-6 anchors (fallback) |
 
-## Escrow pattern for unclaimed transfers
+**Rule**: never touch the chain from the Flutter client. All chain operations go
+through the backend; the app sees only fiat amounts.
 
-Receiver has no account yet:
+## Custody model (MVP): pooled
 
-1. Sender's fiat debit → USDC credited to **escrow sub-ledger** keyed by `sha256(recipient_e164 + salt)`.
-2. SMS sent with `https://moneya.app/claim/<one-time-token>` (token TTL 30 days).
-3. Recipient installs app, verifies phone via OTP.
-4. Backend matches hashed phone → moves funds from escrow sub-ledger → new user's ledger.
-5. **Reclaim policy**: after 30 days unclaimed, funds auto-return to sender (minus network fee if any).
+- Treasury (cold, multisig thresholds), hot distribution account, deposit account (memo/muxed per order), channel accounts (sequence-number pool).
+- User balances live in the **Postgres double-entry ledger**, not on-chain. MoneyA → MoneyA sends are **ledger-only** (instant, free).
+- Chain is touched at onramp credit (inbound deposit) and offramp debit (outbound payout) only.
+- Trade-off: you are a custodian/VASP in most jurisdictions — licensing required (decision D5).
+- Non-custodial / per-user accounts: post-MVP; see plan Appendix A.
 
-Store the SMS invite text in both FR and EN; detect locale from the recipient's country code.
+## Transaction rules
 
-## Fee economics (per transfer, worst case)
+1. Build op → set **timebounds** (60–120 s) → compute hash → **persist hash + signed XDR before submit**.
+2. Submit; on unknown result **resubmit the same XDR** or look up the hash. Never build a second envelope until the first is provably expired.
+3. Fees via **fee-bump**; use **channel accounts** for parallel submits (one sequence number per source account).
+4. Post the ledger journal only after confirmed settlement (FSM principle P5).
+5. Inbound: payments stream with persisted cursor, dedupe `(tx_hash, op_index)`, match by memo; anything unmatched → **suspense** + alert, never auto-credit.
+
+## Escrow for unclaimed transfers
+
+Ledger-only `MONEYA_ESCROW` account keyed by `sha256(recipient_e164 + salt)`;
+SMS claim link (TTL 7 days, FR/EN by country code; wording says "money", never any asset name);
+recipient verifies phone, KYC tier ≥ 1, redeems; day 7 → auto-refund to sender.
+(Stellar claimable balances only apply if custody moves to per-user accounts.)
+
+## Fee economics (worst case, illustrative)
 
 ```
-Sender fiat onramp .......... 1.0–1.5%  (provider fee)
-FX spread (fiat→USD) ........ 0.3–0.8%
-On-chain settlement ......... ~$0.01 flat (Solana)
-Receiver fiat offramp ....... 1.0–1.5%
-FX spread (USD→fiat) ........ 0.3–0.8%
-MoneyA margin ............... 0.5–1.0%
-─────────────────────────────────────
-Total to user ............... 3–5% typical
+Sender mobile-money collection .. 1.0–1.5%  (provider)
+FX spread (fiat→USD) ............ 0.3–0.8%
+Network fee ..................... ~0.00001 XLM (negligible)
+Receiver payout ................. 1.0–1.5%
+FX spread (USD→fiat) ............ 0.3–0.8%
+MoneyA margin ................... 0.5–1.0%
+Total to user ................... 3–5% typical — shown as ONE all-in fee
 ```
-
-Compete against WorldRemit (~5%), Wise (~1.5% but no Africa MM), Wave (1%, intra-Africa only).
 
 ## RPC providers
 
-| Provider | Solana | Base | Notes |
-|---|---|---|---|
-| Helius | ✅ | ❌ | Best Solana DX, webhooks for deposits |
-| Triton | ✅ | ❌ | Low-latency RPC |
-| Alchemy | ✅ | ✅ | Good multi-chain |
-| QuickNode | ✅ | ✅ | Reliable |
-
-Always configure **two independent providers** with failover.
-
-## Circle CCTP (cross-chain transfer)
-
-If you need to move USDC between Solana and Base (e.g., one partner only supports Base offramp), use Circle's CCTP — native burn/mint, no bridges. Backend responsibility only.
+Two independent Horizon/Stellar RPC providers with failover (e.g. SDF public + one commercial). Submission is idempotent, so failover is safe.
 
 ## Security essentials
 
-- Hot wallet balance ≤ 24h of expected volume; sweep excess to warm/cold.
-- Multi-sig (3-of-5) on treasury using Squads (Solana) or Safe (Base).
-- Withdrawals above threshold require manual approval + Slack notification.
-- Seed phrases in HSM / AWS KMS / GCP Cloud KMS — never in app code or env vars.
-- Reconcile on-chain balance vs ledger sum **every 5 minutes**; alert on drift.
+- Hot balance ≤ 24 h of expected volume; sweep excess to cold.
+- Native multisig: weighted signers + thresholds on treasury; payout above threshold needs manual approval + Slack alert.
+- Keys in HSM/KMS or a custody API that supports Ed25519 — never in app code or env vars (verify current vendor Stellar support; do not assume).
+- Reconcile ledger ⇄ on-chain (hot + deposit + cold − in-flight) every 5 min; alert on any drift.
+- Monitor XLM low-water on every signing/fee account.
 
-## What the Flutter client should NOT do
-- ❌ Sign transactions
-- ❌ Hold private keys
-- ❌ Query RPC directly
-- ❌ Display USDC, hex addresses, tx hashes, or gas to normal users
+## What the Flutter client must NOT do
+- ❌ Sign transactions, hold keys, query RPC
+- ❌ Display or log USDC, addresses, tx hashes, fees in XLM, chain names
+- ❌ Ship fields like `amount_usdc` / `solana_signature` / `chain` in DTOs — the contract is fiat-only
 
-Power users / support screens may show tx hash behind a debug flag.
+Support/debug screens may show a **support reference id** (ours), never a chain hash.

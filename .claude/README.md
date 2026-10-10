@@ -39,13 +39,13 @@ Invoke with `run_subagent(agentName="<name>", task="...")`.
 
 ## Project context (always-true facts)
 - **Stack**: Flutter (Dart 3+), Riverpod 2, go_router, freezed, dio
-- **Chain**: USDC on Solana (preferred) or Base — never Ethereum mainnet
+- **Chain**: USDC on **Stellar** (pooled custody, backend only) — see `docs/backend/stellar-mvp-plan.md`
 - **Corridors**: XOF (UEMOA), XAF (CEMAC), NGN, GHS, KES
 - **Mobile money partners**: Wave, Orange Money, MTN MoMo, Moov, Airtel
 - **Onramp/offramp candidates**: Yellow Card, Fonbnk, Juicyway, Onafriq, Accrue
 - **Locales**: `fr`, `en` (primary); plan for Wolof, Bambara, Lingala, Pidgin voice
 - **Architecture**: feature-first under `lib/features/<feature>/{data,domain,presentation}`
-- **UX principle**: stablecoin is invisible to end users; show local currency only
+- **UX principle (non-negotiable)**: stablecoin and blockchain are invisible to end users — local currency, "MoneyA balance" and mobile money only; fiat-only API contract
 
 ## UI/UX workflow
 1. Build a screen.

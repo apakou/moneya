@@ -47,8 +47,8 @@ lib/
 | `transfer` | Send money: quote → confirm → process |
 | `voice` | STT capture, intent parsing, confirmation form prefill |
 | `contacts` | Phone contact lookup, E.164 normalization |
-| `onramp` | Mobile money → USDC top-up |
-| `offramp` | USDC → mobile money cash-out |
+| `onramp` | Mobile money → MoneyA balance top-up |
+| `offramp` | MoneyA balance → mobile money cash-out |
 | `escrow` | Unclaimed transfers, SMS invite, claim flow |
 | `kyc` | Document upload, liveness, tier progression |
 

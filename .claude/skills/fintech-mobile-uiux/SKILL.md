@@ -296,7 +296,7 @@ Trust > brevity.
 
 ### Quote locking
 - Show countdown if quote TTL ≤ 60s.
-- On expiry: re-quote, show diff explicitly ("Rate changed: 615 → 616 XOF/USDC").
+- On expiry: re-quote, show diff explicitly ("Rate changed: you'll now receive 8,130 XOF instead of 8,140").
 - Never silently re-quote.
 
 ---
