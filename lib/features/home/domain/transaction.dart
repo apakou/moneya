@@ -12,7 +12,7 @@ enum TxnKind { sent, received }
 /// The home screen + transactions list filter chips both read this
 /// directly. `pending` covers anything that has been accepted by
 /// the backend but not yet confirmed on rail (mobile-money queue,
-/// on-chain pending, FX rebalancing, etc.); `failed` covers anything
+/// settlement pending, FX rebalancing, etc.); `failed` covers anything
 /// the user should consider unsuccessful.
 enum TxnStatus { success, pending, failed }
 

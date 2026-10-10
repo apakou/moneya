@@ -158,7 +158,7 @@ abstract class AppLocalizations {
   /// **'Receive'**
   String get homeActionReceive;
 
-  /// Primary action button label that opens the onramp (load fiat / stablecoin into the MoneyA balance) flow.
+  /// Primary action button label that opens the onramp (top up the MoneyA balance with mobile money) flow.
   ///
   /// In en, this message translates to:
   /// **'Load Money'**
@@ -1376,11 +1376,11 @@ abstract class AppLocalizations {
   /// **'Select sending country'**
   String get transferCountryPickerTitle;
 
-  /// Display name of the in-app MoneyA wallet funding source. Brand product name; usually kept as-is across locales.
+  /// Display name of the in-app MoneyA balance funding source.
   ///
   /// In en, this message translates to:
-  /// **'MoneyA Wallet'**
-  String get fundingProviderMoneyaWallet;
+  /// **'MoneyA balance'**
+  String get fundingProviderMoneyaBalance;
 
   /// Display name of the Moov Africa mobile-money funding source. Brand name; kept as-is across locales.
   ///
@@ -1889,7 +1889,7 @@ abstract class AppLocalizations {
   /// Trailing inline span on the failed withdraw body — reassures the user no debit happened.
   ///
   /// In en, this message translates to:
-  /// **' to your {provider} account. No funds were taken from your wallet — please try again.'**
+  /// **' to your {provider} account. No funds were taken from your balance — please try again.'**
   String withdrawFailedBodySuffix(String provider);
 
   /// Primary CTA on the failed withdraw outcome — pops back to the amount form so the user can retry with the same idempotency key.

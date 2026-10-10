@@ -70,12 +70,12 @@ class PaymentFailedScreen extends StatelessWidget {
           if (hasReason) ...[
             TransferOutcomeBody.bold(reason!),
             TransferOutcomeBody.muted(
-              '. No funds were taken from your wallet — please try '
+              '. No funds were taken from your balance — please try '
               'again.',
             ),
           ] else
             TransferOutcomeBody.muted(
-              'No funds were taken from your wallet — please try '
+              'No funds were taken from your balance — please try '
               'again in a moment.',
             ),
         ],

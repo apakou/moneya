@@ -56,12 +56,13 @@ void main() {
 
   TransferRequest buildRequest() => const TransferRequest(
         recipientPhone: '+221770000099',
-        amountUsdc: '10',
+        amount: '10',
+        currency: 'XOF',
         note: 'lunch',
       );
 
   /// Minimal valid `Transfer` response body — only the required
-  /// fields per OpenAPI: id, kind, status, amount_usdc, fee_usdc,
+  /// fields per OpenAPI: id, kind, status, amount, fee, currency,
   /// created_at. Optional fields omitted to assert the DTO tolerates
   /// missing-but-allowed keys.
   String transferBody({
@@ -75,8 +76,9 @@ void main() {
         '"id":"00000000-0000-4000-8000-000000000001",'
         '"kind":"SENT",'
         '"status":"$status",'
-        '"amount_usdc":"10",'
-        '"fee_usdc":"0.10",'
+        '"amount":"10",'
+        '"fee":"0.10",'
+        '"currency":"XOF",'
         '"created_at":"2026-05-15T10:00:00Z"'
         '$reason'
         '}';
@@ -141,7 +143,8 @@ void main() {
       final transfer = (result as Success<Transfer>).value;
       expect(transfer.status, TransferStatus.completed);
       expect(transfer.id, '00000000-0000-4000-8000-000000000001');
-      expect(transfer.amountUsdc, '10');
+      expect(transfer.amount, '10');
+      expect(transfer.currency, 'XOF');
       expect(transfer.failureReason, isNull);
     });
 

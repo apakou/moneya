@@ -3,13 +3,13 @@
 ///
 /// Mock-faithful: the design lists "Moov Africa" as the funding source.
 /// The full provider mix is broader and follows the african-payment-rails
-/// skill (per-corridor MoMo + the in-app MoneyA wallet + USDC). For now
+/// skill (per-corridor MoMo + the in-app MoneyA balance). For now
 /// these are hardcoded; later they'll be filtered server-side based on
 /// the sender's KYC tier and corridor.
 enum FundingProvider {
-  moneyaWallet(
-    id: 'moneya_wallet',
-    label: 'MoneyA Wallet',
+  moneyaBalance(
+    id: 'moneya_balance',
+    label: 'MoneyA balance',
     iconAsset: null,
   ),
   moovAfrica(

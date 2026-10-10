@@ -8,7 +8,7 @@ import '../../domain/funding_provider.dart';
 import '../screens/transfer_money_screen.dart' show fundingProviderLabel;
 
 /// Bottom sheet that lets the user pick which rail funds the transfer
-/// (Moov Africa, Orange Money, MoneyA Wallet, …).
+/// (Moov Africa, Orange Money, MoneyA balance, …).
 ///
 /// Today the list is hardcoded; later it will be filtered server-side
 /// by KYC tier + corridor and provided via Riverpod.

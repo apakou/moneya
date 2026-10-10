@@ -44,7 +44,6 @@ class SendMoneyPage extends StatelessWidget {
               child: const _SendMoneyHero(
                 walletAsset: 'assets/images/Coin Wallet.png',
                 goldCoinAsset: 'assets/images/Coin.png',
-                usdcCoinAsset: 'assets/images/USD Coin_3D.png',
               ),
             ),
           ),
@@ -67,12 +66,10 @@ class _SendMoneyHero extends StatelessWidget {
   const _SendMoneyHero({
     required this.walletAsset,
     required this.goldCoinAsset,
-    required this.usdcCoinAsset,
   });
 
   final String walletAsset;
   final String goldCoinAsset;
-  final String usdcCoinAsset;
 
   @override
   Widget build(BuildContext context) {
@@ -99,11 +96,11 @@ class _SendMoneyHero extends StatelessWidget {
               size: mediumCoin,
               asset: goldCoinAsset,
             ),
-            // Upper-inner USDC (small, on outer ring).
+            // Upper-inner coin (small, on outer ring).
             _OrbitCoin(
               alignment: const Alignment(0.22, -0.62),
               size: smallCoin,
-              asset: usdcCoinAsset,
+              asset: goldCoinAsset,
             ),
             // Right gold (on outer ring).
             _OrbitCoin(
@@ -111,17 +108,17 @@ class _SendMoneyHero extends StatelessWidget {
               size: mediumCoin,
               asset: goldCoinAsset,
             ),
-            // Left-inner USDC (small, on inner ring).
+            // Left-inner coin (small, on inner ring).
             _OrbitCoin(
               alignment: const Alignment(-0.72, 0.10),
               size: smallCoin,
-              asset: usdcCoinAsset,
+              asset: goldCoinAsset,
             ),
-            // Lower-right USDC (medium, on outer ring).
+            // Lower-right coin (medium, on outer ring).
             _OrbitCoin(
               alignment: const Alignment(0.52, 0.46),
               size: mediumCoin,
-              asset: usdcCoinAsset,
+              asset: goldCoinAsset,
             ),
             // Bottom gold (on outer ring, slightly left of center).
             _OrbitCoin(

@@ -229,8 +229,8 @@ class _HomeScreenState extends State<HomeScreen> {
     Get.to<void>(() => ReceiveScreen(currency: _currency));
   }
 
-  // Onramp action — adds fiat or stablecoin into the user's MoneyA
-  // balance. Pushes the Load Money flow (provider → amount). The
+  // Onramp action — tops up the user's MoneyA balance with mobile
+  // money. Pushes the Load Money flow (provider → amount). The
   // backend onramp wiring (Yellow Card / Fonbnk) lands in M2 per
   // docs/backend/backlog.md; until then the flow ends on a stubbed
   // success outcome screen.
@@ -239,7 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // Offramp action — moves fiat out of MoneyA into the user's mobile
-  // money wallet or bank account. Pushes the Withdraw flow
+  // money account or bank account. Pushes the Withdraw flow
   // (provider → amount). Carries the live numeric balance so step 2
   // can enforce the insufficient-balance block at swipe-time.
   void _onWithdraw() {

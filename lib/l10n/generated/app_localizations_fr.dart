@@ -720,7 +720,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get transferCountryPickerTitle => 'Choisir le pays d\'envoi';
 
   @override
-  String get fundingProviderMoneyaWallet => 'MoneyA Wallet';
+  String get fundingProviderMoneyaBalance => 'Solde MoneyA';
 
   @override
   String get fundingProviderMoovAfrica => 'Moov Africa';

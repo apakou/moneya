@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": ".",
+    "types": ["node", "jest"],
+    "paths": {
+      "@moneya/chain": ["packages/chain/src/index.ts"],
+      "@moneya/invisibility": ["packages/invisibility/src/index.ts"]
+    }
+  },
+  "include": ["apps/*/src/**/*", "apps/*/test/**/*", "packages/*/src/**/*", "packages/*/test/**/*"]
+}

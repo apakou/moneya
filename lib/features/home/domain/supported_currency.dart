@@ -1,8 +1,7 @@
 /// Currencies the home dashboard can display the user's balance in.
 ///
 /// MVP scope: the five African corridor currencies MoneyA targets first.
-/// USD / EUR / USDC will be added when off-ramp + stablecoin balances
-/// are wired in.
+/// USD / EUR may be added later for the diaspora corridors.
 ///
 /// `code` is the ISO 4217 alpha code shown in the pill and used as the
 /// stable identifier. `symbol` is the currency glyph shown in lists

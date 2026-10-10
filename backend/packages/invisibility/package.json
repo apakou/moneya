@@ -1,0 +1,13 @@
+{
+  "name": "@moneya/invisibility",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "devDependencies": {
+    "@stellar/stellar-sdk": "^15.0.1"
+  }
+}

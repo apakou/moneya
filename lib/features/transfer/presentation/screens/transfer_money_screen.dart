@@ -717,7 +717,7 @@ String _formatAmount(double value) => MoneyFormat.fromNum(value);
 /// precedent on [Transaction]); user-visible strings come through here.
 String fundingProviderLabel(FundingProvider provider, AppLocalizations l10n) {
   return switch (provider) {
-    FundingProvider.moneyaWallet => l10n.fundingProviderMoneyaWallet,
+    FundingProvider.moneyaBalance => l10n.fundingProviderMoneyaBalance,
     FundingProvider.moovAfrica => l10n.fundingProviderMoovAfrica,
     FundingProvider.orangeMoney => l10n.fundingProviderOrangeMoney,
     FundingProvider.mtnMomo => l10n.fundingProviderMtnMomo,

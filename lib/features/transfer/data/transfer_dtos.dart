@@ -21,7 +21,7 @@ import 'package:flutter/foundation.dart';
 /// ## Why not enums for failure_reason
 ///
 /// The OpenAPI enum is fixed (`INSUFFICIENT_FUNDS`,
-/// `COMPLIANCE_BLOCK`, `SIGNING_FAILED`, `RPC_FAILED`,
+/// `COMPLIANCE_BLOCK`, `SERVICE_UNAVAILABLE`,
 /// `PROVIDER_REJECTED`, `QUOTE_EXPIRED`, `VELOCITY_LIMIT`), but
 /// adding a new value server-side mustn't crash older clients.
 /// [TransferFailureReason.fromWire] maps unknown values to
@@ -37,8 +37,11 @@ import 'package:flutter/foundation.dart';
 ///
 /// `recipient_phone` must already be E.164 — callers compose this
 /// from `(country, nationalPhone)` via the same code path used in
-/// `Favorite.e164`. `amount_usdc` is the gross USDC amount (string,
-/// ≤6 dp). `note` is optional, 140 chars max, stored not on-chain.
+/// `Favorite.e164`. `amount` is the gross amount in `currency` (the
+/// sender's balance currency, ISO 4217; string, ≤6 dp). The contract is
+/// fiat-only: no settlement-asset amounts or chain details ever cross
+/// this boundary (docs/backend/stellar-mvp-plan.md §1.1). `note` is
+/// optional, 140 chars max.
 /// `save_recipient` defaults to `false`; when `true` the server
 /// adds the recipient to the user's saved-recipients list in the
 /// same transaction.
@@ -46,19 +49,22 @@ import 'package:flutter/foundation.dart';
 class TransferRequest {
   const TransferRequest({
     required this.recipientPhone,
-    required this.amountUsdc,
+    required this.amount,
+    required this.currency,
     this.note,
     this.saveRecipient = false,
   });
 
   final String recipientPhone;
-  final String amountUsdc;
+  final String amount;
+  final String currency;
   final String? note;
   final bool saveRecipient;
 
   Map<String, Object?> toJson() => {
         'recipient_phone': recipientPhone,
-        'amount_usdc': amountUsdc,
+        'amount': amount,
+        'currency': currency,
         if (note != null) 'note': note,
         if (saveRecipient) 'save_recipient': true,
       };
@@ -68,18 +74,19 @@ class TransferRequest {
       identical(this, other) ||
       other is TransferRequest &&
           other.recipientPhone == recipientPhone &&
-          other.amountUsdc == amountUsdc &&
+          other.amount == amount &&
+          other.currency == currency &&
           other.note == note &&
           other.saveRecipient == saveRecipient;
 
   @override
   int get hashCode =>
-      Object.hash(recipientPhone, amountUsdc, note, saveRecipient);
+      Object.hash(recipientPhone, amount, currency, note, saveRecipient);
 
   @override
   String toString() =>
       'TransferRequest(recipient_phone=$recipientPhone, '
-      'amount_usdc=$amountUsdc, '
+      'amount=$amount, currency=$currency, '
       'note=${note == null ? "null" : "<${note!.length} chars>"}, '
       'save_recipient=$saveRecipient)';
 }
@@ -91,7 +98,7 @@ class TransferRequest {
 /// Response body returned by `POST /v1/transfers` (`202 Accepted`).
 ///
 /// Status semantics — wire to terminal screens:
-/// - `COMPLETED` → `PaymentSuccessScreen` (on-chain settled).
+/// - `COMPLETED` → `PaymentSuccessScreen` (settled).
 /// - `PROCESSING` → `PaymentPendingScreen` (settling).
 /// - `AWAITING_CLAIM` → `PaymentPendingScreen` (recipient is off-
 ///   network; an escrow + SMS claim link was issued — see [claim]).
@@ -104,13 +111,13 @@ class Transfer {
     required this.id,
     required this.kind,
     required this.status,
-    required this.amountUsdc,
-    required this.feeUsdc,
+    required this.amount,
+    required this.fee,
+    required this.currency,
     required this.createdAt,
     this.sender,
     this.recipient,
     this.note,
-    this.solanaSignature,
     this.failureReason,
     this.completedAt,
     this.claim,
@@ -119,14 +126,14 @@ class Transfer {
   final String id;
   final TransferKind kind;
   final TransferStatus status;
-  final String amountUsdc;
-  final String feeUsdc;
+  final String amount;
+  final String fee;
+  final String currency;
   final DateTime createdAt;
 
   final TransferParty? sender;
   final TransferParty? recipient;
   final String? note;
-  final String? solanaSignature;
   final TransferFailureReason? failureReason;
   final DateTime? completedAt;
   final ClaimSummary? claim;
@@ -136,13 +143,13 @@ class Transfer {
       id: json['id']! as String,
       kind: TransferKind.fromWire(json['kind'] as String?),
       status: TransferStatus.fromWire(json['status'] as String?),
-      amountUsdc: json['amount_usdc']! as String,
-      feeUsdc: json['fee_usdc']! as String,
+      amount: json['amount']! as String,
+      fee: json['fee']! as String,
+      currency: json['currency']! as String,
       createdAt: DateTime.parse(json['created_at']! as String),
       sender: _parseParty(json['sender']),
       recipient: _parseParty(json['recipient']),
       note: json['note'] as String?,
-      solanaSignature: json['solana_signature'] as String?,
       failureReason:
           TransferFailureReason.fromWire(json['failure_reason'] as String?),
       completedAt: _parseDate(json['completed_at']),
@@ -154,13 +161,13 @@ class Transfer {
         'id': id,
         'kind': kind.wire,
         'status': status.wire,
-        'amount_usdc': amountUsdc,
-        'fee_usdc': feeUsdc,
+        'amount': amount,
+        'fee': fee,
+        'currency': currency,
         'created_at': createdAt.toUtc().toIso8601String(),
         if (sender != null) 'sender': sender!.toJson(),
         if (recipient != null) 'recipient': recipient!.toJson(),
         if (note != null) 'note': note,
-        if (solanaSignature != null) 'solana_signature': solanaSignature,
         if (failureReason != null) 'failure_reason': failureReason!.wire,
         if (completedAt != null)
           'completed_at': completedAt!.toUtc().toIso8601String(),
@@ -189,13 +196,13 @@ class Transfer {
           other.id == id &&
           other.kind == kind &&
           other.status == status &&
-          other.amountUsdc == amountUsdc &&
-          other.feeUsdc == feeUsdc &&
+          other.amount == amount &&
+          other.fee == fee &&
+          other.currency == currency &&
           other.createdAt == createdAt &&
           other.sender == sender &&
           other.recipient == recipient &&
           other.note == note &&
-          other.solanaSignature == solanaSignature &&
           other.failureReason == failureReason &&
           other.completedAt == completedAt &&
           other.claim == claim;
@@ -205,13 +212,13 @@ class Transfer {
         id,
         kind,
         status,
-        amountUsdc,
-        feeUsdc,
+        amount,
+        fee,
+        currency,
         createdAt,
         sender,
         recipient,
         note,
-        solanaSignature,
         failureReason,
         completedAt,
         claim,
@@ -219,7 +226,7 @@ class Transfer {
 
   @override
   String toString() => 'Transfer(id=$id, kind=$kind, status=$status, '
-      'amount_usdc=$amountUsdc, fee_usdc=$feeUsdc)';
+      'amount=$amount, fee=$fee, currency=$currency)';
 }
 
 @immutable
@@ -270,7 +277,8 @@ class ClaimSummary {
   const ClaimSummary({
     required this.token,
     required this.status,
-    required this.amountUsdc,
+    required this.amount,
+    required this.currency,
     required this.expiresAt,
     this.sender,
     this.note,
@@ -278,7 +286,8 @@ class ClaimSummary {
 
   final String token;
   final ClaimStatus status;
-  final String amountUsdc;
+  final String amount;
+  final String currency;
   final DateTime expiresAt;
   final TransferParty? sender;
   final String? note;
@@ -286,7 +295,8 @@ class ClaimSummary {
   factory ClaimSummary.fromJson(Map<String, Object?> json) => ClaimSummary(
         token: json['token']! as String,
         status: ClaimStatus.fromWire(json['status'] as String?),
-        amountUsdc: json['amount_usdc']! as String,
+        amount: json['amount']! as String,
+        currency: json['currency']! as String,
         expiresAt: DateTime.parse(json['expires_at']! as String),
         sender: Transfer._parseParty(json['sender']),
         note: json['note'] as String?,
@@ -295,7 +305,8 @@ class ClaimSummary {
   Map<String, Object?> toJson() => {
         'token': token,
         'status': status.wire,
-        'amount_usdc': amountUsdc,
+        'amount': amount,
+        'currency': currency,
         'expires_at': expiresAt.toUtc().toIso8601String(),
         if (sender != null) 'sender': sender!.toJson(),
         if (note != null) 'note': note,
@@ -307,14 +318,15 @@ class ClaimSummary {
       other is ClaimSummary &&
           other.token == token &&
           other.status == status &&
-          other.amountUsdc == amountUsdc &&
+          other.amount == amount &&
+          other.currency == currency &&
           other.expiresAt == expiresAt &&
           other.sender == sender &&
           other.note == note;
 
   @override
   int get hashCode =>
-      Object.hash(token, status, amountUsdc, expiresAt, sender, note);
+      Object.hash(token, status, amount, currency, expiresAt, sender, note);
 }
 
 // ---------------------------------------------------------------------------
@@ -374,8 +386,7 @@ enum TransferStatus {
 enum TransferFailureReason {
   insufficientFunds('INSUFFICIENT_FUNDS'),
   complianceBlock('COMPLIANCE_BLOCK'),
-  signingFailed('SIGNING_FAILED'),
-  rpcFailed('RPC_FAILED'),
+  serviceUnavailable('SERVICE_UNAVAILABLE'),
   providerRejected('PROVIDER_REJECTED'),
   quoteExpired('QUOTE_EXPIRED'),
   velocityLimit('VELOCITY_LIMIT'),

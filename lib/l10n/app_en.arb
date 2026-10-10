@@ -46,7 +46,7 @@
   },
   "homeActionLoad": "Load Money",
   "@homeActionLoad": {
-    "description": "Primary action button label that opens the onramp (load fiat / stablecoin into the MoneyA balance) flow."
+    "description": "Primary action button label that opens the onramp (top up the MoneyA balance with mobile money) flow."
   },
   "homeActionWithdraw": "Withdraw",
   "@homeActionWithdraw": {
@@ -981,9 +981,9 @@
     "description": "Title at the top of the country picker bottom sheet on the Send Money screen."
   },
 
-  "fundingProviderMoneyaWallet": "MoneyA Wallet",
-  "@fundingProviderMoneyaWallet": {
-    "description": "Display name of the in-app MoneyA wallet funding source. Brand product name; usually kept as-is across locales."
+  "fundingProviderMoneyaBalance": "MoneyA balance",
+  "@fundingProviderMoneyaBalance": {
+    "description": "Display name of the in-app MoneyA balance funding source."
   },
   "fundingProviderMoovAfrica": "Moov Africa",
   "@fundingProviderMoovAfrica": {
@@ -1395,7 +1395,7 @@
   "@withdrawFailedBodyPrefix": {
     "description": "First inline span on the failed withdraw body."
   },
-  "withdrawFailedBodySuffix": " to your {provider} account. No funds were taken from your wallet — please try again.",
+  "withdrawFailedBodySuffix": " to your {provider} account. No funds were taken from your balance — please try again.",
   "@withdrawFailedBodySuffix": {
     "description": "Trailing inline span on the failed withdraw body — reassures the user no debit happened.",
     "placeholders": {

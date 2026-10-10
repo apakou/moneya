@@ -234,13 +234,14 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
     final recipientE164 =
         '+${widget.recipientCountry.dialCode}${widget.recipientPhoneLocal}';
 
-    // W3 scope: there's no FX quote step yet, so we ship the local
-    // amount as `amount_usdc`. Backend dev env accepts this; W4 will
-    // add `/v1/fx/quote` and lock a rate before this screen.
-    // See client-integration-notes Q-FX (to be filed).
+    // Fiat-only contract: the amount travels with its ISO 4217 currency
+    // (the sender's balance currency). Any conversion happens server-side;
+    // the client never handles a settlement asset. A quote step may be
+    // added later (see client-integration-notes Q-FX).
     final request = TransferRequest(
       recipientPhone: recipientE164,
-      amountUsdc: widget.amount,
+      amount: widget.amount,
+      currency: widget.currency.code,
       note: widget.purpose.isEmpty ? null : widget.purpose,
     );
 
@@ -380,11 +381,10 @@ class _PaymentConfirmScreenState extends State<PaymentConfirmScreen> {
         return 'Rate expired';
       case TransferFailureReason.providerRejected:
         return 'Provider declined';
-      case TransferFailureReason.signingFailed:
-      case TransferFailureReason.rpcFailed:
-        // On-chain plumbing failure — don't expose chain mechanics
-        // to the end user.
-        return 'Network unavailable';
+      case TransferFailureReason.serviceUnavailable:
+        // Infrastructure failure — never expose its mechanics to the
+        // end user.
+        return 'Service temporarily unavailable';
       case TransferFailureReason.unknown:
         // Never expose the raw wire value — fall back to generic.
         return null;

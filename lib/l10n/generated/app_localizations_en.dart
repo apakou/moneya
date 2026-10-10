@@ -713,7 +713,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transferCountryPickerTitle => 'Select sending country';
 
   @override
-  String get fundingProviderMoneyaWallet => 'MoneyA Wallet';
+  String get fundingProviderMoneyaBalance => 'MoneyA balance';
 
   @override
   String get fundingProviderMoovAfrica => 'Moov Africa';
@@ -1005,7 +1005,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String withdrawFailedBodySuffix(String provider) {
-    return ' to your $provider account. No funds were taken from your wallet — please try again.';
+    return ' to your $provider account. No funds were taken from your balance — please try again.';
   }
 
   @override

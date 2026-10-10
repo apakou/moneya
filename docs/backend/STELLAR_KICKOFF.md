@@ -28,6 +28,7 @@ that stablecoins exist** — the API is fiat-only and no surface shows crypto te
 | Backend location | **Decided:** `backend/` monorepo folder (pnpm workspace) |
 | Ramp provider | **Decided:** Yellow Card primary, SEP-24 anchor fallback — **but Stellar support in its API is unconfirmed (RMP-00)** and it does **not** list XOF in the repo's skill |
 | D1 custody (pooled) · D3 launch corridor · D4 key custody · D5 licensing | **Recommended in the plan, awaiting owner confirmation.** Do not start Phase C chain tickets until D1 and D4 are confirmed. |
+| **D7 currency of user balances / FX risk** | **Open.** Recommendation in plan §2. Blocks the ledger account currency (M2) and quote logic (M6/M7). |
 
 ## 4. Where to work
 
@@ -35,17 +36,21 @@ that stablecoins exist** — the API is fiat-only and no surface shows crypto te
 - Migrations are append-only: new schema goes in `docs/backend/migrations/000N_*.sql` (or `backend/` migration dir once created); never edit `0001_init.sql`.
 - Contract changes go through `openapi.yaml` first, then backend, then client — same PR when possible.
 
-## 5. What to build first (no blockers)
+## 5. State of the work and what to do next
 
-Phase A can all start now, in parallel:
+**Already done and verified** (see plan §0 for the evidence): backend skeleton in `backend/` (lint/typecheck/61 tests/build green),
+`@moneya/chain` offline Stellar core, `0003_stellar_chain.sql` (validated on PostgreSQL 16), fiat-only OpenAPI + contract lint,
+copy/asset lint, response guard, and the Flutter fiat-only migration (APP-00: analyze unchanged, 119 tests green). CI is written but has not run on GitHub yet.
 
-| Track | Tickets | Notes |
-|-------|---------|-------|
-| Owner / business | **RMP-00**, DEC-01 sign-offs | Email Yellow Card; confirm D1/D3/D4/D5 |
-| Backend | FND-01..05, STL-00 (testnet spike), STL-01, DB-01, INV-01, INV-03 | Skeleton in `backend/`, CI path-filtered |
-| App | APP-00, INV-02 | Needs the Flutter SDK; fixes V1–V5 (plan §1.1), including the `amount_usdc`-carries-local-currency bug |
+**Do next, in this order:**
 
-Then: Phase B (auth, ledger, KYC) → Phase C (chain) once RMP-00 and D1/D4 are closed.
+| # | Who | What |
+|---|-----|------|
+| 1 | Owner | Send RMP-00 to Yellow Card; confirm D1, D3, D4, D5; **decide D7**. |
+| 2 | Anyone with internet | **STL-00** on Stellar testnet: run `StellarAdapter` for real (`getSequence`, `submit` incl. fee-bump, `getTx` by **inner** hash, `streamPayments`, `opIndexFromOperationId`) — these were unreachable in the authoring sandbox and are **unverified**. |
+| 3 | Backend | Check the first CI run on GitHub (it has never run); fix anything environment-specific. |
+| 4 | Backend | M1 auth with a fake SMS provider (no external keys needed); `0002_state_machine.sql` once D7 is decided. |
+| 5 | App | APP-01..09 against the fiat-only contract (needs the backend endpoints, or a mock server generated from `openapi.yaml`). |
 
 ## 6. Rules that must hold in every PR
 
@@ -59,15 +64,16 @@ Then: Phase B (auth, ledger, KYC) → Phase C (chain) once RMP-00 and D1/D4 are 
 
 ## 7. Known gotchas
 
-- The authoring environment for the plan **had no Flutter SDK**: the Dart changes in APP-00 are *not* done and were never compiled. Run `flutter pub get`, `flutter gen-l10n`, `flutter analyze`, `flutter test` before and after.
+- `flutter pub get` rewrites `pubspec.lock` and `analysis_options.yaml` with newer SDKs: do not commit those unrelated changes. Do not run `dart format` on the whole tree — the repo is not formatted with the current SDK and it produces large unrelated diffs.
 - Vendor claims to verify, not assume: Yellow Card Payments API on Stellar; a KMS/custody product that signs Ed25519 for Stellar (Privy support unverified).
 - Stellar USDC is 7 dp; the ledger and API are 6 dp — reject sub-micro amounts at the adapter.
 - A single Stellar account has one sequence number: parallel submits need channel accounts.
 
 ## 8. Prompt to paste into the implementation session
 
-> Read `docs/backend/STELLAR_KICKOFF.md` and `docs/backend/stellar-mvp-plan.md`, then
-> start Phase A on branch `feature/v1.0`: scaffold the NestJS monorepo in `backend/`
-> (FND-01..05), then STL-01 and DB-01. Respect plan §1.1 (stablecoins invisible) and
-> the acceptance criteria in Appendix C. Ask me before starting any Phase C chain ticket
-> until D1 and D4 are confirmed. Commit in small steps and push to `feature/v1.0`.
+> Read `docs/backend/STELLAR_KICKOFF.md` and `docs/backend/stellar-mvp-plan.md` (§0 status, §1.1, Appendix C),
+> then continue on branch `feature/v1.0`. The scaffold, chain core, migration 0003, invisibility checks and the
+> Flutter fiat-only migration are already done. First, if you have internet access, run STL-00 on Stellar testnet to
+> verify the network half of `StellarAdapter`; otherwise start M1 auth with a fake SMS provider. Respect §1.1
+> (stablecoins invisible: `python3 scripts/lint_copy.py` and `pnpm test` in `backend/` must stay green). Do not
+> start any Phase C chain ticket or the ledger account currency until D1, D4 and D7 are confirmed. Commit in small steps.

@@ -7,6 +7,43 @@
 > **Decision:** Stellar replaces Solana as the settlement chain.
 > **Sizes** are estimates in ideal-engineer-days (IED), same unit as the backlog.
 
+## 0. Status snapshot
+
+**Done and verified in the authoring environment** (commands were run; results below):
+
+| Ticket | What exists | Evidence |
+|--------|-------------|----------|
+| FND-01 (partial) | `backend/` pnpm monorepo: NestJS API with `/health`, strict TS, ESLint, Prettier, Jest | `pnpm lint/typecheck/test/build` green; built API answered `GET /health` → `{"status":"ok"}` |
+| STL-01 (offline part) | `@moneya/chain`: `ChainAdapter`, `StellarAdapter` build/sign/hash/timebounds/memo/fee-bump, 6↔7 dp amount conversion, address validation, config | 61 backend tests with the real Stellar SDK (real keys, signatures, hashes) |
+| DB-01 | `migrations/0003_stellar_chain.sql` | Applied on PostgreSQL 16 after `0001`: single transaction, idempotent re-apply, and constraint tests (dedupe, suspense/matched checks) |
+| INV-01 | OpenAPI response contract lint (+ the contract migrated to fiat-only) | `contract.spec.ts`; it caught a leftover "Wallet" description during development |
+| INV-02 | `scripts/lint_copy.py` (+ 7 self-tests) over `.arb`, Dart string literals and asset names; wired in CI | passes on the repo; fails on a planted `Send USDC` |
+| INV-03 (core) | `@moneya/invisibility` guard + `InvisibilityInterceptor` (non-production) | unit + e2e tests; the e2e suite grows with every endpoint |
+| APP-00 | Client DTOs/copy/assets moved to the fiat-only contract (V1–V5 fixed) | `flutter analyze`: only the 1 pre-existing info; `flutter test`: 119 pass (117 before + 2 new) |
+| CI | `.github/workflows/ci.yml` (copy-lint, backend, migrations, app) | **YAML parses; has NOT run on GitHub yet** |
+
+**Not verifiable here, implemented but unproven:** the network half of `StellarAdapter`
+(`submit`, `getTx`, `getSequence`, `streamPayments`, failover, `opIndexFromOperationId`).
+Horizon, Friendbot and Soroban RPC are unreachable from the authoring sandbox, so
+**STL-00 (testnet spike) must be run on a machine with internet access** — it is the next step for it.
+
+**Blocked on the owner or an external party** (nothing in this repo can unblock these):
+
+| Item | Waiting on |
+|------|------------|
+| RMP-00 | Yellow Card written answer (Stellar API support, corridors, sandbox keys) |
+| DEC-01 sign-offs: D1, D3, D4, D5 | Owner (custody model, launch corridor, key custody, licensing) |
+| **D7** (new) | Owner/finance — see §2 |
+| STL-00 | Running the spike with network access |
+| FND-02 Supabase staging, Sentry | Accounts/keys |
+| STL-02..06, M5–M8 | RMP-00 + D1 + D4 (+ D7 for ledger/quotes) |
+
+**Unblocked, not started** (can proceed without any external input): M1 auth with a fake SMS provider
+(real Twilio keys only needed to go live), UI work for APP-01..09 against the contract, `0002_state_machine.sql`
+(M2 — but its *account currency* depends on D7).
+
+---
+
 ---
 
 ## 1. What "ready MVP" means
@@ -69,6 +106,7 @@ review, INV-05 chain-error mapping. Details in §6 and Appendix C.
 |---|----------|----------------|----------------|
 | D1 | **Custody model** | **Pooled custody.** One Stellar treasury setup (hot + cold) holds all USDC. Users have ledger balances only; MoneyA→MoneyA sends are ledger-only. Chain is touched at onramp credit and offramp debit. | Removes per-user accounts, trustlines, reserves, sponsored-reserve logic and per-user key provisioning. Cuts ≈ 10 IED and most chain failure modes. Matches the `usdc-stablecoin-ops` skill's "pooled custodial wallet with per-user ledger". |
 | D2 | **Ramp provider(s)** | **DECIDED: Yellow Card is the primary** (already in the specs, announced USDC-on-Stellar support in Feb 2024). **Correction:** the repo's own `african-payment-rails` skill lists Yellow Card for **NGN, GHS, KES, ZAR, XAF — not XOF**. XOF (UEMOA) is therefore *not* assumed covered: it would be served by a fiat-side mobile-money aggregator (Onafriq in the skill) paid from float that MoneyA refills by converting treasury USDC through Yellow Card/an anchor. Confirm in RMP-00. **Fallback:** a licensed SEP-24 anchor for the launch corridor (SEP-10 auth + SEP-24 interactive flow + SEP-38 quotes). MoneyGram Ramps is **not** chosen: it is no longer Stellar-only and its African cash-in coverage is thin. | The Feb 2024 announcement covers Yellow Card's app. **Its Payments API on Stellar is not confirmed.** Ticket **RMP-00** (below) must confirm it with Yellow Card (written answer: Stellar USDC deposit address + memo on collect, Stellar payout `txProof`, sandbox access, corridor list) **before** M6/M7 start. If the answer is no, switch to the fallback; this is already covered by the contingency. |
+| D7 | **Currency of user balances (FX risk)** | **Open — owner/finance decision.** `0001` denominates the ledger in USDC (`currency DEFAULT 'USDC'`) while users see fiat. (a) USD-denominated ledger shown in fiat at the live rate: a user's XOF balance would drift with FX without them acting — confusing and a support burden. (b) **Fiat-denominated per-user ledger**, converted at top-up/cash-out with the rate locked at the time: balances never move, MoneyA's treasury carries the FX exposure (priced into the spread, limited and hedged by policy). **Recommendation: (b).** | Decides the currency of `USER_WALLET` ledger accounts, what a quote means, and treasury risk limits. **Blocks M2 ledger posting design and the M6/M7 quote logic.** The schema already supports either (`UNIQUE (kind, user_id, currency)`). |
 | D6 | **Where the backend lives** | **DECIDED: monorepo.** NestJS backend in `backend/` at the root of this repository (pnpm workspace: `backend/apps/api`, `backend/packages/{chain,ledger,infra,infra-supabase}`), next to the Flutter app. | `docs/backend/openapi.yaml` is the contract the client already codes against; one repo means one PR can change the contract, the API and the client, and one branch/CI view for the small team. Matches the `packages/infra` layout already described in `architecture.md` §11. Split into its own repo only if the team grows or release cadences diverge. |
 | D3 | **Launch corridor(s)** | One corridor first, from those Yellow Card lists today. Recommendation: **GHS or KES** (lighter regulatory load than NGN/BVN). XOF/XAF follow via the aggregator path above. This is a business call — confirm. | Limits compliance, liquidity and support scope. |
 | D4 | **Signing / key custody** | Treasury keys in a KMS/HSM-backed signer (cloud KMS with Ed25519, Turnkey, or Fireblocks — verify current Stellar support). Use native Stellar **multisig thresholds** on the cold/treasury account. Do **not** assume Privy supports Stellar; verify before keeping it. | Replaces Privy + Squads/Safe. Key handling is the main security risk. |
@@ -88,7 +126,7 @@ no RPC, no addresses on the client.**
 |------|----------------|---------------|
 | Chain / asset | Solana + USDC SPL | Stellar + USDC (Circle issuer, `USDC:G…`) |
 | Custody | Privy per-user wallet | Pooled treasury (D1/D4); users = ledger rows |
-| Wallet provisioning | Privy `createWallet` after KYC | DB row only (`wallets` stores a **deposit memo/muxed ID**, no on-chain account) |
+| Wallet provisioning | Privy `createWallet` after KYC | DB row only (no on-chain account; inbound deposits are attributed by a per-order memo) |
 | Submit + confirm | `sendTransaction` + `confirmTransaction` | Horizon / Stellar RPC `submitTransaction`; poll tx hash; ~5 s ledger close |
 | Inbound deposits | Helius webhooks | Horizon **payments stream** (cursor-based) on the deposit account + provider webhook |
 | Idempotency key for chain | tx signature | **tx hash** — known *before* submit (deterministic from the envelope), so resubmitting the same envelope is safe |
@@ -147,8 +185,8 @@ REC-01 changes from "every wallet" to "a handful of accounts", which is cheaper.
 `0002_state_machine.sql` is already planned):
 - `ALTER TYPE app.chain ADD VALUE 'STELLAR'` and make it the default for new rows.
 - `transfers.solana_signature` / `offramp_orders.solana_signature` → add `chain_tx_hash TEXT` (+ unique index where applicable), backfill, keep old columns until launch, then drop.
-- `wallets`: `privy_wallet_id` becomes nullable; add `deposit_memo TEXT UNIQUE`.
-- New tables: `chain_accounts` (role, public key, xlm_low_water), `chain_txs` (hash, xdr, status, timebounds, attempts), `chain_cursors` (stream name, paging token).
+- `wallets`: `privy_wallet_id`, `address`, `chain` become nullable (no default); `onramp_orders.deposit_memo` (unique) attributes inbound deposits.
+- New tables: `chain_accounts` (role, public key, xlm_low_water), `chain_txs` (tx hash, signed XDR, status, timebounds, attempts), `chain_cursors` (stream name, paging token), `chain_inbound_payments` (dedupe on `operation_id` and `(tx_hash, op_index)`; `SUSPENSE`/`MATCHED` checks).
 - Seed ledger account `MONEYA_HOT_WALLET` description → "Stellar hot wallet"; add `MONEYA_DEPOSIT` if you want it separate.
 
 **OpenAPI** (`openapi.yaml`) — **already migrated to a fiat-only contract (§1.1)**: no `chain`, `address`, `*_usdc`, `solana_signature`/tx hash in any response; `amount`+`currency` everywhere; `/v1/wallet` returns `balance`+`currency` only; quotes expose `from/to` fiat amounts, one effective `rate` and one all-in `fee`; chain failures collapse to `SERVICE_UNAVAILABLE`; `/webhooks/privy` marked deprecated (kept only if D4 keeps a hosted custodian). `chain_tx_hash` exists **only in the database and internal ops tooling**, never in the public API.
@@ -182,7 +220,7 @@ numbering so the two plans can be run together.
 |-----------|-------|------|-------------------|
 | M1 Auth & sessions | OTP, passcode, step-up, refresh rotation | 6 | none |
 | M2 Ledger primitives | `0002_state_machine.sql`, posting helpers, balance fns | 4 | none |
-| M3 KYC + account | Smile ID flow; **wallet provisioning = DB row + deposit memo** | 4 | −3 (no Privy) |
+| M3 KYC + account | Smile ID flow; **account provisioning = DB row** | 4 | −3 (no Privy) |
 | M4 Webhooks | Universal handler, dedupe, replay CLI; YC + Smile only | 4 | −1 (no Privy HMAC) |
 
 ### Phase C — Money movement on Stellar (≈ 3–4 weeks)
@@ -216,7 +254,7 @@ Existing: W1 foundations (dio, secure storage, logging, flavors), W2 step-up,
 | Ticket | Scope | Size |
 |--------|-------|------|
 | APP-00 | **Contract + copy migration (fixes V1–V5):** move DTOs to the fiat-only contract (`amount`+`currency`, `fee`, no `solanaSignature`/`amountUsdc`/`feeUsdc`), send the real currency, rename "MoneyA Wallet"→"MoneyA balance"/"Solde MoneyA", remove the USD Coin hero art, clean comments; update the 26+ affected tests; run `flutter gen-l10n`, `flutter analyze`, `flutter test` | 3 | contract (done) |
-| INV-02 | **Copy/asset lint in CI:** script (`scripts/lint_copy.sh`) failing on forbidden terms in `lib/l10n/*.arb` values, `lib/**` string literals, and asset file names; wired to CI | 1 | — |
+| INV-02 | **Copy/asset lint in CI:** script (`scripts/lint_copy.py`, self-tested) failing on forbidden terms in `lib/l10n/*.arb` values, `lib/**` string literals, and asset file names; wired to CI | 1 | — |
 | APP-01 | Auth: OTP verify, passcode set, refresh/session (replace stubs in `auth/…verify_phone_screen`) | 3 |
 | APP-02 | KYC: document + selfie capture upload to `/v1/kyc/submissions`, status polling, pending/approved UI | 4 |
 | APP-03 | Home: real balance, history, transaction detail from `/v1/wallet`, `/v1/transfers` (replace stubs in `home/…`) | 4 |
@@ -336,7 +374,7 @@ Done (§9) holds. Every ticket also ships its metrics/tracing (backlog principle
 - **RMP-00** — Written answer from Yellow Card (email/ticket attached to the ADR) covering: Stellar USDC deposit address + memo on collect, Stellar payout `txProof`, corridor list, sandbox keys received. If any answer is "no", a decision (fallback anchor or other) is recorded and M6/M7 scope adjusted.
 - **STL-00** — Throwaway testnet scripts demonstrate: account + USDC trustline, payment with memo, fee-bump, channel-account parallel submits (≥ 10 concurrent without `tx_bad_seq` after retry), payments stream resume from cursor, resubmit-same-XDR is idempotent. Findings written up (≤ 1 page) and linked from the ADR.
 - **STL-01** — `ChainAdapter` interface (`getBalance`, `submitPayment`, `getTx`, `streamPayments`, `isValidAddress`) in `backend/packages/chain`; `StellarAdapter` passes the interface contract tests against testnet; network passphrase, issuer and RPC URLs come from config, never code.
-- **DB-01** — `0003_stellar_chain.sql` applies cleanly on a fresh DB and on top of `0001`+`0002`; adds `STELLAR`, `chain_tx_hash`, `deposit_memo`, `chain_accounts`, `chain_txs`, `chain_cursors`; down/rollback documented; RLS on new user-owned tables; schema docs updated.
+- **DB-01** — `0003_stellar_chain.sql` applies cleanly on a fresh DB and on top of `0001`+`0002`; adds `STELLAR`, `chain_tx_hash`, `onramp_orders.deposit_memo`, `chain_accounts`, `chain_txs`, `chain_cursors`, `chain_inbound_payments`; down/rollback documented; RLS on new user-owned tables; schema docs updated.
 - **INV-01** — Spectral (or equivalent) rule in CI fails on any of: property names or descriptions in **response** schemas containing `usdc`, `stablecoin`, `solana`, `stellar`, `xlm`, `chain`, `address`, `hash`, `signature` (webhook request signature headers excepted by allowlist); a deliberate violation in a test PR turns CI red.
 - **INV-03** — E2E suite asserts no response body (any status) matches Stellar address `G[A-Z2-7]{55}`, a 64-hex string, or the forbidden-term list; includes error responses and WebSocket events.
 
@@ -350,7 +388,7 @@ Done (§9) holds. Every ticket also ships its metrics/tracing (backlog principle
 
 ### Phase E (app)
 - **APP-00** — `flutter analyze` clean, `flutter test` green; DTOs match `openapi.yaml` exactly; the request carries the real `currency`; `grep -rniE "usdc|stablecoin|solana|stellar|crypto|blockchain|wallet" lib assets` returns no user-visible hit (comments cleaned); onboarding hero no longer uses USD Coin art; FR/EN strings say "MoneyA balance"/"solde MoneyA".
-- **INV-02** — `scripts/lint_copy.sh` exits non-zero on a planted forbidden term in an `.arb` value, a Dart string literal, or an asset filename; runs in CI on every PR touching `lib/**` or `assets/**`.
+- **INV-02** — `scripts/lint_copy.py` exits non-zero on a planted forbidden term in an `.arb` value, a Dart string literal, or an asset filename; runs in CI on every PR touching `lib/**` or `assets/**`.
 - **APP-01** — Real OTP verify + passcode set against staging; refresh-token rotation works across app restarts; wrong/expired OTP and rate-limit states have localized copy; widget + repository tests.
 - **APP-02** — Document + selfie upload with progress/retry; KYC status moves PENDING→APPROVED/REJECTED via push or polling; rejection reasons localized; no PII in logs.
 - **APP-03** — Home balance and history come from the API; pull-to-refresh; empty/loading/error states; amounts formatted per locale and currency decimals (XOF/XAF 0 dp).

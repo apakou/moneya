@@ -1,0 +1,3 @@
+# Reviewed exceptions for scripts/lint_copy.py, one per line:
+#   <repo-relative-path>::<exact literal or arb value>
+# Every entry needs a reason comment above it and a reviewer's sign-off in the PR.

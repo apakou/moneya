@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [feature/v1.0, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.f.outputs.backend }}
+      app: ${{ steps.f.outputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: f
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'docs/backend/openapi.yaml'
+              - '.github/workflows/ci.yml'
+            app:
+              - 'lib/**'
+              - 'test/**'
+              - 'assets/**'
+              - 'pubspec.*'
+              - 'scripts/lint_copy*'
+              - '.github/workflows/ci.yml'
+
+  # Stablecoin invisibility (plan §1.1): runs on every PR, it is cheap.
+  copy-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/test_lint_copy.py
+      - run: python3 scripts/lint_copy.py
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: backend/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: backend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test # includes INV-01 (openapi fiat-only lint) and INV-03 (response guard)
+      - run: pnpm build
+
+  migrations:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply migrations on a clean database (Supabase `auth.uid()` shimmed)
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "create database moneya_ci"
+          psql -h localhost -U postgres -d moneya_ci -v ON_ERROR_STOP=1 -c "create schema auth; create function auth.uid() returns uuid language sql as 'select null::uuid';"
+          for f in docs/backend/migrations/*.sql; do
+            echo "== $f (single transaction)"; psql -h localhost -U postgres -d moneya_ci -v ON_ERROR_STOP=1 -1 -f "$f"
+          done
+          echo "== re-apply 0003 (idempotent)"
+          psql -h localhost -U postgres -d moneya_ci -v ON_ERROR_STOP=1 -f docs/backend/migrations/0003_stellar_chain.sql
+
+  app:
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test

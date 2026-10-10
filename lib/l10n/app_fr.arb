@@ -214,7 +214,7 @@
   "fundingProviderPickerTitle": "Choisir la source de financement",
   "transferCountryPickerTitle": "Choisir le pays d'envoi",
 
-  "fundingProviderMoneyaWallet": "MoneyA Wallet",
+  "fundingProviderMoneyaBalance": "Solde MoneyA",
   "fundingProviderMoovAfrica": "Moov Africa",
   "fundingProviderOrangeMoney": "Orange Money",
   "fundingProviderMtnMomo": "MTN MoMo",
