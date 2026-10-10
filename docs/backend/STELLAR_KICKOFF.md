@@ -27,8 +27,9 @@ that stablecoins exist** — the API is fiat-only and no surface shows crypto te
 | Fiat-only API / stablecoins invisible | **Decided, non-negotiable** |
 | Backend location | **Decided:** `backend/` monorepo folder (pnpm workspace) |
 | Ramp provider | **Decided:** Yellow Card primary, SEP-24 anchor fallback — **but Stellar support in its API is unconfirmed (RMP-00)** and it does **not** list XOF in the repo's skill |
-| D1 custody (pooled) · D3 launch corridor · D4 key custody · D5 licensing | **Recommended in the plan, awaiting owner confirmation.** Do not start Phase C chain tickets until D1 and D4 are confirmed. |
-| **D7 currency of user balances / FX risk** | **Open.** Recommendation in plan §2. Blocks the ledger account currency (M2) and quote logic (M6/M7). |
+| D1 pooled custody · D3 launch corridor (GHS first) · D4 key custody · D5 licensing | **Confirmed by the owner** — recorded in `docs/backend/adr/0001-stellar-pooled-custody.md` (D3's GHS-vs-KES pick is the implementer's; owner may veto) |
+| **D7 currency of user balances** | **Decided: fiat-denominated per-user ledger** (ADR 0001). M2 and quote logic are unblocked. |
+| RMP-00 Yellow Card answer | **Still open** — gates STL-02..06 and M6/M7 |
 
 ## 4. Where to work
 
