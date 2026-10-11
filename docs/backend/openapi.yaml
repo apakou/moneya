@@ -386,6 +386,15 @@ paths:
         address, chain or asset information is ever returned.
       operationId: getWallet
       security: [{ bearerAuth: [] }]
+      parameters:
+        - name: currency
+          in: query
+          required: false
+          description: |
+            Read the balance held in another currency. Defaults to the
+            user's home currency. Balances are per currency and are never
+            converted.
+          schema: { $ref: '#/components/schemas/Currency' }
       responses:
         '200':
           description: Account balance
@@ -393,6 +402,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Wallet'
+
+  /v1/transactions:
+    get:
+      tags: [Wallet]
+      summary: List top-ups and cash-outs
+      description: |
+        The user's top-ups and cash-outs, newest first. Keyset-paginated:
+        pass `next_cursor` from the previous page as `cursor`.
+      operationId: listTransactions
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: A page of transactions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next_cursor]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Transaction' }
+                  next_cursor:
+                    type: [string, "null"]
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   # ----- Recipients --------------------------------------------------------
 
@@ -1399,12 +1443,48 @@ components:
 
     # ---- Wallet -----------------------------------------------------------
 
+    Transaction:
+      type: object
+      required: [id, kind, status, amount, currency, fee, payment_method, counterparty_phone, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind:
+          type: string
+          enum: [TOP_UP, CASH_OUT]
+        status:
+          type: string
+          enum: [PENDING, COMPLETED, FAILED]
+        amount:
+          description: Top-up - credited to the balance. Cash-out - debited from it.
+          allOf: [{ $ref: '#/components/schemas/Money' }]
+        currency: { $ref: '#/components/schemas/Currency' }
+        fee: { $ref: '#/components/schemas/Money' }
+        payment_method:
+          type: string
+          enum: [WAVE, MTN_MOMO, ORANGE_MONEY, MOOV_MONEY, AIRTEL_MONEY, MPESA, BANK_TRANSFER]
+        counterparty_phone: { $ref: '#/components/schemas/Phone' }
+        counterparty_name:
+          type: [string, "null"]
+        created_at: { type: string, format: date-time }
+        completed_at:
+          type: [string, "null"]
+          format: date-time
+
     Wallet:
       type: object
       required: [provisioned, balance, currency]
       properties:
         provisioned: { type: boolean }
         balance: { $ref: '#/components/schemas/Money' }
+        available_balance:
+          description: Balance minus amounts held for in-flight transfers.
+          allOf: [{ $ref: '#/components/schemas/Money' }]
+        equivalent_balance:
+          description: |
+            Everything the user holds, in any currency, expressed in `currency`
+            at the current rates and rounded down. Informational: only
+            `balance` / `available_balance` can be spent in `currency`.
+          allOf: [{ $ref: '#/components/schemas/Money' }]
         currency: { $ref: '#/components/schemas/Currency' }
         balance_cached_at:
           type: string

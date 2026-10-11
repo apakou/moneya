@@ -59,6 +59,21 @@ function fee(cfg: PricingConfig, c: RampCurrency, amount: bigint): bigint {
 const toSettlement = (cfg: PricingConfig, c: RampCurrency, amount: bigint): bigint =>
   (amount * RATE_SCALE) / rateScaled(cfg, c);
 
+/**
+ * `amount` of `from` expressed in `to` at the configured rates (one division, so no double
+ * rounding), rounded DOWN to `to`'s fiat precision: a displayed equivalent never overstates.
+ */
+export function convertAmount(
+  cfg: PricingConfig,
+  amount: string,
+  from: RampCurrency,
+  to: RampCurrency,
+): string {
+  if (from === to) return amount;
+  const v = (toMicro(amount) * rateScaled(cfg, to)) / rateScaled(cfg, from);
+  return fromMicro(floorTo(v, unit(to)));
+}
+
 export interface PricedQuote {
   fromCurrency: RampCurrency;
   fromAmount: string;

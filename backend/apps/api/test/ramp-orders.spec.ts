@@ -3,7 +3,7 @@ import { Pool } from 'pg';
 import { LedgerService, templates } from '@moneya/ledger';
 import { SimulatedRampProvider, type RampEvent } from '@moneya/ramp';
 import { SimulatedSettlement } from '../src/ramp/ramp.module';
-import { priceOfframp, priceOnramp } from '../src/ramp/pricing';
+import { convertAmount, priceOfframp, priceOnramp } from '../src/ramp/pricing';
 import { RampOrdersService } from '../src/ramp/ramp-orders.service';
 
 const pricing = {
@@ -34,6 +34,13 @@ describe('quote math', () => {
     expect(cross.toCurrency).toBe('XOF');
     expect(cross.toAmount).toBe('3812'); // 98.5/15.5 USD-unit × 600 = 3812.9… → floor, 0 dp
     expect(Number(cross.rate)).toBeCloseTo(38.12, 2);
+  });
+  it('convertAmount: one division, rounded DOWN to the target precision, same currency untouched', () => {
+    expect(convertAmount(pricing, '197', 'GHS', 'XOF')).toBe('7625'); // 197 × 600 / 15.5 = 7625.8…
+    expect(convertAmount(pricing, '5000', 'XOF', 'GHS')).toBe('129.16'); // 129.1666… → 2 dp down
+    expect(convertAmount(pricing, '12.5', 'GHS', 'GHS')).toBe('12.5');
+    expect(convertAmount(pricing, '0', 'GHS', 'XOF')).toBe('0');
+    expect(() => convertAmount({ rates: { GHS: '15.5' }, feeBps: 150 }, '1', 'GHS', 'XOF')).toThrow();
   });
   it('rejects dust and unknown currencies', () => {
     expect(() => priceOnramp(pricing, 'GHS', '0.01')).toThrow(RangeError);

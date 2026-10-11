@@ -32,6 +32,6 @@ import { FakeSmsProvider, SMS_PROVIDER } from './sms.provider';
       inject: [FakeSmsProvider],
     },
   ],
-  exports: [AuthService, AuthGuard, TxnTokenGuard],
+  exports: [AuthService, AuthGuard, TxnTokenGuard, AUTH_STORE],
 })
 export class AuthModule {}

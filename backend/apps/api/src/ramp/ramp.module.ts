@@ -1,4 +1,4 @@
-import { Inject, Injectable, Module, OnModuleDestroy } from '@nestjs/common';
+import { Inject, Injectable, Logger, Module, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { LedgerService } from '@moneya/ledger';
 import { SimulatedRampProvider, type RampProvider } from '@moneya/ramp';
 import { randomBytes } from 'node:crypto';
@@ -51,6 +51,39 @@ export class RampPoolLifecycle implements OnModuleDestroy {
   }
 }
 
+/**
+ * Polls the provider for orders whose webhook never arrived (and, with the simulated provider,
+ * for every order: it sends no webhooks). Opt-in via RAMP_RESUMER_INTERVAL_MS (>= 1000);
+ * syncPending is idempotent, so several instances running it is safe.
+ */
+@Injectable()
+export class RampResumer implements OnModuleInit, OnModuleDestroy {
+  private readonly log = new Logger(RampResumer.name);
+  private timer?: NodeJS.Timeout;
+  constructor(private readonly orders: RampOrdersService) {}
+
+  onModuleInit(): void {
+    const ms = Number(process.env.RAMP_RESUMER_INTERVAL_MS ?? 0);
+    if (!Number.isInteger(ms) || ms < 1000) return;
+    let running = false;
+    this.timer = setInterval(() => {
+      if (running) return;
+      running = true;
+      this.orders
+        .syncPending()
+        .catch((e: unknown) => this.log.warn(`resumer failed: ${String(e)}`))
+        .finally(() => {
+          running = false;
+        });
+    }, ms);
+    this.timer.unref();
+  }
+
+  onModuleDestroy(): void {
+    if (this.timer) clearInterval(this.timer);
+  }
+}
+
 @Module({
   imports: [AuthModule],
   controllers: [RampController, RampWebhookController],
@@ -81,7 +114,8 @@ export class RampPoolLifecycle implements OnModuleDestroy {
     RampPoolLifecycle,
     RampWebhookService,
     RampOrdersService,
+    RampResumer,
   ],
-  exports: [RampOrdersService, RAMP_PROVIDER],
+  exports: [RampOrdersService, RAMP_PROVIDER, RAMP_POOL, RAMP_PRICING, LedgerService],
 })
 export class RampModule {}
