@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../session/auth_session.dart';
 import '../session/session_controller.dart';
@@ -42,24 +43,45 @@ class DioSessionRefresher implements SessionRefresher {
     return _parse(data, fallback: current);
   }
 
-  /// Parses an `AuthRefreshResponse`. The server returns the rotated tokens
-  /// plus an expiry; the rest of the session (userId, phone, kycTier) is
-  /// preserved from [fallback] because `/v1/auth/refresh` does not echo
-  /// profile fields.
+  /// Parses `AuthTokens` (`openapi.yaml`): `access_token`, `refresh_token`,
+  /// `expires_in` (seconds) and the `user`. The server rotates the refresh
+  /// token on every call, so BOTH tokens are replaced. Profile fields come
+  /// from the echoed `user` when present, else from [fallback].
   static AuthSession _parse(
     Map<String, Object?> data, {
     required AuthSession fallback,
+    DateTime? now,
   }) {
     final accessToken = data['access_token'] as String?;
     final refreshToken = data['refresh_token'] as String?;
-    final expiresAtRaw = data['expires_at'] as String?;
-    if (accessToken == null || refreshToken == null || expiresAtRaw == null) {
+    final expiresIn = data['expires_in'];
+    if (accessToken == null || refreshToken == null || expiresIn is! int) {
       throw const FormatException('refresh response missing required fields');
     }
-    return fallback.copyWith(
+    final user = data['user'];
+    var session = fallback.copyWith(
       accessToken: accessToken,
       refreshToken: refreshToken,
-      expiresAt: DateTime.parse(expiresAtRaw),
+      expiresAt: (now ?? DateTime.now()).add(Duration(seconds: expiresIn)),
     );
+    if (user is Map) {
+      session = session.copyWith(
+        kycTier: KycTier.fromWire(
+          (user['kyc_tier'] as String?) ?? fallback.kycTier.wire,
+        ),
+        fullName: user['full_name'] as String? ?? fallback.fullName,
+        photoUrl: user['photo_url'] as String? ?? fallback.photoUrl,
+      );
+    }
+    return session;
   }
+
+  /// Test seam for the pure parsing step.
+  @visibleForTesting
+  static AuthSession parseForTest(
+    Map<String, Object?> data, {
+    required AuthSession fallback,
+    DateTime? now,
+  }) =>
+      _parse(data, fallback: fallback, now: now);
 }

@@ -1307,8 +1307,13 @@ components:
 
     AuthTokens:
       type: object
-      required: [access_token, refresh_token, expires_in, user]
+      required: [access_token, refresh_token, expires_in, passcode_set, user]
       properties:
+        passcode_set:
+          type: boolean
+          description: >-
+            Whether the user already has a passcode. `false` right after a first login
+            (the app must send them to passcode creation); `true` for a returning user.
         access_token: { type: string }
         refresh_token: { type: string }
         expires_in: { type: integer, description: 'Access token TTL in seconds' }

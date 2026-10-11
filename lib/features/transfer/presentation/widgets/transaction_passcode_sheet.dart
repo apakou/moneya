@@ -163,6 +163,13 @@ class _TransactionPasscodeSheetState
         _popWith(TransactionAuthAuthorised(value));
         return;
       case Failure(:final error):
+        // Server-side lockout: the backend answers 429 PASSCODE_LOCKED (legacy
+        // contract drafts said 423). Pop immediately; the user must wait.
+        if (error is RateLimitError ||
+            (error is AuthError && error.statusCode == 423)) {
+          _popWith(TransactionAuthLockedOut(error.detail ?? error.title));
+          return;
+        }
         if (error is AuthError) {
           // 423 / server-side lockout: pop immediately. 401 / wrong
           // passcode: in-place retry up to [maxAttempts]; after that

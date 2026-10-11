@@ -106,6 +106,23 @@ describe.each(stores)('auth (M1) — %s', (_label, url) => {
       expect(t.access_token.split('.')).toHaveLength(3);
     });
 
+    it('passcode_set is false on first login and true once a passcode exists (also on refresh)', async () => {
+      const first = await login();
+      expect((first as { passcode_set?: boolean }).passcode_set).toBe(false);
+      await http()
+        .post('/v1/auth/passcode')
+        .set(bearer(first.access_token))
+        .send({ passcode: '482916' })
+        .expect(204);
+      const again = await login();
+      expect((again as { passcode_set?: boolean }).passcode_set).toBe(true);
+      const refreshed = await http()
+        .post('/v1/auth/refresh')
+        .send({ refresh_token: again.refresh_token })
+        .expect(200);
+      expect(refreshed.body.passcode_set).toBe(true);
+    });
+
     it('a second login on the same phone returns the same user', async () => {
       const a = await login();
       const b = await login();

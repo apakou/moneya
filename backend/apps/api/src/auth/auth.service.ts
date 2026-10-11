@@ -163,6 +163,7 @@ export class AuthService {
       access_token: access,
       refresh_token: r.token,
       expires_in: this.cfg.accessTtlSeconds,
+      passcode_set: (await this.store.getPasscode(user.id)) !== null,
       user: this.toUser(user),
     };
   }

@@ -49,6 +49,24 @@ class AuthInterceptor extends Interceptor {
     handler.next(options);
   }
 
+  /// Server `code`s on a 401 that mean "your bearer token is bad" (refresh and
+  /// retry). Any OTHER 401 code (`PASSCODE_INVALID`, `OTP_INVALID`,
+  /// `STEP_UP_REQUIRED`, ...) is a credential check that failed on purpose:
+  /// refreshing and retrying would re-submit the wrong passcode and burn a
+  /// second attempt against the server-side lockout.
+  static const Set<String> _tokenProblemCodes = {
+    'UNAUTHORIZED',
+    'UNAUTHENTICATED',
+  };
+
+  static bool _isTokenProblem(Object? body) {
+    if (body is Map) {
+      final code = body['code'];
+      return code == null || (code is String && _tokenProblemCodes.contains(code));
+    }
+    return true; // no structured body → assume the token
+  }
+
   @override
   Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
     final response = err.response;
@@ -56,6 +74,7 @@ class AuthInterceptor extends Interceptor {
     final options = err.requestOptions;
 
     final canRetry = status == 401 &&
+        _isTokenProblem(response?.data) &&
         options.extra[skipAuthKey] != true &&
         options.extra[_retriedKey] != true &&
         _session.hasSession;

@@ -85,6 +85,28 @@ void main() {
     expect(session.currentAccessToken, 'access-2');
   });
 
+  test('401 UNAUTHORIZED (bad bearer) triggers a refresh', () async {
+    refresher.next = buildSession(access: 'access-2');
+    adapter.script
+      ..add(_Reply(status: 401, body: '{"code":"UNAUTHORIZED"}'))
+      ..add(_Reply(status: 200, body: '{"ok":true}'));
+    final res = await dio.get<Object?>('/v1/me');
+    expect(res.statusCode, 200);
+    expect(adapter.captured.length, 2);
+  });
+
+  test('401 PASSCODE_INVALID is NOT retried: one wrong passcode = one attempt', () async {
+    adapter.script.add(_Reply(status: 401, body: '{"code":"PASSCODE_INVALID"}'));
+    try {
+      await dio.post<Object?>('/v1/auth/step-up', data: {'passcode': '111111'});
+      fail('expected DioException');
+    } on DioException catch (e) {
+      expect((e.error! as AuthError).code, 'PASSCODE_INVALID');
+    }
+    expect(adapter.captured.length, 1, reason: 'no refresh + retry');
+    expect(session.currentAccessToken, 'access-1', reason: 'session untouched');
+  });
+
   test('401 retries exactly once: second 401 surfaces AuthError', () async {
     refresher.next = buildSession(access: 'access-2');
     adapter.script
