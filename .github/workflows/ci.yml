@@ -45,6 +45,17 @@ jobs:
     needs: changes
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGPASSWORD: postgres
+      LEDGER_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/moneya_ledger_test
     defaults:
       run:
         working-directory: backend
@@ -62,7 +73,13 @@ jobs:
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
-      - run: pnpm test # includes INV-01 (openapi fiat-only lint) and INV-03 (response guard)
+      - name: Prepare ledger test database (all migrations)
+        working-directory: .
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "create database moneya_ledger_test"
+          psql -h localhost -U postgres -d moneya_ledger_test -v ON_ERROR_STOP=1 -c "create schema auth; create function auth.uid() returns uuid language sql as 'select null::uuid';"
+          for f in docs/backend/migrations/*.sql; do psql -h localhost -U postgres -d moneya_ledger_test -v ON_ERROR_STOP=1 -1 -q -f "$f"; done
+      - run: pnpm test # includes INV-01 (openapi fiat-only lint), INV-03 (response guard) and the ledger tests on real PostgreSQL
       - run: pnpm build
 
   migrations:
@@ -88,7 +105,7 @@ jobs:
           for f in docs/backend/migrations/*.sql; do
             echo "== $f (single transaction)"; psql -h localhost -U postgres -d moneya_ci -v ON_ERROR_STOP=1 -1 -f "$f"
           done
-          for f in 0002_state_machine 0003_stellar_chain 0004_auth_sessions; do
+          for f in 0002_state_machine 0003_stellar_chain 0004_auth_sessions 0005_ledger_global_accounts; do
             echo "== re-apply $f (idempotent)"
             psql -h localhost -U postgres -d moneya_ci -v ON_ERROR_STOP=1 -1 -f "docs/backend/migrations/$f.sql"
           done

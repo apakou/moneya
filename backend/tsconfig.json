@@ -6,6 +6,7 @@
     "types": ["node", "jest"],
     "paths": {
       "@moneya/chain": ["packages/chain/src/index.ts"],
+      "@moneya/ledger": ["packages/ledger/src/index.ts"],
       "@moneya/invisibility": ["packages/invisibility/src/index.ts"]
     }
   },
