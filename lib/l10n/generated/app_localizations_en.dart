@@ -1143,7 +1143,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rampErrorProviderNotSupported =>
-      'This wallet isn\'t available yet.';
+      'This mobile money provider isn\'t available yet.';
 
   @override
   String get rampErrorNetwork =>

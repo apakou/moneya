@@ -381,7 +381,7 @@
   "rampRequoteContinue": "Continuer",
   "rampErrorInsufficientFunds": "Votre solde est insuffisant pour cette opération.",
   "rampErrorUnavailable": "Les paiements sont temporairement indisponibles. Réessayez dans un instant.",
-  "rampErrorProviderNotSupported": "Ce portefeuille n'est pas encore disponible.",
+  "rampErrorProviderNotSupported": "Cet opérateur de mobile money n'est pas encore disponible.",
   "rampErrorNetwork": "Connexion perdue. Réessayez — vous ne serez pas débité deux fois.",
   "rampErrorGeneric": "Une erreur est survenue. Veuillez réessayer.",
   "rampTopUpPendingTitle": "Validez sur votre téléphone",

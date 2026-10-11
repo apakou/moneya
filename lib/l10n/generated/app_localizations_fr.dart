@@ -1155,7 +1155,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get rampErrorProviderNotSupported =>
-      'Ce portefeuille n\'est pas encore disponible.';
+      'Cet opérateur de mobile money n\'est pas encore disponible.';
 
   @override
   String get rampErrorNetwork =>

@@ -2114,10 +2114,10 @@ abstract class AppLocalizations {
   /// **'Payments are temporarily unavailable. Please try again in a moment.'**
   String get rampErrorUnavailable;
 
-  /// Wallet not supported by the server yet.
+  /// Provider not supported by the server yet.
   ///
   /// In en, this message translates to:
-  /// **'This wallet isn\'t available yet.'**
+  /// **'This mobile money provider isn\'t available yet.'**
   String get rampErrorProviderNotSupported;
 
   /// Network error while placing an order.
