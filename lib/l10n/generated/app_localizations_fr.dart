@@ -1076,4 +1076,32 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get favoritesAddedConfirmation => 'Ajouté aux favoris';
+
+  @override
+  String get authErrorNetwork =>
+      'Pas de connexion. Vérifiez votre réseau et réessayez.';
+
+  @override
+  String authErrorTooManyRequests(int minutes) {
+    return 'Trop de demandes. Réessayez dans $minutes min.';
+  }
+
+  @override
+  String authErrorOtpLocked(int minutes) {
+    return 'Trop de codes erronés. Réessayez dans $minutes min.';
+  }
+
+  @override
+  String get authErrorSmsUnavailable =>
+      'Nous n\'avons pas pu envoyer le code. Réessayez dans un instant.';
+
+  @override
+  String get authErrorInvalidPhone =>
+      'Saisissez un numéro de téléphone valide.';
+
+  @override
+  String get authErrorGeneric => 'Une erreur est survenue. Veuillez réessayer.';
+
+  @override
+  String get passcodeErrorWeak => 'Choisissez un code moins prévisible.';
 }

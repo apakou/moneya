@@ -4,12 +4,15 @@ import 'package:get/get.dart';
 import 'package:local_auth/local_auth.dart';
 
 import '../../../../core/logging/app_logger.dart';
+import '../../../../core/network/api_result.dart';
 import '../../../../core/preferences/app_prefs.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/back_chevron_button.dart';
 import '../../../../l10n/generated/app_localizations.dart';
+import '../../data/auth_flow.dart';
 import '../../domain/passcode_policy.dart';
+import '../auth_error_text.dart';
 import 'choose_kyc_document_screen.dart';
 
 /// Whether the screen is asking the user to set a new passcode or to
@@ -45,6 +48,11 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
   late final List<TextEditingController> _controllers;
   late final List<FocusNode> _focusNodes;
   String? _error;
+  bool _saving = false;
+
+  /// True while the screen itself empties the boxes after a rejected entry:
+  /// that must not dismiss the error message it has just set.
+  bool _clearing = false;
 
   @override
   void initState() {
@@ -82,7 +90,7 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
   }
 
   void _onAnyChange() {
-    if (_error != null) setState(() => _error = null);
+    if (!_clearing && _error != null) setState(() => _error = null);
     setState(() {}); // refresh Next button enabled state
   }
 
@@ -143,8 +151,27 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
       _clearAndRefocus();
       return;
     }
-    // TODO: hash with Argon2id and POST to backend.
-    _enrollBiometricThenAdvance();
+    _saveThenAdvance(code);
+  }
+
+  /// Sends the passcode over TLS (the server hashes it with Argon2id; the
+  /// client never hashes, stores or logs it) and only then moves on.
+  Future<void> _saveThenAdvance(String code) async {
+    if (_saving) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    final result = await Get.find<AuthFlow>().savePasscode(code);
+    if (!mounted) return;
+    setState(() => _saving = false);
+    switch (result) {
+      case Success():
+        await _enrollBiometricThenAdvance();
+      case Failure(:final error):
+        setState(() => _error = authErrorText(AppLocalizations.of(context), error));
+        _clearAndRefocus();
+    }
   }
 
   /// Localized wrapper around [PasscodePolicy.validate]. Maps the policy's
@@ -206,9 +233,11 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
   }
 
   void _clearAndRefocus() {
+    _clearing = true;
     for (final c in _controllers) {
       c.clear();
     }
+    _clearing = false;
     _focusNodes.first.requestFocus();
   }
 
@@ -302,7 +331,7 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
                       const Spacer(flex: 1),
                       _NextButton(
                         label: ctaLabel,
-                        enabled: _isComplete,
+                        enabled: _isComplete && !_saving,
                         onPressed: _onNext,
                       ),
                       const Spacer(flex: 6),
@@ -337,27 +366,37 @@ class _PasscodeBoxes extends StatelessWidget {
   final KeyEventResult Function(int index, FocusNode node, KeyEvent event)
       onKey;
 
+  /// Preferred box size / gap; shrinks (never overflows) on narrow phones
+  /// (6 x 48 + 5 x 8 = 328dp does not fit a 320dp-wide screen).
+  static const double _maxBox = 48;
+  static const double _gap = 8;
+
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(PasscodePolicy.length, (i) {
-        return Padding(
-          padding: EdgeInsets.only(
-            right: i == PasscodePolicy.length - 1 ? 0 : 8,
-          ),
-          child: SizedBox(
-            width: 48,
-            height: 48,
-            child: _PasscodeBox(
-              controller: controllers[i],
-              focusNode: focusNodes[i],
-              onChanged: (v) => onChanged(i, v),
-              onKey: (node, event) => onKey(i, node, event),
-            ),
-          ),
+    const n = PasscodePolicy.length;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fit = (constraints.maxWidth - _gap * (n - 1)) / n;
+        final box = fit.clamp(34.0, _maxBox);
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(n, (i) {
+            return Padding(
+              padding: EdgeInsets.only(right: i == n - 1 ? 0 : _gap),
+              child: SizedBox(
+                width: box,
+                height: box,
+                child: _PasscodeBox(
+                  controller: controllers[i],
+                  focusNode: focusNodes[i],
+                  onChanged: (v) => onChanged(i, v),
+                  onKey: (node, event) => onKey(i, node, event),
+                ),
+              ),
+            );
+          }),
         );
-      }),
+      },
     );
   }
 }

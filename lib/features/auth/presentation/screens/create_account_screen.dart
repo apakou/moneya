@@ -4,11 +4,14 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 
+import '../../../../core/network/api_result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/safe_pop.dart';
 import '../../../../l10n/generated/app_localizations.dart';
+import '../../data/auth_flow.dart';
 import '../../domain/supported_country.dart';
+import '../auth_error_text.dart';
 import 'verify_phone_screen.dart';
 
 /// Resolves the localized display name of a [SupportedCountry].
@@ -56,6 +59,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   final FocusNode _phoneFocus = FocusNode();
   SupportedCountry _country = SupportedCountry.togo;
   bool _isValid = false;
+  bool _sending = false;
 
   @override
   void initState() {
@@ -137,14 +141,39 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         ),
       ),
     );
+    if (!mounted || confirmed != true || _sending) return;
+
+    final e164 = _toE164(_phoneController.text, _country);
+    if (e164 == null) return; // _isValid guarantees this parses; defensive.
+    final l10n = AppLocalizations.of(context);
+    setState(() => _sending = true);
+    final result = await Get.find<AuthFlow>().requestCode(e164);
     if (!mounted) return;
-    if (confirmed == true) {
-      Get.to<void>(
-        () => VerifyPhoneScreen(
-          dialCode: _country.dialCode,
-          nationalNumber: _phoneController.text,
-        ),
-      );
+    setState(() => _sending = false);
+
+    switch (result) {
+      case Success():
+        Get.to<void>(
+          () => VerifyPhoneScreen(
+            dialCode: _country.dialCode,
+            nationalNumber: _phoneController.text,
+            phoneE164: e164,
+          ),
+        );
+      case Failure(:final error):
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(authErrorText(l10n, error))),
+        );
+    }
+  }
+
+  /// `+233201234567` — the form the API and the OTP provider expect.
+  static String? _toE164(String raw, SupportedCountry country) {
+    try {
+      final parsed = PhoneNumber.parse(raw, callerCountry: _isoOf(country));
+      return parsed.isValid() ? parsed.international : null;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -246,7 +275,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   // --- Primary CTA ---
                   _PrimaryPillButton(
                     label: l10n.createAccountCta,
-                    enabled: _isValid,
+                    enabled: _isValid && !_sending,
                     onPressed: _submit,
                   ),
 

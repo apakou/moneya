@@ -4,11 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/network/api_result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/back_chevron_button.dart';
 import '../../../../core/widgets/safe_pop.dart';
 import '../../../../l10n/generated/app_localizations.dart';
+import '../../../home/presentation/screens/home_shell.dart';
+import '../../data/auth_flow.dart';
+import '../auth_error_text.dart';
 import 'passcode_screen.dart';
 
 /// OTP verification screen.
@@ -20,6 +24,7 @@ class VerifyPhoneScreen extends StatefulWidget {
     super.key,
     required this.dialCode,
     required this.nationalNumber,
+    required this.phoneE164,
   });
 
   static const String routePath = '/auth/verify-phone';
@@ -32,7 +37,11 @@ class VerifyPhoneScreen extends StatefulWidget {
   /// the masked tail shown in the subtitle.
   final String nationalNumber;
 
-  static const int codeLength = 4;
+  /// Full number in E.164 (`+233201234567`) the code was sent to.
+  final String phoneE164;
+
+  /// Matches `OtpVerifyRequest.code` (`^[0-9]{6}$`) in `openapi.yaml`.
+  static const int codeLength = 6;
   static const int resendSeconds = 60;
 
   @override
@@ -44,6 +53,7 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> {
   late final List<FocusNode> _focusNodes;
   Timer? _ticker;
   int _remaining = VerifyPhoneScreen.resendSeconds;
+  bool _verifying = false;
 
   @override
   void initState() {
@@ -115,24 +125,42 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> {
     return KeyEventResult.ignored;
   }
 
-  void _maybeSubmit() {
+  Future<void> _maybeSubmit() async {
     final code = _controllers.map((c) => c.text).join();
-    if (code.length != VerifyPhoneScreen.codeLength) return;
-    if (code == _stubCorrectCode) {
-      // `Get.off` (not `Get.to`) so the verified phone screen is
-      // dropped from the stack. Once OTP is consumed it can't be
-      // re-entered — a back gesture from passcode-set should exit the
-      // auth flow entirely, not let the user resubmit the same code.
-      // See flutter-navigation skill §4 (KYC wizard pattern).
-      Get.off<void>(() => const PasscodeScreen(mode: PasscodeMode.set));
-      return;
+    if (code.length != VerifyPhoneScreen.codeLength || _verifying) return;
+    setState(() => _verifying = true);
+    final result = await Get.find<AuthFlow>().verifyCode(widget.phoneE164, code);
+    if (!mounted) return;
+    setState(() => _verifying = false);
+
+    switch (result) {
+      case Success(:final value):
+        // `Get.off`/`offAll` (not `to`) so a verified phone screen is never
+        // re-enterable: the code is single-use. See flutter-navigation §4.
+        if (value.passcodeSet) {
+          // Returning user: the passcode already exists, go straight in.
+          Get.offAll<void>(() => const HomeShell());
+        } else {
+          Get.off<void>(() => const PasscodeScreen(mode: PasscodeMode.set));
+        }
+      case Failure(:final error):
+        if (error.code == 'OTP_INVALID') {
+          await _showIncorrectCodeSheet();
+          return;
+        }
+        _clearBoxes();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(authErrorText(AppLocalizations.of(context), error))),
+        );
     }
-    _showIncorrectCodeSheet();
   }
 
-  /// Stub correct code until the backend lands. Anything else shows the
-  /// incorrect-code bottom sheet.
-  static const String _stubCorrectCode = '1234';
+  void _clearBoxes() {
+    for (final c in _controllers) {
+      c.clear();
+    }
+    _focusNodes.first.requestFocus();
+  }
 
   Future<void> _showIncorrectCodeSheet() async {
     FocusScope.of(context).unfocus();
@@ -154,14 +182,19 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> {
     _focusNodes.first.requestFocus();
   }
 
-  void _requestCodeAgain() {
+  Future<void> _requestCodeAgain() async {
     if (_remaining > 0) return;
-    for (final c in _controllers) {
-      c.clear();
+    _clearBoxes();
+    final result = await Get.find<AuthFlow>().requestCode(widget.phoneE164);
+    if (!mounted) return;
+    switch (result) {
+      case Success():
+        _startCountdown();
+      case Failure(:final error):
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(authErrorText(AppLocalizations.of(context), error))),
+        );
     }
-    _focusNodes.first.requestFocus();
-    _startCountdown();
-    // TODO: trigger backend resend.
   }
 
   /// Returns the last 4 digits of the national number, falling back to the
@@ -289,27 +322,36 @@ class _OtpBoxes extends StatelessWidget {
   final KeyEventResult Function(int index, FocusNode node, KeyEvent event)
   onKey;
 
+  /// Preferred box size / gap; shrinks (never overflows) on narrow phones.
+  static const double _maxBox = 56;
+  static const double _gap = 8;
+
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(VerifyPhoneScreen.codeLength, (i) {
-        return Padding(
-          padding: EdgeInsets.only(
-            right: i == VerifyPhoneScreen.codeLength - 1 ? 0 : 12,
-          ),
-          child: SizedBox(
-            width: 72,
-            height: 72,
-            child: _OtpBox(
-              controller: controllers[i],
-              focusNode: focusNodes[i],
-              onChanged: (v) => onChanged(i, v),
-              onKey: (node, event) => onKey(i, node, event),
-            ),
-          ),
+    const n = VerifyPhoneScreen.codeLength;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fit = (constraints.maxWidth - _gap * (n - 1)) / n;
+        final box = fit.clamp(36.0, _maxBox);
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(n, (i) {
+            return Padding(
+              padding: EdgeInsets.only(right: i == n - 1 ? 0 : _gap),
+              child: SizedBox(
+                width: box,
+                height: box + 12,
+                child: _OtpBox(
+                  controller: controllers[i],
+                  focusNode: focusNodes[i],
+                  onChanged: (v) => onChanged(i, v),
+                  onKey: (node, event) => onKey(i, node, event),
+                ),
+              ),
+            );
+          }),
         );
-      }),
+      },
     );
   }
 }

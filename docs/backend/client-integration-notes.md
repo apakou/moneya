@@ -95,7 +95,7 @@ Persisted as JSON in `flutter_secure_storage` under key `session.v1`. `deviceId`
 - **No client-side hashing.** Passcode (6 digits) is sent **plaintext over TLS** to `POST /v1/auth/passcode` and `POST /v1/auth/step-up`. Backend hashes server-side with Argon2id (per `openapi.yaml` line 180 and `architecture.md`).
 - **No `argon2` Dart dep.**
 - Passcode stays in memory only as long as the entry sheet is open; cleared on dispose. Never logged, never written to disk.
-- Lockout (5 failed attempts in 15 min) is **server-enforced**; client surfaces the `423 Locked` problem-detail (`code: AUTH_LOCKED`) with a localized "Try again in N minutes" message.
+- Lockout (5 failed attempts) is **server-enforced** for 15 minutes; the backend answers `429` with `code: PASSCODE_LOCKED` / `OTP_LOCKED` and a `Retry-After` header; the client shows a localized "Try again in N minutes".
 
 ---
 
@@ -196,21 +196,27 @@ Callers receive `ApiResult<T> = Success<T> | Failure(ApiError)`. **No raw `DioEx
 
 | Code | Surface as |
 |---|---|
-| `AUTH_INVALID_OTP` | "Wrong code. Try again." |
-| `AUTH_OTP_EXPIRED` | "Code expired. Request a new one." |
-| `AUTH_LOCKED` | "Too many tries. Locked for N minutes." (Retry-After) |
-| `AUTH_DEVICE_MISMATCH` | Force re-login |
-| `KYC_REQUIRED` | Route to KYC start |
-| `KYC_REJECTED` | Route to KYC status with rejection_reason |
-| `WALLET_INSUFFICIENT_FUNDS` | Block submit; show "Top up" CTA |
-| `WALLET_NOT_PROVISIONED` | Show "Finishing setup…" + KYC gate |
-| `COMPLIANCE_BLOCK` | Generic block message; escalate via support |
-| `VELOCITY_LIMIT` | Show daily/weekly limit; surface tier upgrade |
-| `QUOTE_EXPIRED` | Re-quote; do **not** auto-retry the order |
-| `IDEMPOTENT_REPLAY` | Transparent; treat as success (server returns original body) |
-| `RATE_LIMITED` | Backoff per `Retry-After` |
+| `OTP_INVALID` (401) | "Wrong code. Try again." (incorrect-code sheet) |
+| `OTP_LOCKED` (429, `Retry-After`) | "Too many wrong codes. Try again in N min." |
+| `RATE_LIMITED` (429, `Retry-After`) | "Too many requests. Try again in N min." |
+| `SMS_UNAVAILABLE` (503) | "We could not send the code." |
+| `UNAUTHORIZED` (401) | Bad/expired bearer → refresh once, then re-login. **The only 401 the client refreshes on.** |
+| `REFRESH_INVALID` (401) | Force re-login (the refresh token was rotated away or reused) |
+| `PASSCODE_INVALID` (401) | In-place retry in the passcode sheet. **Never auto-retried** (each try counts toward lockout) |
+| `PASSCODE_LOCKED` (429, `Retry-After`) | Lockout message; pop the sheet |
+| `PASSCODE_NOT_SET` (403) | Route to passcode creation |
+| `PASSCODE_TOO_WEAK` (400) | "Choose a less predictable passcode." |
+| `STEP_UP_REQUIRED` (401) / `TXN_TOKEN_CONSUMED` (409) | Run step-up again, then retry with the SAME Idempotency-Key |
+| `IDEMPOTENCY_KEY_REQUIRED` (400) / `IDEMPOTENCY_KEY_REUSED` (422) | Client bug: mint one key per logical operation |
+| `INSUFFICIENT_FUNDS` (402) | Block submit; show "Top up" CTA |
+| `QUOTE_EXPIRED` (409) | Re-quote and show the new numbers; do **not** auto-retry the order |
+| `AMOUNT_TOO_SMALL` / `UNSUPPORTED_CURRENCY` (400) | Inline amount error |
+| `PROVIDER_UNAVAILABLE` (503) | "Payments are temporarily unavailable"; safe to retry the same key |
+| `KYC_REQUIRED` | Route to KYC start (not implemented server-side yet) |
+| `COMPLIANCE_BLOCK` | Generic block message (not implemented server-side yet) |
+| `VELOCITY_LIMIT` | Show daily/weekly limit (not implemented server-side yet) |
 
-Backend confirmed list TBC — see §11 Q1.
+This table is the backend's real behaviour as of the Stellar MVP (see `backend/apps/api/src/**`). The older `AUTH_*` / `WALLET_*` names from the first drafts are not sent.
 
 ---
 

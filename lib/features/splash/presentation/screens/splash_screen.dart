@@ -6,8 +6,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/preferences/app_prefs.dart';
+import '../../../../core/session/session_controller.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/screens/auth_landing_screen.dart';
+import '../../../home/presentation/screens/home_shell.dart';
 import '../../../onboarding/presentation/screens/onboarding_screen.dart';
 
 /// Path to the MoneyA mark (white version) used on dark/brand surfaces.
@@ -47,6 +49,14 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void _goToOnboarding() {
     if (!mounted) return;
+    // A stored session means the user already signed in on this device:
+    // skip onboarding and auth. An expired access token is refreshed
+    // transparently by AuthInterceptor on the first 401.
+    if (Get.isRegistered<SessionController>() &&
+        Get.find<SessionController>().hasSession) {
+      Get.off<void>(() => const HomeShell());
+      return;
+    }
     // If the user has already completed onboarding on this install
     // (flag persisted in secure storage, hydrated at boot), skip
     // straight to the auth landing. Onboarding is a first-run

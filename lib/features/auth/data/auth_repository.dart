@@ -38,8 +38,8 @@ class AuthRepository {
       data: <String, Object?>{
         'phone': phoneE164,
         'device_id': deviceId,
-        if (deviceKind != null) 'device_kind': deviceKind,
-        if (deviceName != null) 'device_name': deviceName,
+        'device_kind': ?deviceKind,
+        'device_name': ?deviceName,
       },
       options: _noAuth,
       decode: (b) => OtpRequested.fromJson(_map(b, '/v1/auth/otp')),
@@ -76,7 +76,7 @@ class AuthRepository {
       method: 'POST',
       data: <String, Object?>{
         'passcode': passcode,
-        if (currentPasscode != null) 'current_passcode': currentPasscode,
+        'current_passcode': ?currentPasscode,
       },
       decode: (_) {},
     );

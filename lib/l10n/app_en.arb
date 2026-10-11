@@ -1477,5 +1477,25 @@
   "favoritesAddedConfirmation": "Added to favorites",
   "@favoritesAddedConfirmation": {
     "description": "Inline confirmation shown in place of the add-to-favorites card after the user taps the CTA."
-  }
+  },
+  "authErrorNetwork": "No connection. Check your network and try again.",
+  "@authErrorNetwork": { "description": "Shown when a sign-in request cannot reach the server." },
+  "authErrorTooManyRequests": "Too many requests. Try again in {minutes} min.",
+  "@authErrorTooManyRequests": {
+    "description": "Rate limit on requesting a sign-in code.",
+    "placeholders": { "minutes": { "type": "int", "example": "10" } }
+  },
+  "authErrorOtpLocked": "Too many wrong codes. Try again in {minutes} min.",
+  "@authErrorOtpLocked": {
+    "description": "Sign-in locked after repeated wrong codes.",
+    "placeholders": { "minutes": { "type": "int", "example": "15" } }
+  },
+  "authErrorSmsUnavailable": "We could not send the code. Please try again in a moment.",
+  "@authErrorSmsUnavailable": { "description": "The SMS provider is temporarily unavailable." },
+  "authErrorInvalidPhone": "Enter a valid phone number.",
+  "@authErrorInvalidPhone": { "description": "The server rejected the phone number." },
+  "authErrorGeneric": "Something went wrong. Please try again.",
+  "@authErrorGeneric": { "description": "Fallback for unexpected sign-in errors." },
+  "passcodeErrorWeak": "Choose a less predictable passcode.",
+  "@passcodeErrorWeak": { "description": "The server rejected the passcode as too easy to guess." }
 }

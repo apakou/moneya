@@ -1065,4 +1065,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get favoritesAddedConfirmation => 'Added to favorites';
+
+  @override
+  String get authErrorNetwork =>
+      'No connection. Check your network and try again.';
+
+  @override
+  String authErrorTooManyRequests(int minutes) {
+    return 'Too many requests. Try again in $minutes min.';
+  }
+
+  @override
+  String authErrorOtpLocked(int minutes) {
+    return 'Too many wrong codes. Try again in $minutes min.';
+  }
+
+  @override
+  String get authErrorSmsUnavailable =>
+      'We could not send the code. Please try again in a moment.';
+
+  @override
+  String get authErrorInvalidPhone => 'Enter a valid phone number.';
+
+  @override
+  String get authErrorGeneric => 'Something went wrong. Please try again.';
+
+  @override
+  String get passcodeErrorWeak => 'Choose a less predictable passcode.';
 }

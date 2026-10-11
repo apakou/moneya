@@ -1993,6 +1993,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Added to favorites'**
   String get favoritesAddedConfirmation;
+
+  /// Shown when a sign-in request cannot reach the server.
+  ///
+  /// In en, this message translates to:
+  /// **'No connection. Check your network and try again.'**
+  String get authErrorNetwork;
+
+  /// Rate limit on requesting a sign-in code.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many requests. Try again in {minutes} min.'**
+  String authErrorTooManyRequests(int minutes);
+
+  /// Sign-in locked after repeated wrong codes.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many wrong codes. Try again in {minutes} min.'**
+  String authErrorOtpLocked(int minutes);
+
+  /// The SMS provider is temporarily unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'We could not send the code. Please try again in a moment.'**
+  String get authErrorSmsUnavailable;
+
+  /// The server rejected the phone number.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid phone number.'**
+  String get authErrorInvalidPhone;
+
+  /// Fallback for unexpected sign-in errors.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again.'**
+  String get authErrorGeneric;
+
+  /// The server rejected the passcode as too easy to guess.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a less predictable passcode.'**
+  String get passcodeErrorWeak;
 }
 
 class _AppLocalizationsDelegate
