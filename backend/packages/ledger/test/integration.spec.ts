@@ -14,6 +14,9 @@ import {
  * Skipped (not faked) when the variable is absent.
  */
 const url = process.env.TEST_DATABASE_URL ?? process.env.LEDGER_TEST_DATABASE_URL;
+const testSsl = process.env.DATABASE_CA_CERT
+  ? { ca: process.env.DATABASE_CA_CERT, rejectUnauthorized: true }
+  : undefined;
 const describeDb = url ? describe : describe.skip;
 
 describeDb('LedgerService on PostgreSQL', () => {
@@ -22,7 +25,7 @@ describeDb('LedgerService on PostgreSQL', () => {
   const CUR = 'GHS';
 
   beforeAll(() => {
-    pool = new Pool({ connectionString: url, max: 10 });
+    pool = new Pool({ connectionString: url, max: 10, ssl: testSsl });
     ledger = new LedgerService(pool);
   });
   afterAll(() => pool.end());

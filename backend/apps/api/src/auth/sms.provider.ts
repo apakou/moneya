@@ -18,6 +18,10 @@ export class FakeSmsProvider implements SmsProvider {
 
   sendOtp(phone: string, code: string, locale: 'fr' | 'en'): Promise<void> {
     this.sent.push({ phone, code, locale });
+    // Opt-in, never in production: lets a developer read the code during a manual smoke test.
+    if (process.env.FAKE_SMS_LOG === 'true' && process.env.NODE_ENV !== 'production') {
+      console.warn(`[fake-sms] ${phone} -> ${code}`);
+    }
     return Promise.resolve();
   }
 

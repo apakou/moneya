@@ -42,6 +42,9 @@ describe('quote math', () => {
 });
 
 const url = process.env.TEST_DATABASE_URL ?? process.env.LEDGER_TEST_DATABASE_URL;
+const testSsl = process.env.DATABASE_CA_CERT
+  ? { ca: process.env.DATABASE_CA_CERT, rejectUnauthorized: true }
+  : undefined;
 const describeDb = url ? describe : describe.skip;
 
 describeDb('ramp orders on PostgreSQL (simulated provider)', () => {
@@ -51,7 +54,7 @@ describeDb('ramp orders on PostgreSQL (simulated provider)', () => {
   let svc: RampOrdersService;
 
   beforeAll(() => {
-    pool = new Pool({ connectionString: url, max: 10 });
+    pool = new Pool({ connectionString: url, max: 10, ssl: testSsl });
     ledger = new LedgerService(pool);
   });
   afterAll(() => pool.end());
