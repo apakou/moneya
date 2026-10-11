@@ -478,42 +478,45 @@ export class RampOrdersService {
 
   // ----- polling fallback (webhooks can be lost) -----------------------------------------------------
 
-  /** Resumer: asks the provider about orders that are still waiting and applies the answer as an event. */
+  /**
+   * Resumer: asks the provider about orders that are still waiting and applies the answer as an
+   * event. One failing order never blocks the rest of the batch; its next_action_at is pushed back
+   * so it is retried later instead of being re-polled in a tight loop. Returns how many were synced.
+   */
   async syncPending(limit = 50): Promise<number> {
-    let n = 0;
-    const on = await this.pool.query(
-      `SELECT id, yc_order_id FROM app.onramp_orders WHERE status IN ('AWAITING_PAYMENT','COLLECTED') AND yc_order_id IS NOT NULL AND next_action_at <= now() ORDER BY next_action_at LIMIT $1`,
+    const due = await this.pool.query<{ id: string; ref: string; kind: 'COLLECTION' | 'PAYOUT' }>(
+      `(SELECT id, yc_order_id AS ref, 'COLLECTION' AS kind, next_action_at FROM app.onramp_orders
+         WHERE status IN ('AWAITING_PAYMENT','COLLECTED') AND yc_order_id IS NOT NULL AND next_action_at <= now())
+       UNION ALL
+       (SELECT id, yc_order_id, 'PAYOUT', next_action_at FROM app.offramp_orders
+         WHERE status = 'PROCESSING' AND yc_order_id IS NOT NULL AND next_action_at <= now())
+       ORDER BY next_action_at LIMIT $1`,
       [limit],
     );
-    for (const r of on.rows) {
-      const op = await this.provider.getOperation(r.yc_order_id);
-      await this.handleCollectionEvent({
-        eventId: `poll-${r.id}`,
-        kind: 'COLLECTION',
-        providerRef: op.providerRef,
-        orderId: r.id,
-        status: op.status,
-        failureReason: op.failureReason,
-      });
-      n++;
+    let synced = 0;
+    for (const r of due.rows) {
+      try {
+        const op = await this.provider.getOperation(r.ref);
+        const event: RampEvent = {
+          eventId: `poll-${r.id}-${op.status}`,
+          kind: r.kind,
+          providerRef: op.providerRef,
+          orderId: r.id,
+          status: op.status,
+          failureReason: op.failureReason,
+        };
+        if (r.kind === 'COLLECTION') await this.handleCollectionEvent(event);
+        else await this.handlePayoutEvent(event);
+        synced++;
+      } catch {
+        const table = r.kind === 'COLLECTION' ? 'onramp_orders' : 'offramp_orders';
+        await this.pool.query(
+          `UPDATE app.${table} SET next_action_at = now() + interval '2 minutes' WHERE id = $1`,
+          [r.id],
+        );
+      }
     }
-    const off = await this.pool.query(
-      `SELECT id, yc_order_id FROM app.offramp_orders WHERE status='PROCESSING' AND yc_order_id IS NOT NULL AND next_action_at <= now() ORDER BY next_action_at LIMIT $1`,
-      [limit],
-    );
-    for (const r of off.rows) {
-      const op = await this.provider.getOperation(r.yc_order_id);
-      await this.handlePayoutEvent({
-        eventId: `poll-${r.id}`,
-        kind: 'PAYOUT',
-        providerRef: op.providerRef,
-        orderId: r.id,
-        status: op.status,
-        failureReason: op.failureReason,
-      });
-      n++;
-    }
-    return n;
+    return synced;
   }
 
   // ----- input helpers -------------------------------------------------------------------------------------

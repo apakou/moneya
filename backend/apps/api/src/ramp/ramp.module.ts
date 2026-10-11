@@ -1,8 +1,12 @@
-import { Module } from '@nestjs/common';
+import { Inject, Injectable, Module, OnModuleDestroy } from '@nestjs/common';
 import { LedgerService } from '@moneya/ledger';
 import { SimulatedRampProvider, type RampProvider } from '@moneya/ramp';
 import { randomBytes } from 'node:crypto';
 import { Pool } from 'pg';
+import { AuthModule } from '../auth/auth.module';
+import { IDEMPOTENCY_POOL, IdempotencyService } from '../common/idempotency.service';
+import { RampController, RampWebhookController } from './ramp.controller';
+import { RampWebhookService } from './ramp-webhook.service';
 import { loadPricing } from './pricing';
 import {
   RAMP_POOL,
@@ -37,7 +41,18 @@ export class SimulatedSettlement implements SettlementPort {
   }
 }
 
+/** Closes the shared pool on shutdown so the process (and test runs) can exit cleanly. */
+@Injectable()
+export class RampPoolLifecycle implements OnModuleDestroy {
+  constructor(@Inject(RAMP_POOL) private readonly pool: Pool) {}
+  async onModuleDestroy(): Promise<void> {
+    await this.pool.end();
+  }
+}
+
 @Module({
+  imports: [AuthModule],
+  controllers: [RampController, RampWebhookController],
   providers: [
     {
       provide: RAMP_POOL,
@@ -60,6 +75,10 @@ export class SimulatedSettlement implements SettlementPort {
       useFactory: (pool: Pool) => new LedgerService(pool),
       inject: [RAMP_POOL],
     },
+    { provide: IDEMPOTENCY_POOL, useExisting: RAMP_POOL },
+    IdempotencyService,
+    RampPoolLifecycle,
+    RampWebhookService,
     RampOrdersService,
   ],
   exports: [RampOrdersService, RAMP_PROVIDER],

@@ -13,7 +13,7 @@ import {
  *   LEDGER_TEST_DATABASE_URL=postgres://postgres:postgres@localhost/moneya_ci pnpm test
  * Skipped (not faked) when the variable is absent.
  */
-const url = process.env.LEDGER_TEST_DATABASE_URL;
+const url = process.env.TEST_DATABASE_URL ?? process.env.LEDGER_TEST_DATABASE_URL;
 const describeDb = url ? describe : describe.skip;
 
 describeDb('LedgerService on PostgreSQL', () => {

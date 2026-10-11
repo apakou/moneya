@@ -1047,6 +1047,39 @@ paths:
         '400':
           description: Signature invalid
 
+  /webhooks/ramp:
+    post:
+      tags: [Webhooks]
+      summary: Payment provider settlement events
+      description: |
+        Provider-neutral endpoint for top-up (collection) and cash-out (payout)
+        results. HMAC-SHA256 over `{timestamp}.{raw body}` in `X-Ramp-Signature`,
+        `X-Ramp-Timestamp` within 5 minutes. Dedupe key = `eventId`. Always
+        answers 200 once the event is durably recorded and applied; 400 when the
+        signature is invalid; 5xx makes the provider retry.
+      operationId: rampWebhook
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RampEvent'
+      parameters:
+        - name: X-Ramp-Signature
+          in: header
+          required: true
+          schema: { type: string }
+        - name: X-Ramp-Timestamp
+          in: header
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Accepted
+        '400':
+          description: Signature invalid
+
   /webhooks/smile-id:
     post:
       tags: [Webhooks]
@@ -1860,6 +1893,19 @@ components:
         at: { type: string, format: date-time }
 
     # ---- Webhook payloads -------------------------------------------------
+
+    RampEvent:
+      type: object
+      required: [eventId, kind, providerRef, orderId, status]
+      properties:
+        eventId: { type: string }
+        kind: { type: string, enum: [COLLECTION, PAYOUT] }
+        providerRef: { type: string }
+        orderId: { type: string, format: uuid }
+        status: { type: string, enum: [PENDING, SUCCEEDED, FAILED] }
+        failureReason:
+          type: string
+          enum: [PROVIDER_REJECTED, INSUFFICIENT_FUNDS, TIMEOUT, INVALID_ACCOUNT, LIMIT_EXCEEDED]
 
     YellowCardEvent:
       type: object

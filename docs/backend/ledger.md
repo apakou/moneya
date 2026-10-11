@@ -166,6 +166,12 @@ Notation: `[KIND:owner]` means the account; entries are written
 
 If `fee = 0`, omit entry #3 (a 2-entry journal is fine).
 
+> ⚠️ **§4.2 (Onramp) and §4.3 (Offramp) below are superseded** by the D7 ramp journals in
+> `backend/packages/ledger/src/templates.ts` (`onrampSettle`, `offrampHold`, `offrampSettle`,
+> `offrampRefund`): nothing is posted before confirmed settlement; fiat and settlement legs each
+> balance independently through `FX_POSITION` accounts; a cash-out holds the full amount in
+> `SUSPENSE` and then settles or refunds. Kept below for history only.
+
 ### 4.2 Onramp (mobile money → USDC)
 
 The onramp settles in two stages: fiat collection (YC webhook) and USDC

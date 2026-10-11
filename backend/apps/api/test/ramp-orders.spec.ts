@@ -312,8 +312,21 @@ describeDb('ramp orders on PostgreSQL (simulated provider)', () => {
       `UPDATE app.onramp_orders SET next_action_at = now() - interval '1 second' WHERE id=$1`,
       [o.id],
     );
+    // an order this provider has never heard of (foreign ref) must not stop the batch
+    const ghostUser = await user();
+    const gq = await s.quoteOnramp(ghostUser, 'GHS', '100');
+    const ghost = await s.createOnramp(ghostUser, {
+      quote_id: gq.id,
+      payment_method: 'MTN_MOMO',
+      payer_msisdn: OK_PHONE,
+    });
+    await pool.query(
+      `UPDATE app.onramp_orders SET yc_order_id = $2, next_action_at = now() - interval '1 hour' WHERE id = $1`,
+      [ghost.id, `ghost-${randomUUID()}`],
+    );
     expect(await s.syncPending()).toBeGreaterThanOrEqual(1);
     expect((await s.getOnramp(u, o.id)).status).toBe('COMPLETED');
     expect(await ledger.getUserBalance(u, 'GHS')).toBe('98.5');
+    expect((await s.getOnramp(ghostUser, ghost.id)).status).toBe('AWAITING_PAYMENT'); // skipped, not failed
   });
 });
