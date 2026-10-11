@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { InsufficientFundsError, LedgerService, templates } from '@moneya/ledger';
 import {
+  FIAT_DECIMALS,
   RampError,
   type RampEvent,
   type RampFailureReason,
@@ -112,7 +113,7 @@ export class RampOrdersService {
     return this.saveQuote(
       userId,
       'ONRAMP',
-      this.price(() => priceOnramp(this.pricing, c, this.money(amount))),
+      this.price(() => priceOnramp(this.pricing, c, this.money(amount, c))),
     );
   }
 
@@ -127,7 +128,7 @@ export class RampOrdersService {
     return this.saveQuote(
       userId,
       'OFFRAMP',
-      this.price(() => priceOfframp(this.pricing, c, p, this.money(amount))),
+      this.price(() => priceOfframp(this.pricing, c, p, this.money(amount, c))),
     );
   }
 
@@ -526,9 +527,19 @@ export class RampOrdersService {
       throw new ApiProblem(400, 'VALIDATION_ERROR', 'Unsupported currency');
     return v as RampCurrency;
   }
-  private money(v: unknown): string {
-    if (typeof v !== 'string' || !/^[0-9]+(\.[0-9]{1,6})?$/.test(v))
-      throw new ApiProblem(400, 'VALIDATION_ERROR', 'Invalid amount');
+  /** A positive decimal with at most the currency's fiat decimals (XOF/XAF 0, NGN/GHS/KES 2). */
+  private money(v: unknown, currency: RampCurrency): string {
+    const decimals = FIAT_DECIMALS[currency];
+    const ok =
+      typeof v === 'string' &&
+      /^[0-9]+(\.[0-9]+)?$/.test(v) &&
+      (v.split('.')[1] ?? '').length <= decimals;
+    if (!ok)
+      throw new ApiProblem(
+        400,
+        'VALIDATION_ERROR',
+        `Amount must have at most ${decimals} decimals for ${currency}`,
+      );
     return v;
   }
   private method(v: unknown): PaymentMethod {

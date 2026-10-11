@@ -115,10 +115,18 @@ class _RampQuoteCardState extends State<RampQuoteCard> {
 
   Widget _row(String label, String value, TextStyle style, {Key? key}) => Row(
         key: key,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: style),
-          Text(value, style: style.copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+          Flexible(child: Text(label, style: style)),
+          const SizedBox(width: 12),
+          // Both sides flex so long French labels or large amounts wrap instead of overflowing.
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: style.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+            ),
+          ),
         ],
       );
 }

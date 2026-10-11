@@ -51,7 +51,7 @@ copy/asset lint, response guard, and the Flutter fiat-only migration (APP-00: an
 | 2 | Anyone with internet | **STL-00** on Stellar testnet: run `StellarAdapter` for real (`getSequence`, `submit` incl. fee-bump, `getTx` by **inner** hash, `streamPayments`, `opIndexFromOperationId`) — these were unreachable in the authoring sandbox and are **unverified**. |
 | 3 | Backend | Check the first CI run on GitHub (it has never run); fix anything environment-specific. |
 | 4 | Backend | M1 auth with a fake SMS provider (no external keys needed); `0002_state_machine.sql` once D7 is decided. |
-| 5 | App | APP-01..09 against the fiat-only contract (needs the backend endpoints, or a mock server generated from `openapi.yaml`). |
+| 5 | App | APP-01, APP-04, APP-05 are wired (see plan §0). Remaining: APP-02 KYC, APP-03 balance/history (needs `GET /v1/wallet` + transfers endpoints), APP-06..09. |
 
 ## 6. Rules that must hold in every PR
 

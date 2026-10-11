@@ -256,9 +256,10 @@ class _WithdrawAmountScreenState extends State<WithdrawAmountScreen> {
           Get.off<void>(() => RampStatusScreen(order: order, phone: phone));
         case RampRequoted(:final fresh):
           // The price changed: show it and let the user decide. Never swapped in silently.
-          final old = _quotes.quote;
+          // Compare with the price the USER saw (`quote`), not with the controller's current
+          // value: re-quoting has already stored the fresh one there.
           _quotes.adopt(fresh);
-          if (old != null && !old.differsFrom(fresh)) {
+          if (!quote.differsFrom(fresh)) {
             // Same numbers under a new quote id: nothing new to confirm. Continue (the passcode
             // is asked again: the previous single-use token was spent on the rejected attempt).
             _authInFlight = false;

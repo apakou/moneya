@@ -267,6 +267,17 @@ describeDb('ramp HTTP API (real PostgreSQL, full app, response guard on)', () =>
       .set(a.auth)
       .send({ fiat_currency: 'GHS', fiat_amount: '0.01' })
       .expect(400); // dust
+    // precision: a currency's own decimals only (GHS 2, XOF 0)
+    const quote = (path: string, body: object) => http().post(path).set(a.auth).send(body);
+    await quote('/v1/onramp/quote', { fiat_currency: 'GHS', fiat_amount: '10.123' }).expect(400);
+    await quote('/v1/onramp/quote', { fiat_currency: 'XOF', fiat_amount: '1000.5' }).expect(400);
+    await quote('/v1/offramp/quote', {
+      amount: '10.123',
+      currency: 'GHS',
+      payout_currency: 'GHS',
+    }).expect(400);
+    await quote('/v1/onramp/quote', { fiat_currency: 'XOF', fiat_amount: '1000' }).expect(200);
+    await quote('/v1/onramp/quote', { fiat_currency: 'GHS', fiat_amount: '10.12' }).expect(200);
     const q = (
       await http()
         .post('/v1/onramp/quote')
