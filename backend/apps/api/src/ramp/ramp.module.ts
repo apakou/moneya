@@ -82,6 +82,6 @@ export class RampPoolLifecycle implements OnModuleDestroy {
     RampWebhookService,
     RampOrdersService,
   ],
-  exports: [RampOrdersService, RAMP_PROVIDER],
+  exports: [RampOrdersService, RAMP_PROVIDER, RAMP_POOL, LedgerService],
 })
 export class RampModule {}

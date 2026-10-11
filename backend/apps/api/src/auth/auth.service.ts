@@ -223,6 +223,13 @@ export class AuthService {
     return { userId: claims.sub, deviceId: claims.did };
   }
 
+  /** The caller's profile (`GET /v1/users/me`). */
+  async getUser(userId: string) {
+    const user = await this.store.findUserById(userId);
+    if (!user) throw new ApiProblem(401, 'UNAUTHORIZED', 'Authentication required');
+    return this.toUser(user);
+  }
+
   private toUser(u: UserRow) {
     return { ...u, created_at: u.created_at.toISOString() };
   }
