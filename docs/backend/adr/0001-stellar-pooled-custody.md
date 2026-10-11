@@ -26,3 +26,8 @@ Status: **Accepted** (2026-10-10). Closes DEC-01; supersedes the Solana/Privy as
 
 ## Open
 RMP-00 (Yellow Card written answer) and the KMS provider choice (STL-03) remain open; STL-02..06 and M6/M7 stay gated on RMP-00.
+
+## Addendum (2026-10-11) — scope of the first release
+
+The owner states that the product's main purpose is moving money easily and cheaply **between francophone and anglophone African countries**. That makes the first release a **currency pair, not a single currency**, and supersedes two statements above: D3's "one corridor, GHS (Ghana)" as a single market, and D7's "a cross-currency send is out of scope for the MVP launch corridor … and rejected explicitly". The D7 design itself (fiat-denominated per-user ledger, conversion at a locked quote, FX accounts so journals balance per currency) is unchanged and is what makes the cross-currency send possible. The launch pair (proposed: Ghana ⇄ Côte d'Ivoire / Togo) and the cross-currency send tickets still have to be agreed and added to `stellar-mvp-plan.md`.
+
