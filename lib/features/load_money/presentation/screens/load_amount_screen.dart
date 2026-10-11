@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 
-import '../../../../core/logging/app_logger.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/back_chevron_button.dart';
@@ -12,11 +11,18 @@ import '../../../../core/widgets/dirty_form_scope.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../auth/domain/supported_country.dart';
 import '../../../home/domain/supported_currency.dart';
-import '../../../transfer/data/transaction_auth_outcome.dart';
 import '../../../transfer/data/transaction_auth_service.dart';
 import '../../../transfer/presentation/widgets/amount_keypad_sheet.dart';
 import '../../../transfer/presentation/widgets/swipe_to_pay_button.dart';
-import '../../../transfer/presentation/widgets/transfer_outcome_scaffold.dart';
+import '../../../ramp/data/ramp_dtos.dart';
+import '../../../ramp/data/ramp_quote_controller.dart';
+import '../../../ramp/data/ramp_repository.dart';
+import '../../../ramp/data/ramp_submitter.dart';
+import '../../../ramp/domain/ramp_mapping.dart';
+import '../../../ramp/presentation/ramp_error_text.dart';
+import '../../../ramp/presentation/ramp_quote_card.dart';
+import '../../../ramp/presentation/ramp_status_screen.dart';
+import '../../../../core/format/money_format.dart';
 import '../../domain/load_money_limits.dart';
 import '../../domain/momo_provider.dart';
 
@@ -47,12 +53,16 @@ class LoadAmountScreen extends StatefulWidget {
     required this.currency,
     required this.country,
     required this.provider,
+    this.rampRepository,
     super.key,
   });
 
   final SupportedCurrency currency;
   final SupportedCountry country;
   final MomoProvider provider;
+
+  /// Test seam.
+  final RampRepository? rampRepository;
 
   static const String routePath = '/load/amount';
 
@@ -85,11 +95,33 @@ class _LoadAmountScreenState extends State<LoadAmountScreen> {
   // biometric prompt opens, races with itself, and crashes.
   bool _authInFlight = false;
 
+  // Price + submit rules (see features/ramp). Injectable for tests.
+  late final RampRepository _ramp = widget.rampRepository ?? RampRepository();
+  late final RampSubmitter _submitter = RampSubmitter(repository: _ramp);
+  late final RampQuoteController _quotes = RampQuoteController(
+    fetch: (amount) => _ramp.quoteOnramp(
+      currency: RampMapping.wireCurrency(widget.currency),
+      amount: amount,
+    ),
+  )..addListener(_onQuoteChanged);
+
+  void _onQuoteChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    _quotes
+      ..removeListener(_onQuoteChanged)
+      ..dispose();
     _sourcePhoneController.dispose();
     super.dispose();
   }
+
+  /// The keypad can leave a trailing dot ("15000."); the API wants a clean decimal.
+  String get _wireAmount => _amount.endsWith('.') ? _amount.substring(0, _amount.length - 1) : _amount;
+
+  void _refreshQuote() => _quotes.setAmount(_wireAmount, valid: _isWithinLimit);
 
   // -- Validation -------------------------------------------------------------
 
@@ -108,7 +140,8 @@ class _LoadAmountScreenState extends State<LoadAmountScreen> {
 
   /// Swipe-to-pay enabled state: every required field has to be
   /// valid. Mirrors `_canConfirm` on TransferMoneyScreen.
-  bool get _canConfirm => _isWithinLimit && _sourcePhoneValid;
+  bool get _canConfirm =>
+      _isWithinLimit && _sourcePhoneValid && _quotes.quote != null && !_quotes.loading;
 
   /// Whether the user has entered anything worth confirming-before-
   /// discarding. Amount stays at the initial `'0'` until the keypad
@@ -174,6 +207,7 @@ class _LoadAmountScreenState extends State<LoadAmountScreen> {
     );
     if (picked == null) return;
     setState(() => _amount = picked.isEmpty ? '0' : picked);
+    _refreshQuote();
   }
 
   void _onSourcePhoneChanged(String value) {
@@ -182,55 +216,79 @@ class _LoadAmountScreenState extends State<LoadAmountScreen> {
     });
   }
 
-  Future<void> _onConfirm() async {
-    if (_authInFlight) return;
-    _authInFlight = true;
-    final messenger = ScaffoldMessenger.of(context);
+  /// `+233201234567` for the typed national number.
+  String? _payerE164() {
     try {
-      // Step-up auth — single 6-digit passcode entry against the
-      // server step-up endpoint. The fintech-security skill requires
-      // step-up on every debit; Load is a debit on the user's
-      // external MoMo wallet, so the gate is identical to Send.
-      final outcome = await _authService.authenticate(context);
+      final iso = IsoCode.values.firstWhere((c) => c.name.toUpperCase() == widget.country.isoCode);
+      final parsed = PhoneNumber.parse(_sourcePhoneController.text, callerCountry: iso);
+      return parsed.isValid() ? parsed.international : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _onConfirm() async {
+    final quote = _quotes.quote;
+    if (_authInFlight || quote == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
+    final method = RampMapping.paymentMethod(widget.provider);
+    final phone = _payerE164();
+    void say(String text) => messenger.showSnackBar(
+          SnackBar(content: Text(text), behavior: SnackBarBehavior.floating),
+        );
+    if (method == null) return say(l10n.rampErrorProviderNotSupported);
+    if (phone == null) return;
+
+    _authInFlight = true;
+    try {
+      final result = await _submitter.submitOnramp(
+        quote: quote,
+        requote: _quotes.requote,
+        paymentMethod: method,
+        payerMsisdn: phone,
+        // Step-up auth — a single 6-digit passcode entry against the server step-up endpoint.
+        stepUp: () => _authService.authenticate(context),
+      );
       if (!mounted) return;
-      switch (outcome) {
-        case TransactionAuthAuthorised(:final txnToken):
-          // TODO(load-money): call `POST /v1/loads` with idempotency
-          // key + [txnToken] in `Options.extra[AuthInterceptor.txnTokenKey]`,
-          // persist intent, and wait for the provider USSD push to
-          // land. Stub below shortcuts straight to the success outcome.
-          AppLogger.i('load_money.submit.stub', {
-            'currency': widget.currency.code,
-            'amount': _amount,
-            'provider': widget.provider.id,
-            'country': widget.country.isoCode,
-            'txn_token_len': txnToken.length,
-          });
-          Get.off<void>(
-            () => _LoadSuccessScreen(
-              amount: _amount,
-              currency: widget.currency,
-              provider: widget.provider,
+      switch (result) {
+        case RampPlaced(:final order):
+          Get.off<void>(() => RampStatusScreen(order: order, phone: phone));
+        case RampRequoted(:final fresh):
+          // The price changed: show it and let the user decide. Never swapped in silently.
+          final old = _quotes.quote;
+          _quotes.adopt(fresh);
+          if (old != null && !old.differsFrom(fresh)) {
+            // Same numbers under a new quote id: nothing new to confirm. Continue (the passcode
+            // is asked again: the previous single-use token was spent on the rejected attempt).
+            _authInFlight = false;
+            await _onConfirm();
+            return;
+          }
+          final go = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Text(l10n.rampRequoteTitle),
+              content: Text(l10n.rampRequoteBody(
+                '${MoneyFormat.fromString(fresh.toAmount)} ${RampMapping.displayCurrency(fresh.toCurrency)}',
+                '${MoneyFormat.fromString(fresh.fee)} ${RampMapping.displayCurrency(fresh.fromCurrency)}',
+              )),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.commonCancel)),
+                TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(l10n.rampRequoteContinue)),
+              ],
             ),
           );
-          return;
-        case TransactionAuthCancelled():
-          // Silent reset on cancel — the user dismissed the sheet.
-          break;
-        case TransactionAuthLockedOut(:final message):
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text(message),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        case TransactionAuthNetworkError(:final error):
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text(error.title),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          if (go == true && mounted) {
+            _authInFlight = false;
+            await _onConfirm();
+          }
+        case RampCancelled():
+          break; // the user dismissed the passcode sheet: silent reset
+        case RampBlocked(:final message):
+          say(message);
+        case RampFailed(:final error):
+          say(rampErrorText(l10n, error));
       }
     } finally {
       _authInFlight = false;
@@ -308,6 +366,16 @@ class _LoadAmountScreenState extends State<LoadAmountScreen> {
                                 _limits.maxPerTransaction.toString(),
                                 _limits.tierLabel,
                               ),
+                            ),
+                          ],
+                          if (_isWithinLimit) ...[
+                            const SizedBox(height: 16),
+                            RampQuoteCard(
+                              direction: RampDirection.onramp,
+                              quote: _quotes.quote,
+                              loading: _quotes.loading,
+                              failed: _quotes.failed,
+                              onRefresh: _quotes.requote,
                             ),
                           ],
                           const SizedBox(height: 28),
@@ -595,45 +663,3 @@ class _LimitError extends StatelessWidget {
 // Kept private to this file because the copy is load-specific and
 // the only entry point is _onConfirm above.
 // ---------------------------------------------------------------------------
-
-class _LoadSuccessScreen extends StatelessWidget {
-  const _LoadSuccessScreen({
-    required this.amount,
-    required this.currency,
-    required this.provider,
-  });
-
-  final String amount;
-  final SupportedCurrency currency;
-  final MomoProvider provider;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    // Terminal screen: predictive back must be a no-op so the user
-    // can't navigate back into the (now-replaced) amount form and
-    // re-submit. The primary CTA is the only way out. See
-    // flutter-navigation skill §4.
-    return PopScope(
-      canPop: false,
-      child: TransferOutcomeScaffold(
-        glyphColor: const Color(0xFF2BC46A),
-        glyphIcon: Icons.check_rounded,
-        title: l10n.loadSuccessTitle,
-        body: TransferOutcomeBody(
-          spans: [
-            TransferOutcomeBody.muted(l10n.loadSuccessBodyPrefix),
-            TransferOutcomeBody.bold('${currency.code} $amount'),
-            TransferOutcomeBody.muted(
-              l10n.loadSuccessBodySuffix(provider.label),
-            ),
-          ],
-        ),
-        primaryLabel: l10n.loadSuccessPrimaryCta,
-        onPrimary: () => Get.until((r) => r.isFirst),
-        secondaryLabel: l10n.loadSuccessSecondaryCta,
-        onSecondary: () => Get.until((r) => r.isFirst),
-      ),
-    );
-  }
-}

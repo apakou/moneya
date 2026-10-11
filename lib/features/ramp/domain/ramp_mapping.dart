@@ -10,6 +10,9 @@ class RampMapping {
   /// [SupportedCurrency.ghs]) but the API speaks ISO `GHS`.
   static String wireCurrency(SupportedCurrency c) => c == SupportedCurrency.ghs ? 'GHS' : c.code;
 
+  /// Inverse for display: the API's `GHS` is shown as the app's legacy `GHC`.
+  static String displayCurrency(String wire) => wire == 'GHS' ? 'GHC' : wire;
+
   /// `openapi.yaml` `OnrampOrderRequest.payment_method`. `null` = the provider
   /// is not in the contract yet (T-Money, OPay): the UI must say so instead of
   /// sending a request the server will reject.

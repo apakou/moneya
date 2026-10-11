@@ -71,32 +71,43 @@ class TransferOutcomeScaffold extends StatelessWidget {
           // half — matching the mock without any extra overlays.
           decoration: const BoxDecoration(gradient: AppColors.brandGradient),
           child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
-              child: Column(
-                children: [
-                  const Spacer(flex: 3),
-                  _OutcomeRipple(color: glyphColor, icon: glyphIcon),
-                  const SizedBox(height: 36),
-                  Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.sectionTitle,
+            // Scrollable so longer copy (French, a slow-order note) or a short phone never
+            // overflows; on a tall phone the Spacers still pin the CTAs to the bottom.
+            child: LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+                      child: Column(
+                        children: [
+                          const Spacer(flex: 3),
+                          _OutcomeRipple(color: glyphColor, icon: glyphIcon),
+                          const SizedBox(height: 36),
+                          Text(
+                            title,
+                            textAlign: TextAlign.center,
+                            style: AppTextStyles.sectionTitle,
+                          ),
+                          const SizedBox(height: 12),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: body,
+                          ),
+                          if (extras != null) ...[
+                            const SizedBox(height: 24),
+                            extras!,
+                          ],
+                          const Spacer(flex: 4),
+                          _PrimaryCta(label: primaryLabel, onPressed: onPrimary),
+                          const SizedBox(height: 12),
+                          _SecondaryCta(label: secondaryLabel, onPressed: onSecondary),
+                        ],
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: body,
-                  ),
-                  if (extras != null) ...[
-                    const SizedBox(height: 24),
-                    extras!,
-                  ],
-                  const Spacer(flex: 4),
-                  _PrimaryCta(label: primaryLabel, onPressed: onPrimary),
-                  const SizedBox(height: 12),
-                  _SecondaryCta(label: secondaryLabel, onPressed: onSecondary),
-                ],
+                ),
               ),
             ),
           ),

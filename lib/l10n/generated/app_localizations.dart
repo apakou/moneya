@@ -2035,6 +2035,204 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Choose a less predictable passcode.'**
   String get passcodeErrorWeak;
+
+  /// Label of the fee row in the price card.
+  ///
+  /// In en, this message translates to:
+  /// **'Fee'**
+  String get rampQuoteFeeLabel;
+
+  /// Label for the amount credited to the balance.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll receive'**
+  String get rampQuoteTopUpReceiveLabel;
+
+  /// Label for the amount paid out to the recipient.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipient gets'**
+  String get rampQuotePayoutReceiveLabel;
+
+  /// Countdown while the price is locked.
+  ///
+  /// In en, this message translates to:
+  /// **'Price valid for {seconds}s'**
+  String rampQuoteValidFor(int seconds);
+
+  /// Shown when the locked price ran out.
+  ///
+  /// In en, this message translates to:
+  /// **'Price expired'**
+  String get rampQuoteExpired;
+
+  /// Action to fetch a new price.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh price'**
+  String get rampQuoteRefresh;
+
+  /// Price could not be fetched.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t get a price. Check the amount and try again.'**
+  String get rampQuoteError;
+
+  /// Dialog title when a new price replaces the one shown.
+  ///
+  /// In en, this message translates to:
+  /// **'The price changed'**
+  String get rampRequoteTitle;
+
+  /// Top-up price changed.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll now receive {amount} (fee {fee}). Continue?'**
+  String rampRequoteBody(String amount, String fee);
+
+  /// Cash-out price changed.
+  ///
+  /// In en, this message translates to:
+  /// **'The recipient will now get {amount} (fee {fee}). Continue?'**
+  String rampRequoteBodyPayout(String amount, String fee);
+
+  /// Confirm the new price.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get rampRequoteContinue;
+
+  /// Cash-out larger than the balance.
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t have enough balance for this.'**
+  String get rampErrorInsufficientFunds;
+
+  /// Provider unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Payments are temporarily unavailable. Please try again in a moment.'**
+  String get rampErrorUnavailable;
+
+  /// Wallet not supported by the server yet.
+  ///
+  /// In en, this message translates to:
+  /// **'This wallet isn\'t available yet.'**
+  String get rampErrorProviderNotSupported;
+
+  /// Network error while placing an order.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection lost. Try again — you won\'t be charged twice.'**
+  String get rampErrorNetwork;
+
+  /// Fallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again.'**
+  String get rampErrorGeneric;
+
+  /// Top-up waiting for the user.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve on your phone'**
+  String get rampTopUpPendingTitle;
+
+  /// Top-up pending body.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your phone and approve the payment of {amount}. This screen updates by itself.'**
+  String rampTopUpPendingBody(String amount);
+
+  /// Top-up success.
+  ///
+  /// In en, this message translates to:
+  /// **'Top-up complete'**
+  String get rampTopUpSuccessTitle;
+
+  /// Top-up success body.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} was added to your MoneyA balance.'**
+  String rampTopUpSuccessBody(String amount);
+
+  /// Top-up failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment not completed'**
+  String get rampTopUpFailedTitle;
+
+  /// Top-up declined.
+  ///
+  /// In en, this message translates to:
+  /// **'The payment was declined or cancelled. You were not charged.'**
+  String get rampTopUpFailedBody;
+
+  /// Top-up timed out.
+  ///
+  /// In en, this message translates to:
+  /// **'Your provider didn\'t respond in time. You were not charged.'**
+  String get rampTopUpFailedTimeoutBody;
+
+  /// Cash-out in progress.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending your money'**
+  String get rampCashOutPendingTitle;
+
+  /// Cash-out pending body.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'re sending {amount} to {phone}. This usually takes a few minutes.'**
+  String rampCashOutPendingBody(String amount, String phone);
+
+  /// Cash-out success.
+  ///
+  /// In en, this message translates to:
+  /// **'Money sent'**
+  String get rampCashOutSuccessTitle;
+
+  /// Cash-out success body.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} was sent to {phone}.'**
+  String rampCashOutSuccessBody(String amount, String phone);
+
+  /// Cash-out failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash-out failed'**
+  String get rampCashOutFailedTitle;
+
+  /// Cash-out refunded.
+  ///
+  /// In en, this message translates to:
+  /// **'The money is back in your MoneyA balance.'**
+  String get rampCashOutFailedBody;
+
+  /// Shown when the order is slow.
+  ///
+  /// In en, this message translates to:
+  /// **'This is taking longer than usual. You can leave this screen — we\'ll notify you when it\'s done.'**
+  String get rampSlowNote;
+
+  /// Close the status screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get rampDoneCta;
+
+  /// Return home.
+  ///
+  /// In en, this message translates to:
+  /// **'Go back home'**
+  String get rampBackHomeCta;
+
+  /// Retry after a failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get rampTryAgainCta;
 }
 
 class _AppLocalizationsDelegate

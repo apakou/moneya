@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 
-import '../../../../core/logging/app_logger.dart';
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/back_chevron_button.dart';
@@ -14,11 +14,17 @@ import '../../../auth/domain/supported_country.dart';
 import '../../../home/domain/supported_currency.dart';
 import '../../../load_money/domain/load_money_limits.dart';
 import '../../../load_money/domain/momo_provider.dart';
-import '../../../transfer/data/transaction_auth_outcome.dart';
 import '../../../transfer/data/transaction_auth_service.dart';
 import '../../../transfer/presentation/widgets/amount_keypad_sheet.dart';
 import '../../../transfer/presentation/widgets/swipe_to_pay_button.dart';
-import '../../../transfer/presentation/widgets/transfer_outcome_scaffold.dart';
+import '../../../ramp/data/ramp_dtos.dart';
+import '../../../ramp/data/ramp_quote_controller.dart';
+import '../../../ramp/data/ramp_repository.dart';
+import '../../../ramp/data/ramp_submitter.dart';
+import '../../../ramp/domain/ramp_mapping.dart';
+import '../../../ramp/presentation/ramp_error_text.dart';
+import '../../../ramp/presentation/ramp_quote_card.dart';
+import '../../../ramp/presentation/ramp_status_screen.dart';
 
 /// Step 2/2 of the Withdraw flow — enter the amount to push from
 /// the MoneyA balance out to the chosen mobile-money rail.
@@ -52,8 +58,12 @@ class WithdrawAmountScreen extends StatefulWidget {
     required this.balanceMinor,
     required this.country,
     required this.provider,
+    this.rampRepository,
     super.key,
   });
+
+  /// Test seam.
+  final RampRepository? rampRepository;
 
   final SupportedCurrency currency;
 
@@ -84,11 +94,36 @@ class _WithdrawAmountScreenState extends State<WithdrawAmountScreen> {
   final TransactionAuthService _authService = const TransactionAuthService();
   bool _authInFlight = false;
 
+  // Price + submit rules (see features/ramp). Injectable for tests.
+  late final RampRepository _ramp = widget.rampRepository ?? RampRepository();
+  late final RampSubmitter _submitter = RampSubmitter(repository: _ramp);
+  late final RampQuoteController _quotes = RampQuoteController(
+    fetch: (amount) {
+      final cur = RampMapping.wireCurrency(widget.currency);
+      return _ramp.quoteOfframp(amount: amount, currency: cur, payoutCurrency: cur);
+    },
+  )..addListener(_onQuoteChanged);
+
+  void _onQuoteChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    _quotes
+      ..removeListener(_onQuoteChanged)
+      ..dispose();
     _destinationPhoneController.dispose();
     super.dispose();
   }
+
+  /// The keypad can leave a trailing dot ("15000."); the API wants a clean decimal.
+  String get _wireAmount => _amount.endsWith('.') ? _amount.substring(0, _amount.length - 1) : _amount;
+
+  void _refreshQuote() => _quotes.setAmount(
+        _wireAmount,
+        valid: _isWithinLimit && !_insufficientBalance,
+      );
 
   // -- Validation -------------------------------------------------------------
 
@@ -113,7 +148,11 @@ class _WithdrawAmountScreenState extends State<WithdrawAmountScreen> {
       _numericAmount > 0 && _numericAmount > widget.balanceMinor;
 
   bool get _canConfirm =>
-      _isWithinLimit && !_insufficientBalance && _destinationPhoneValid;
+      _isWithinLimit &&
+      !_insufficientBalance &&
+      _destinationPhoneValid &&
+      _quotes.quote != null &&
+      !_quotes.loading;
 
   /// Dirty if the user has typed *anything* — either bumped the
   /// amount off the initial `'0'` placeholder or entered a digit in
@@ -168,6 +207,7 @@ class _WithdrawAmountScreenState extends State<WithdrawAmountScreen> {
     );
     if (picked == null) return;
     setState(() => _amount = picked.isEmpty ? '0' : picked);
+    _refreshQuote();
   }
 
   void _onDestinationPhoneChanged(String value) {
@@ -176,53 +216,79 @@ class _WithdrawAmountScreenState extends State<WithdrawAmountScreen> {
     });
   }
 
-  Future<void> _onConfirm() async {
-    if (_authInFlight) return;
-    _authInFlight = true;
-    final messenger = ScaffoldMessenger.of(context);
+  /// `+233201234567` for the typed national number.
+  String? _payeeE164() {
     try {
-      final outcome = await _authService.authenticate(context);
+      final iso = IsoCode.values.firstWhere((c) => c.name.toUpperCase() == widget.country.isoCode);
+      final parsed = PhoneNumber.parse(_destinationPhoneController.text, callerCountry: iso);
+      return parsed.isValid() ? parsed.international : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _onConfirm() async {
+    final quote = _quotes.quote;
+    if (_authInFlight || quote == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
+    final method = RampMapping.paymentMethod(widget.provider);
+    final phone = _payeeE164();
+    void say(String text) => messenger.showSnackBar(
+          SnackBar(content: Text(text), behavior: SnackBarBehavior.floating),
+        );
+    if (method == null) return say(l10n.rampErrorProviderNotSupported);
+    if (phone == null) return;
+
+    _authInFlight = true;
+    try {
+      final result = await _submitter.submitOfframp(
+        quote: quote,
+        requote: _quotes.requote,
+        payoutMethod: method,
+        payeeMsisdn: phone,
+        // Step-up auth — a single 6-digit passcode entry against the server step-up endpoint.
+        stepUp: () => _authService.authenticate(context),
+      );
       if (!mounted) return;
-      switch (outcome) {
-        case TransactionAuthAuthorised(:final txnToken):
-          // TODO(withdraw): call `POST /v1/withdrawals` with the
-          // Idempotency-Key + [txnToken] in
-          // `Options.extra[AuthInterceptor.txnTokenKey]`. Map
-          // response → success / pending / failed outcome. The stub
-          // below goes straight to success so the happy path is
-          // demo-able; flip the constant locally to exercise the
-          // other two outcomes when designing copy.
-          AppLogger.i('withdraw.submit.stub', {
-            'currency': widget.currency.code,
-            'amount': _amount,
-            'provider': widget.provider.id,
-            'country': widget.country.isoCode,
-            'txn_token_len': txnToken.length,
-          });
-          Get.off<void>(
-            () => _WithdrawSuccessScreen(
-              amount: _amount,
-              currency: widget.currency,
-              provider: widget.provider,
+      switch (result) {
+        case RampPlaced(:final order):
+          Get.off<void>(() => RampStatusScreen(order: order, phone: phone));
+        case RampRequoted(:final fresh):
+          // The price changed: show it and let the user decide. Never swapped in silently.
+          final old = _quotes.quote;
+          _quotes.adopt(fresh);
+          if (old != null && !old.differsFrom(fresh)) {
+            // Same numbers under a new quote id: nothing new to confirm. Continue (the passcode
+            // is asked again: the previous single-use token was spent on the rejected attempt).
+            _authInFlight = false;
+            await _onConfirm();
+            return;
+          }
+          final go = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Text(l10n.rampRequoteTitle),
+              content: Text(l10n.rampRequoteBodyPayout(
+                '${MoneyFormat.fromString(fresh.toAmount)} ${RampMapping.displayCurrency(fresh.toCurrency)}',
+                '${MoneyFormat.fromString(fresh.fee)} ${RampMapping.displayCurrency(fresh.fromCurrency)}',
+              )),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.commonCancel)),
+                TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(l10n.rampRequoteContinue)),
+              ],
             ),
           );
-          return;
-        case TransactionAuthCancelled():
-          break;
-        case TransactionAuthLockedOut(:final message):
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text(message),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        case TransactionAuthNetworkError(:final error):
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text(error.title),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          if (go == true && mounted) {
+            _authInFlight = false;
+            await _onConfirm();
+          }
+        case RampCancelled():
+          break; // the user dismissed the passcode sheet: silent reset
+        case RampBlocked(:final message):
+          say(message);
+        case RampFailed(:final error):
+          say(rampErrorText(l10n, error));
       }
     } finally {
       _authInFlight = false;
@@ -313,6 +379,16 @@ class _WithdrawAmountScreenState extends State<WithdrawAmountScreen> {
                                 widget.currency.code,
                                 _formatBalance(widget.balanceMinor),
                               ),
+                            ),
+                          ],
+                          if (_isWithinLimit && !_insufficientBalance) ...[
+                            const SizedBox(height: 16),
+                            RampQuoteCard(
+                              direction: RampDirection.offramp,
+                              quote: _quotes.quote,
+                              loading: _quotes.loading,
+                              failed: _quotes.failed,
+                              onRefresh: _quotes.requote,
                             ),
                           ],
                           const SizedBox(height: 28),
@@ -610,127 +686,3 @@ class _LimitError extends StatelessWidget {
 // lands back on the form with state intact — including the same
 // idempotency key in the auth service — so retries are safe.
 // ---------------------------------------------------------------------------
-
-class _WithdrawSuccessScreen extends StatelessWidget {
-  const _WithdrawSuccessScreen({
-    required this.amount,
-    required this.currency,
-    required this.provider,
-  });
-
-  final String amount;
-  final SupportedCurrency currency;
-  final MomoProvider provider;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return PopScope(
-      canPop: false,
-      child: TransferOutcomeScaffold(
-        glyphColor: const Color(0xFF2BC46A),
-        glyphIcon: Icons.check_rounded,
-        title: l10n.withdrawSuccessTitle,
-        body: TransferOutcomeBody(
-          spans: [
-            TransferOutcomeBody.muted(l10n.withdrawSuccessBodyPrefix),
-            TransferOutcomeBody.bold('${currency.code} $amount'),
-            TransferOutcomeBody.muted(
-              l10n.withdrawSuccessBodySuffix(provider.label),
-            ),
-          ],
-        ),
-        primaryLabel: l10n.withdrawSuccessPrimaryCta,
-        onPrimary: () => Get.until((r) => r.isFirst),
-        secondaryLabel: l10n.withdrawSuccessSecondaryCta,
-        onSecondary: () => Get.until((r) => r.isFirst),
-      ),
-    );
-  }
-}
-
-// ignore: unused_element
-class _WithdrawPendingScreen extends StatelessWidget {
-  const _WithdrawPendingScreen({
-    required this.amount,
-    required this.currency,
-    required this.provider,
-  });
-
-  final String amount;
-  final SupportedCurrency currency;
-  final MomoProvider provider;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return PopScope(
-      canPop: false,
-      child: TransferOutcomeScaffold(
-        glyphColor: const Color(0xFFFFC93D),
-        glyphIcon: Icons.schedule_rounded,
-        title: l10n.withdrawPendingTitle,
-        body: TransferOutcomeBody(
-          spans: [
-            TransferOutcomeBody.muted(l10n.withdrawPendingBodyPrefix),
-            TransferOutcomeBody.bold('${currency.code} $amount'),
-            TransferOutcomeBody.muted(
-              l10n.withdrawPendingBodySuffix(provider.label),
-            ),
-          ],
-        ),
-        primaryLabel: l10n.withdrawPendingPrimaryCta,
-        onPrimary: () => Get.until((r) => r.isFirst),
-        secondaryLabel: l10n.withdrawPendingSecondaryCta,
-        // TODO(withdraw): wire to transaction-detail route once the
-        // backend assigns us a txn id from `/v1/withdrawals` 202.
-        onSecondary: () => Get.until((r) => r.isFirst),
-      ),
-    );
-  }
-}
-
-// ignore: unused_element
-class _WithdrawFailedScreen extends StatelessWidget {
-  const _WithdrawFailedScreen({
-    required this.amount,
-    required this.currency,
-    required this.provider,
-  });
-
-  final String amount;
-  final SupportedCurrency currency;
-  final MomoProvider provider;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return PopScope(
-      canPop: false,
-      child: TransferOutcomeScaffold(
-        glyphColor: const Color(0xFFFF4D2E),
-        glyphIcon: Icons.close_rounded,
-        title: l10n.withdrawFailedTitle,
-        body: TransferOutcomeBody(
-          spans: [
-            TransferOutcomeBody.muted(l10n.withdrawFailedBodyPrefix),
-            TransferOutcomeBody.bold('${currency.code} $amount'),
-            TransferOutcomeBody.muted(
-              l10n.withdrawFailedBodySuffix(provider.label),
-            ),
-          ],
-        ),
-        primaryLabel: l10n.withdrawFailedPrimaryCta,
-        // "Try again": pop just the outcome. The amount form is still
-        // mounted underneath because we used `Get.off` to replace the
-        // amount → outcome route only — the wizard's earlier routes
-        // are untouched. The auth-service's idempotency key is
-        // preserved across the retry so a second tap with the same
-        // (amount, recipient) is server-side idempotent.
-        onPrimary: () => Get.back<void>(),
-        secondaryLabel: l10n.withdrawFailedSecondaryCta,
-        onSecondary: () => Get.until((r) => r.isFirst),
-      ),
-    );
-  }
-}

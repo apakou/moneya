@@ -1092,4 +1092,126 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get passcodeErrorWeak => 'Choose a less predictable passcode.';
+
+  @override
+  String get rampQuoteFeeLabel => 'Fee';
+
+  @override
+  String get rampQuoteTopUpReceiveLabel => 'You\'ll receive';
+
+  @override
+  String get rampQuotePayoutReceiveLabel => 'Recipient gets';
+
+  @override
+  String rampQuoteValidFor(int seconds) {
+    return 'Price valid for ${seconds}s';
+  }
+
+  @override
+  String get rampQuoteExpired => 'Price expired';
+
+  @override
+  String get rampQuoteRefresh => 'Refresh price';
+
+  @override
+  String get rampQuoteError =>
+      'We couldn\'t get a price. Check the amount and try again.';
+
+  @override
+  String get rampRequoteTitle => 'The price changed';
+
+  @override
+  String rampRequoteBody(String amount, String fee) {
+    return 'You\'ll now receive $amount (fee $fee). Continue?';
+  }
+
+  @override
+  String rampRequoteBodyPayout(String amount, String fee) {
+    return 'The recipient will now get $amount (fee $fee). Continue?';
+  }
+
+  @override
+  String get rampRequoteContinue => 'Continue';
+
+  @override
+  String get rampErrorInsufficientFunds =>
+      'You don\'t have enough balance for this.';
+
+  @override
+  String get rampErrorUnavailable =>
+      'Payments are temporarily unavailable. Please try again in a moment.';
+
+  @override
+  String get rampErrorProviderNotSupported =>
+      'This wallet isn\'t available yet.';
+
+  @override
+  String get rampErrorNetwork =>
+      'Connection lost. Try again — you won\'t be charged twice.';
+
+  @override
+  String get rampErrorGeneric => 'Something went wrong. Please try again.';
+
+  @override
+  String get rampTopUpPendingTitle => 'Approve on your phone';
+
+  @override
+  String rampTopUpPendingBody(String amount) {
+    return 'Check your phone and approve the payment of $amount. This screen updates by itself.';
+  }
+
+  @override
+  String get rampTopUpSuccessTitle => 'Top-up complete';
+
+  @override
+  String rampTopUpSuccessBody(String amount) {
+    return '$amount was added to your MoneyA balance.';
+  }
+
+  @override
+  String get rampTopUpFailedTitle => 'Payment not completed';
+
+  @override
+  String get rampTopUpFailedBody =>
+      'The payment was declined or cancelled. You were not charged.';
+
+  @override
+  String get rampTopUpFailedTimeoutBody =>
+      'Your provider didn\'t respond in time. You were not charged.';
+
+  @override
+  String get rampCashOutPendingTitle => 'Sending your money';
+
+  @override
+  String rampCashOutPendingBody(String amount, String phone) {
+    return 'We\'re sending $amount to $phone. This usually takes a few minutes.';
+  }
+
+  @override
+  String get rampCashOutSuccessTitle => 'Money sent';
+
+  @override
+  String rampCashOutSuccessBody(String amount, String phone) {
+    return '$amount was sent to $phone.';
+  }
+
+  @override
+  String get rampCashOutFailedTitle => 'Cash-out failed';
+
+  @override
+  String get rampCashOutFailedBody =>
+      'The money is back in your MoneyA balance.';
+
+  @override
+  String get rampSlowNote =>
+      'This is taking longer than usual. You can leave this screen — we\'ll notify you when it\'s done.';
+
+  @override
+  String get rampDoneCta => 'Done';
+
+  @override
+  String get rampBackHomeCta => 'Go back home';
+
+  @override
+  String get rampTryAgainCta => 'Try again';
 }

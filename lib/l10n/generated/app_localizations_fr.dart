@@ -1104,4 +1104,126 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get passcodeErrorWeak => 'Choisissez un code moins prévisible.';
+
+  @override
+  String get rampQuoteFeeLabel => 'Frais';
+
+  @override
+  String get rampQuoteTopUpReceiveLabel => 'Vous recevrez';
+
+  @override
+  String get rampQuotePayoutReceiveLabel => 'Le bénéficiaire reçoit';
+
+  @override
+  String rampQuoteValidFor(int seconds) {
+    return 'Prix valable $seconds s';
+  }
+
+  @override
+  String get rampQuoteExpired => 'Prix expiré';
+
+  @override
+  String get rampQuoteRefresh => 'Actualiser le prix';
+
+  @override
+  String get rampQuoteError =>
+      'Impossible d\'obtenir un prix. Vérifiez le montant et réessayez.';
+
+  @override
+  String get rampRequoteTitle => 'Le prix a changé';
+
+  @override
+  String rampRequoteBody(String amount, String fee) {
+    return 'Vous recevrez désormais $amount (frais $fee). Continuer ?';
+  }
+
+  @override
+  String rampRequoteBodyPayout(String amount, String fee) {
+    return 'Le bénéficiaire recevra désormais $amount (frais $fee). Continuer ?';
+  }
+
+  @override
+  String get rampRequoteContinue => 'Continuer';
+
+  @override
+  String get rampErrorInsufficientFunds =>
+      'Votre solde est insuffisant pour cette opération.';
+
+  @override
+  String get rampErrorUnavailable =>
+      'Les paiements sont temporairement indisponibles. Réessayez dans un instant.';
+
+  @override
+  String get rampErrorProviderNotSupported =>
+      'Ce portefeuille n\'est pas encore disponible.';
+
+  @override
+  String get rampErrorNetwork =>
+      'Connexion perdue. Réessayez — vous ne serez pas débité deux fois.';
+
+  @override
+  String get rampErrorGeneric => 'Une erreur est survenue. Veuillez réessayer.';
+
+  @override
+  String get rampTopUpPendingTitle => 'Validez sur votre téléphone';
+
+  @override
+  String rampTopUpPendingBody(String amount) {
+    return 'Vérifiez votre téléphone et validez le paiement de $amount. Cet écran se met à jour tout seul.';
+  }
+
+  @override
+  String get rampTopUpSuccessTitle => 'Rechargement effectué';
+
+  @override
+  String rampTopUpSuccessBody(String amount) {
+    return '$amount ont été ajoutés à votre solde MoneyA.';
+  }
+
+  @override
+  String get rampTopUpFailedTitle => 'Paiement non abouti';
+
+  @override
+  String get rampTopUpFailedBody =>
+      'Le paiement a été refusé ou annulé. Vous n\'avez pas été débité.';
+
+  @override
+  String get rampTopUpFailedTimeoutBody =>
+      'Votre opérateur n\'a pas répondu à temps. Vous n\'avez pas été débité.';
+
+  @override
+  String get rampCashOutPendingTitle => 'Envoi de votre argent';
+
+  @override
+  String rampCashOutPendingBody(String amount, String phone) {
+    return 'Nous envoyons $amount au $phone. Cela prend généralement quelques minutes.';
+  }
+
+  @override
+  String get rampCashOutSuccessTitle => 'Argent envoyé';
+
+  @override
+  String rampCashOutSuccessBody(String amount, String phone) {
+    return '$amount ont été envoyés au $phone.';
+  }
+
+  @override
+  String get rampCashOutFailedTitle => 'Retrait échoué';
+
+  @override
+  String get rampCashOutFailedBody =>
+      'Votre argent est revenu sur votre solde MoneyA.';
+
+  @override
+  String get rampSlowNote =>
+      'C\'est plus long que d\'habitude. Vous pouvez quitter cet écran — nous vous préviendrons.';
+
+  @override
+  String get rampDoneCta => 'Terminé';
+
+  @override
+  String get rampBackHomeCta => 'Retour à l\'accueil';
+
+  @override
+  String get rampTryAgainCta => 'Réessayer';
 }
