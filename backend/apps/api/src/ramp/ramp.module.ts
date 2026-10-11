@@ -1,13 +1,22 @@
 import { Module } from '@nestjs/common';
+import { LedgerService } from '@moneya/ledger';
 import { SimulatedRampProvider, type RampProvider } from '@moneya/ramp';
 import { randomBytes } from 'node:crypto';
-
-export const RAMP_PROVIDER = Symbol('RAMP_PROVIDER');
+import { Pool } from 'pg';
+import { loadPricing } from './pricing';
+import {
+  RAMP_POOL,
+  RAMP_PRICING,
+  RAMP_PROVIDER,
+  RAMP_SETTLEMENT,
+  RampOrdersService,
+  type SettlementPort,
+} from './ramp-orders.service';
 
 /**
- * RAMP_PROVIDER=simulated (default outside production). A real adapter
- * (decision D2, pending RMP-00) plugs in here and must pass the contract suite
- * in packages/ramp/test/contract.ts. The simulator is refused in production.
+ * RAMP_PROVIDER=simulated (default outside production). A real adapter (decision D2,
+ * pending RMP-00) plugs in here and must pass the contract suite in
+ * packages/ramp/test/contract.ts. The simulator is refused in production.
  */
 export function createRampProvider(env: NodeJS.ProcessEnv = process.env): RampProvider {
   const kind = env.RAMP_PROVIDER ?? (env.NODE_ENV === 'production' ? '' : 'simulated');
@@ -21,8 +30,38 @@ export function createRampProvider(env: NodeJS.ProcessEnv = process.env): RampPr
   throw new Error('RAMP_PROVIDER must be "simulated" (no real adapter exists yet)');
 }
 
+/** Dev/staging only: treats the treasury as paid as soon as the collection succeeds. */
+export class SimulatedSettlement implements SettlementPort {
+  confirm(order: { expectedAmount: string }): Promise<string | null> {
+    return Promise.resolve(order.expectedAmount);
+  }
+}
+
 @Module({
-  providers: [{ provide: RAMP_PROVIDER, useFactory: () => createRampProvider() }],
-  exports: [RAMP_PROVIDER],
+  providers: [
+    {
+      provide: RAMP_POOL,
+      useFactory: () => {
+        if (!process.env.DATABASE_URL && process.env.NODE_ENV === 'production') {
+          throw new Error('DATABASE_URL is required in production');
+        }
+        return new Pool({ connectionString: process.env.DATABASE_URL, max: 10 }); // connects lazily
+      },
+    },
+    { provide: RAMP_PROVIDER, useFactory: () => createRampProvider() },
+    { provide: RAMP_PRICING, useFactory: () => loadPricing() },
+    {
+      provide: RAMP_SETTLEMENT,
+      // Production gets the real matcher (STL-05); until then top-ups cannot complete there.
+      useFactory: () => (process.env.NODE_ENV === 'production' ? null : new SimulatedSettlement()),
+    },
+    {
+      provide: LedgerService,
+      useFactory: (pool: Pool) => new LedgerService(pool),
+      inject: [RAMP_POOL],
+    },
+    RampOrdersService,
+  ],
+  exports: [RampOrdersService, RAMP_PROVIDER],
 })
 export class RampModule {}

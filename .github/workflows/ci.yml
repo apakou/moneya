@@ -106,7 +106,7 @@ jobs:
           for f in docs/backend/migrations/*.sql; do
             echo "== $f (single transaction)"; psql -h localhost -U postgres -d moneya_ci -v ON_ERROR_STOP=1 -1 -f "$f"
           done
-          for f in 0002_state_machine 0003_stellar_chain 0004_auth_sessions 0005_ledger_global_accounts 0006_auth_store_fit; do
+          for f in 0002_state_machine 0003_stellar_chain 0004_auth_sessions 0005_ledger_global_accounts 0006_auth_store_fit 0007_quotes_fiat; do
             echo "== re-apply $f (idempotent)"
             psql -h localhost -U postgres -d moneya_ci -v ON_ERROR_STOP=1 -1 -f "docs/backend/migrations/$f.sql"
           done

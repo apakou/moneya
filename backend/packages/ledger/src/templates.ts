@@ -4,11 +4,13 @@ import { JournalInvalidError, type Journal } from './types';
 
 /**
  * Journal templates (ledger.md §4) under ADR 0001 D7: user balances, escrow and
- * fees are all in the user's fiat currency. A single-currency journal here;
- * cross-currency conversion journals (ramps) arrive with M6/M7.
+ * fees are all in the user's fiat currency. Cross-user templates are single-currency.
  *
- * Ramp templates (§4.2 onramp, §4.3 offramp) are intentionally NOT here: they
- * depend on the provider integration (RMP-00) and the D7 conversion design.
+ * Ramp templates (below) replace the Solana/Yellow-Card ones in ledger.md §4.2/4.3.
+ * Under D7 (ADR 0001) user balances/fees are fiat; the treasury (MONEYA_HOT_WALLET)
+ * is in the settlement unit; FX_POSITION accounts (one per currency) are the
+ * counterparty of every conversion, so each currency balances on its own. Net
+ * treasury exposure = treasury balance vs the sum of user balances at the current rate.
  */
 
 const wallet = (userId: string, currency: string) => ({
@@ -16,10 +18,13 @@ const wallet = (userId: string, currency: string) => ({
   userId,
   currency,
 });
-const global = (kind: 'FEE_REVENUE' | 'MONEYA_ESCROW' | 'SUSPENSE', currency: string) => ({
-  kind,
-  currency,
-});
+const global = (
+  kind: 'FEE_REVENUE' | 'MONEYA_ESCROW' | 'SUSPENSE' | 'FX_POSITION' | 'MONEYA_HOT_WALLET',
+  currency: string,
+) => ({ kind, currency });
+
+/** Internal settlement unit of the treasury. Never shown to users (plan §1.1). */
+export const SETTLEMENT_UNIT = 'USDC';
 
 function requirePositive(amount: string, fee = '0'): void {
   if (!isPositive(amount)) throw new JournalInvalidError('amount must be > 0');
@@ -163,6 +168,173 @@ export function reconciliationAdjustment(p: {
         amount: negate(p.delta),
         memo: `Recon adj ${p.incidentId}`,
       },
+    ],
+  };
+}
+
+// ----- Ramps (D7) ---------------------------------------------------------------------
+
+function requireSettlement(settlementAmount: string): void {
+  if (!isPositive(settlementAmount)) throw new JournalInvalidError('settlementAmount must be > 0');
+}
+
+/**
+ * Top-up settled (fiat collected AND the treasury's settlement confirmed). Nothing is posted
+ * earlier: the ledger records only confirmed settlement. The user is credited fiat net of fee.
+ *
+ *   fiat:       user +(X-F)   fee +F   FX_POSITION(fiat) -X
+ *   settlement: treasury +S   FX_POSITION(settlement) -S
+ */
+export function onrampSettle(p: {
+  orderId: string;
+  userId: string;
+  currency: string;
+  /** Fiat the user paid (X). */
+  fiatAmount: string;
+  /** All-in fee in the same fiat (F), may be 0 but < X. */
+  fee: string;
+  /** Settlement-unit amount received by the treasury (S). */
+  settlementAmount: string;
+}): Journal {
+  requirePositive(p.fiatAmount, p.fee);
+  requireSettlement(p.settlementAmount);
+  const credit = add(p.fiatAmount, negate(p.fee));
+  if (!isPositive(credit)) throw new JournalInvalidError('fee must be smaller than the amount');
+  const entries: Journal['entries'] = [
+    {
+      account: wallet(p.userId, p.currency),
+      amount: credit,
+      memo: `Top-up ${p.fiatAmount} ${p.currency}`,
+    },
+    {
+      account: global('FX_POSITION', p.currency),
+      amount: negate(p.fiatAmount),
+      memo: `Top-up, order ${p.orderId}`,
+    },
+    {
+      account: global('MONEYA_HOT_WALLET', SETTLEMENT_UNIT),
+      amount: p.settlementAmount,
+      memo: `Settlement in, order ${p.orderId}`,
+    },
+    {
+      account: global('FX_POSITION', SETTLEMENT_UNIT),
+      amount: negate(p.settlementAmount),
+      memo: `Top-up, order ${p.orderId}`,
+    },
+  ];
+  if (isPositive(p.fee)) {
+    entries.push({
+      account: global('FEE_REVENUE', p.currency),
+      amount: p.fee,
+      memo: `Top-up fee, order ${p.orderId}`,
+    });
+  }
+  return {
+    journalId: journalIdFor(`ONRAMP_ORDER:${p.orderId}:SETTLE`),
+    ref: { refType: 'ONRAMP_ORDER', refId: p.orderId },
+    entries,
+  };
+}
+
+/** Cash-out requested: the full debit (Y, fee included) leaves the user's balance and waits in SUSPENSE. */
+export function offrampHold(p: {
+  orderId: string;
+  userId: string;
+  currency: string;
+  amount: string;
+}): Journal {
+  requirePositive(p.amount);
+  return {
+    journalId: journalIdFor(`OFFRAMP_ORDER:${p.orderId}:HOLD`),
+    ref: { refType: 'OFFRAMP_ORDER', refId: p.orderId },
+    entries: [
+      {
+        account: wallet(p.userId, p.currency),
+        amount: negate(p.amount),
+        memo: `Cash-out, order ${p.orderId}`,
+      },
+      {
+        account: global('SUSPENSE', p.currency),
+        amount: p.amount,
+        memo: `Cash-out hold, order ${p.orderId}`,
+      },
+    ],
+  };
+}
+
+/**
+ * Cash-out paid out by the provider: the hold is released, the fee is earned and the
+ * treasury pays the settlement unit.
+ *
+ *   fiat:       SUSPENSE -Y   FX_POSITION(fiat) +(Y-F)   fee +F
+ *   settlement: treasury -S   FX_POSITION(settlement) +S
+ */
+export function offrampSettle(p: {
+  orderId: string;
+  currency: string;
+  /** Total debited from the user (Y). */
+  amount: string;
+  fee: string;
+  settlementAmount: string;
+}): Journal {
+  requirePositive(p.amount, p.fee);
+  requireSettlement(p.settlementAmount);
+  const net = add(p.amount, negate(p.fee));
+  if (!isPositive(net)) throw new JournalInvalidError('fee must be smaller than the amount');
+  const entries: Journal['entries'] = [
+    {
+      account: global('SUSPENSE', p.currency),
+      amount: negate(p.amount),
+      memo: `Cash-out settled, order ${p.orderId}`,
+    },
+    {
+      account: global('FX_POSITION', p.currency),
+      amount: net,
+      memo: `Cash-out, order ${p.orderId}`,
+    },
+    {
+      account: global('MONEYA_HOT_WALLET', SETTLEMENT_UNIT),
+      amount: negate(p.settlementAmount),
+      memo: `Settlement out, order ${p.orderId}`,
+    },
+    {
+      account: global('FX_POSITION', SETTLEMENT_UNIT),
+      amount: p.settlementAmount,
+      memo: `Cash-out, order ${p.orderId}`,
+    },
+  ];
+  if (isPositive(p.fee)) {
+    entries.push({
+      account: global('FEE_REVENUE', p.currency),
+      amount: p.fee,
+      memo: `Cash-out fee, order ${p.orderId}`,
+    });
+  }
+  return {
+    journalId: journalIdFor(`OFFRAMP_ORDER:${p.orderId}:SETTLE`),
+    ref: { refType: 'OFFRAMP_ORDER', refId: p.orderId },
+    entries,
+  };
+}
+
+/** Cash-out failed at the provider: the user gets the full amount back, fee included. */
+export function offrampRefund(p: {
+  orderId: string;
+  userId: string;
+  currency: string;
+  amount: string;
+}): Journal {
+  requirePositive(p.amount);
+  return {
+    journalId: journalIdFor(`OFFRAMP_ORDER:${p.orderId}:REFUND`),
+    ref: { refType: 'OFFRAMP_ORDER', refId: p.orderId },
+    entries: [
+      {
+        account: global('SUSPENSE', p.currency),
+        amount: negate(p.amount),
+        memo: `Cash-out reversed, order ${p.orderId}`,
+      },
+      { account: wallet(p.userId, p.currency), amount: p.amount, memo: 'Cash-out refunded' },
     ],
   };
 }
