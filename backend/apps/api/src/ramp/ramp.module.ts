@@ -2,7 +2,8 @@ import { Inject, Injectable, Module, OnModuleDestroy } from '@nestjs/common';
 import { LedgerService } from '@moneya/ledger';
 import { SimulatedRampProvider, type RampProvider } from '@moneya/ramp';
 import { randomBytes } from 'node:crypto';
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
+import { createPool } from '../common/db';
 import { AuthModule } from '../auth/auth.module';
 import { IDEMPOTENCY_POOL, IdempotencyService } from '../common/idempotency.service';
 import { RampController, RampWebhookController } from './ramp.controller';
@@ -60,7 +61,7 @@ export class RampPoolLifecycle implements OnModuleDestroy {
         if (!process.env.DATABASE_URL && process.env.NODE_ENV === 'production') {
           throw new Error('DATABASE_URL is required in production');
         }
-        return new Pool({ connectionString: process.env.DATABASE_URL, max: 10 }); // connects lazily
+        return createPool(); // connects lazily
       },
     },
     { provide: RAMP_PROVIDER, useFactory: () => createRampProvider() },

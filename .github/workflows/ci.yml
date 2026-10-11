@@ -99,6 +99,8 @@ jobs:
       PGPASSWORD: postgres
     steps:
       - uses: actions/checkout@v4
+      - name: supabase/migrations is in sync with docs/backend/migrations
+        run: python3 scripts/sync_supabase_migrations.py --check
       - name: Apply migrations on a clean database (Supabase `auth.uid()` shimmed)
         run: |
           psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "create database moneya_ci"

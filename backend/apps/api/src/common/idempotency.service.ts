@@ -47,40 +47,43 @@ export class IdempotencyService {
     const hash = createHash('sha256').update(canonical(body)).digest('hex');
     const client = await this.pool.connect();
     try {
-      await client.query('SELECT pg_advisory_lock(hashtextextended($1, 0))', [
+      // Transaction-scoped lock (not session-scoped): it is released by COMMIT/ROLLBACK on the very
+      // connection that took it, so it stays correct behind a transaction-mode pooler (Supabase's
+      // port 6543) and can never leak if something throws.
+      await client.query('BEGIN');
+      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
         `${userId}|${route}|${key}`,
       ]);
-      try {
-        const { rows } = await client.query(
-          `SELECT request_hash, response_status, response_body FROM app.idempotency_keys
-            WHERE user_id = $1 AND route = $2 AND key = $3 AND expires_at > now()`,
-          [userId, route, key],
-        );
-        if (rows[0]) {
-          if (rows[0].request_hash !== hash) {
-            throw new ApiProblem(
-              422,
-              'IDEMPOTENCY_KEY_REUSED',
-              'This Idempotency-Key was used with a different request',
-            );
-          }
-          return { status: rows[0].response_status as number, body: rows[0].response_body as T };
+      const { rows } = await client.query(
+        `SELECT request_hash, response_status, response_body FROM app.idempotency_keys
+          WHERE user_id = $1 AND route = $2 AND key = $3 AND expires_at > now()`,
+        [userId, route, key],
+      );
+      if (rows[0]) {
+        if (rows[0].request_hash !== hash) {
+          throw new ApiProblem(
+            422,
+            'IDEMPOTENCY_KEY_REUSED',
+            'This Idempotency-Key was used with a different request',
+          );
         }
-        const result = await fn();
-        await client.query(
-          `INSERT INTO app.idempotency_keys (user_id, route, key, request_hash, response_status, response_body)
-           VALUES ($1,$2,$3,$4,$5,$6)
-           ON CONFLICT (user_id, route, key) DO UPDATE
-             SET request_hash = EXCLUDED.request_hash, response_status = EXCLUDED.response_status,
-                 response_body = EXCLUDED.response_body, created_at = now(), expires_at = now() + interval '24 hours'`,
-          [userId, route, key, hash, status, JSON.stringify(result)],
-        );
-        return { status, body: result };
-      } finally {
-        await client.query('SELECT pg_advisory_unlock(hashtextextended($1, 0))', [
-          `${userId}|${route}|${key}`,
-        ]);
+        await client.query('COMMIT');
+        return { status: rows[0].response_status as number, body: rows[0].response_body as T };
       }
+      const result = await fn(); // runs on other pool connections; the lock keeps duplicates waiting
+      await client.query(
+        `INSERT INTO app.idempotency_keys (user_id, route, key, request_hash, response_status, response_body)
+         VALUES ($1,$2,$3,$4,$5,$6)
+         ON CONFLICT (user_id, route, key) DO UPDATE
+           SET request_hash = EXCLUDED.request_hash, response_status = EXCLUDED.response_status,
+               response_body = EXCLUDED.response_body, created_at = now(), expires_at = now() + interval '24 hours'`,
+        [userId, route, key, hash, status, JSON.stringify(result)],
+      );
+      await client.query('COMMIT');
+      return { status, body: result };
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw err;
     } finally {
       client.release();
     }

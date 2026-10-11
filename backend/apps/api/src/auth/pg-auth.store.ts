@@ -1,5 +1,6 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
+import { createPool } from '../common/db';
 import type {
   AuthStore,
   KycTier,
@@ -18,7 +19,7 @@ export class PgAuthStore implements AuthStore, OnModuleDestroy {
   constructor(private readonly pool: Pool) {}
 
   static fromUrl(connectionString: string): PgAuthStore {
-    return new PgAuthStore(new Pool({ connectionString, max: 10 }));
+    return new PgAuthStore(createPool({ ...process.env, DATABASE_URL: connectionString }));
   }
 
   async onModuleDestroy(): Promise<void> {
