@@ -106,11 +106,11 @@ export class InMemoryAuthStore implements AuthStore {
     this.passcodes.set(userId, { userId, hash, failedAttempts: 0, lockedUntil: null });
     return Promise.resolve();
   }
-  recordPasscodeFailure(userId: string, lockedUntil: Date | null) {
+  recordPasscodeFailure(userId: string, maxFailures: number, lockedUntil: Date) {
     const p = this.passcodes.get(userId);
     if (!p) return Promise.resolve(0);
     p.failedAttempts += 1;
-    if (lockedUntil) p.lockedUntil = lockedUntil;
+    if (p.failedAttempts >= maxFailures) p.lockedUntil = lockedUntil;
     return Promise.resolve(p.failedAttempts);
   }
   resetPasscodeFailures(userId: string) {

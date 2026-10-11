@@ -56,6 +56,7 @@ jobs:
     env:
       PGPASSWORD: postgres
       LEDGER_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/moneya_ledger_test
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/moneya_ledger_test
     defaults:
       run:
         working-directory: backend
@@ -105,7 +106,7 @@ jobs:
           for f in docs/backend/migrations/*.sql; do
             echo "== $f (single transaction)"; psql -h localhost -U postgres -d moneya_ci -v ON_ERROR_STOP=1 -1 -f "$f"
           done
-          for f in 0002_state_machine 0003_stellar_chain 0004_auth_sessions 0005_ledger_global_accounts; do
+          for f in 0002_state_machine 0003_stellar_chain 0004_auth_sessions 0005_ledger_global_accounts 0006_auth_store_fit; do
             echo "== re-apply $f (idempotent)"
             psql -h localhost -U postgres -d moneya_ci -v ON_ERROR_STOP=1 -1 -f "docs/backend/migrations/$f.sql"
           done

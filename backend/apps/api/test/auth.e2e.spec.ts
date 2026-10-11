@@ -1,5 +1,8 @@
 import { Controller, INestApplication, Module, Post, UseGuards } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { randomInt } from 'node:crypto';
+import { AUTH_STORE } from '../src/auth/auth.store';
+import { PgAuthStore } from '../src/auth/pg-auth.store';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { AuthModule } from '../src/auth/auth.module';
@@ -19,17 +22,26 @@ class MoneyProbe {
 @Module({ imports: [AuthModule], controllers: [MoneyProbe] })
 class ProbeModule {}
 
-const PHONE = '+22890123456';
+let PHONE = '+22890123456';
 const DEVICE = '3f8c1d2e-5a4b-4c6d-8e7f-0a1b2c3d4e5f';
 const OTHER_DEVICE = '9b2e7a10-1c3d-4e5f-8a6b-7c8d9e0f1a2b';
 
-describe('auth (M1)', () => {
+const dbUrl = process.env.TEST_DATABASE_URL ?? process.env.LEDGER_TEST_DATABASE_URL;
+
+// The same suite runs on the in-memory store always, and on PostgreSQL when a database is provided.
+const stores: [string, string | undefined][] = [['in-memory store', undefined]];
+if (dbUrl) stores.push(['PostgreSQL store', dbUrl]);
+
+describe.each(stores)('auth (M1) — %s', (_label, url) => {
   let app: INestApplication;
   let sms: FakeSmsProvider;
   const http = () => request(app.getHttpServer());
 
   beforeEach(async () => {
-    const mod = await Test.createTestingModule({ imports: [AppModule, ProbeModule] })
+    PHONE = `+22890${String(randomInt(0, 1_000_000)).padStart(6, '0')}`; // fresh user per test
+    let builder = Test.createTestingModule({ imports: [AppModule, ProbeModule] });
+    if (url) builder = builder.overrideProvider(AUTH_STORE).useValue(PgAuthStore.fromUrl(url));
+    const mod = await builder
       .overrideProvider(AUTH_CONFIG)
       .useValue({ ...loadAuthConfig(), argon2: { memoryCost: 1024, timeCost: 2, parallelism: 1 } })
       .compile();

@@ -280,10 +280,10 @@ export class AuthService {
       });
     }
     if (!(await argon2.verify(row.hash, passcode))) {
-      const lock = row.failedAttempts + 1 >= this.cfg.passcodeMaxFailures;
       await this.store.recordPasscodeFailure(
         userId,
-        lock ? new Date(now.getTime() + this.cfg.passcodeLockoutSeconds * 1000) : null,
+        this.cfg.passcodeMaxFailures,
+        new Date(now.getTime() + this.cfg.passcodeLockoutSeconds * 1000),
       );
       throw passcodeInvalid();
     }

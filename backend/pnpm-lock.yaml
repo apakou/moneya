@@ -80,6 +80,9 @@ importers:
       libphonenumber-js:
         specifier: ^1.13.15
         version: 1.13.15
+      pg:
+        specifier: ^8.13.1
+        version: 8.23.1
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -90,6 +93,9 @@ importers:
       '@types/express':
         specifier: ^5.0.6
         version: 5.0.6
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.23.1
 
   packages/chain:
     dependencies:

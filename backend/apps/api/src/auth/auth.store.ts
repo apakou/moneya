@@ -77,7 +77,8 @@ export interface AuthStore {
 
   getPasscode(userId: string): Promise<PasscodeRow | null>;
   setPasscode(userId: string, hash: string): Promise<void>;
-  recordPasscodeFailure(userId: string, lockedUntil: Date | null): Promise<number>;
+  /** Atomically increments the failure count; sets `lockedUntil` when the new count reaches `maxFailures`. */
+  recordPasscodeFailure(userId: string, maxFailures: number, lockedUntil: Date): Promise<number>;
   resetPasscodeFailures(userId: string): Promise<void>;
 
   insertTxnToken(row: TxnTokenRow): Promise<void>;
