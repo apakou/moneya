@@ -6,6 +6,7 @@ module.exports = {
   transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] },
   moduleNameMapper: {
     '^@moneya/chain$': '<rootDir>/packages/chain/src/index.ts',
+    '^@moneya/ramp$': '<rootDir>/packages/ramp/src/index.ts',
     '^@moneya/ledger$': '<rootDir>/packages/ledger/src/index.ts',
     '^@moneya/invisibility$': '<rootDir>/packages/invisibility/src/index.ts',
   },

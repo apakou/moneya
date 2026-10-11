@@ -5,6 +5,7 @@ import { AuthGuard, TxnTokenGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import { AUTH_STORE } from './auth.store';
 import { InMemoryAuthStore } from './in-memory-auth.store';
+import { createSmsProvider } from './sms.factory';
 import { FakeSmsProvider, SMS_PROVIDER } from './sms.provider';
 
 const prodGuard = (what: string): never => {
@@ -28,8 +29,7 @@ const prodGuard = (what: string): never => {
     FakeSmsProvider,
     {
       provide: SMS_PROVIDER,
-      useFactory: (fake: FakeSmsProvider) =>
-        process.env.NODE_ENV === 'production' ? prodGuard('SMS_PROVIDER') : fake,
+      useFactory: (fake: FakeSmsProvider) => createSmsProvider(process.env, fake),
       inject: [FakeSmsProvider],
     },
   ],
