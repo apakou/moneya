@@ -1,3 +1,7 @@
 # Reviewed exceptions for scripts/lint_copy.py, one per line:
 #   <repo-relative-path>::<exact literal or arb value>
 # Every entry needs a reason comment above it and a reviewer's sign-off in the PR.
+
+# The balance endpoint is named `GET /v1/wallet` in docs/backend/openapi.yaml (operationId getWallet). It is an
+# API path, never rendered to the user and carrying no asset or chain information.
+lib/features/account/data/account_repository.dart::/v1/wallet

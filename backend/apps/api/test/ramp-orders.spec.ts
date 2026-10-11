@@ -40,7 +40,9 @@ describe('quote math', () => {
     expect(convertAmount(pricing, '5000', 'XOF', 'GHS')).toBe('129.16'); // 129.1666… → 2 dp down
     expect(convertAmount(pricing, '12.5', 'GHS', 'GHS')).toBe('12.5');
     expect(convertAmount(pricing, '0', 'GHS', 'XOF')).toBe('0');
-    expect(() => convertAmount({ rates: { GHS: '15.5' }, feeBps: 150 }, '1', 'GHS', 'XOF')).toThrow();
+    expect(() =>
+      convertAmount({ rates: { GHS: '15.5' }, feeBps: 150 }, '1', 'GHS', 'XOF'),
+    ).toThrow();
   });
   it('rejects dust and unknown currencies', () => {
     expect(() => priceOnramp(pricing, 'GHS', '0.01')).toThrow(RangeError);

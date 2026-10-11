@@ -10,6 +10,7 @@ import '../../../../core/widgets/back_chevron_button.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../favorites/presentation/screens/favorites_screen.dart';
 import '../../../splash/presentation/screens/splash_screen.dart';
+import '../../../account/data/account_controller.dart';
 import '../../domain/user_profile.dart';
 import 'settings_screen.dart';
 
@@ -44,7 +45,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Local state retained for the avatar/photo flow only — personal
   // info itself is read-only and sourced from the mock until backend
   // lookup lands.
-  final UserProfile _user = kMockUser;
+  // The signed-in user's real profile; the mock only backs the dev bypass (no session).
+  late final UserProfile _user = Get.isRegistered<SessionController>() &&
+          Get.find<SessionController>().sessionRx.value != null
+      ? UserProfile.fromSession(Get.find<SessionController>().sessionRx.value!)
+      : kMockUser;
 
   void _onChangePhoto() => AppLogger.i('profile.change_photo.tap', const {});
   void _onReferAndEarn() => AppLogger.i('profile.refer_and_earn.tap', const {});
@@ -99,6 +104,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // for correctness (refresh tokens self-expire) and we'd rather
     // not ship a half-wired call.
     AppLogger.i('logout.confirmed', const {});
+    if (Get.isRegistered<AccountController>()) Get.find<AccountController>().clear();
     await Get.find<SessionController>().clear();
     await Get.find<AppPrefs>().clear();
     Get.offAll<void>(() => const SplashScreen());

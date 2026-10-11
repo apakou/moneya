@@ -124,7 +124,7 @@ class AccountController extends GetxService {
         walletState.value = LoadState.ready;
       case Failure():
         walletState.value = LoadState.error;
-        _logFailure('wallet', result);
+        _logFailure('balance', result);
     }
   }
 

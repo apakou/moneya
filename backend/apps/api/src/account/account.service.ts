@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { fromMicro, LedgerService, toMicro } from '@moneya/ledger';
 import type { Pool } from 'pg';
 import { ApiProblem } from '../common/problem';
+import { homeCurrency } from '../common/currency';
 import { AUTH_STORE, type AuthStore } from '../auth/auth.store';
 import { RAMP_POOL, RAMP_PRICING } from '../ramp/ramp-orders.service';
 import { convertAmount, UnsupportedCurrencyError, type PricingConfig } from '../ramp/pricing';
@@ -9,27 +10,6 @@ import { convertAmount, UnsupportedCurrencyError, type PricingConfig } from '../
 /** Fiat currencies the ledger holds user balances in (one wallet account per currency). */
 export const WALLET_CURRENCIES = ['XOF', 'XAF', 'NGN', 'GHS', 'KES'] as const;
 export type WalletCurrency = (typeof WALLET_CURRENCIES)[number];
-
-/** A user's home currency, from the country their phone number belongs to. */
-const HOME_CURRENCY: Record<string, WalletCurrency> = {
-  TG: 'XOF',
-  SN: 'XOF',
-  CI: 'XOF',
-  ML: 'XOF',
-  BF: 'XOF',
-  BJ: 'XOF',
-  NE: 'XOF',
-  GW: 'XOF',
-  CM: 'XAF',
-  GA: 'XAF',
-  CG: 'XAF',
-  TD: 'XAF',
-  CF: 'XAF',
-  GQ: 'XAF',
-  NG: 'NGN',
-  GH: 'GHS',
-  KE: 'KES',
-};
 
 export type TransactionKind = 'TOP_UP' | 'CASH_OUT';
 export type TransactionStatus = 'PENDING' | 'COMPLETED' | 'FAILED';
@@ -132,7 +112,11 @@ export class AccountService {
       return fromMicro(total);
     } catch (e) {
       if (e instanceof UnsupportedCurrencyError)
-        throw new ApiProblem(503, 'RATES_UNAVAILABLE', 'Exchange rates are temporarily unavailable');
+        throw new ApiProblem(
+          503,
+          'RATES_UNAVAILABLE',
+          'Exchange rates are temporarily unavailable',
+        );
       throw e;
     }
   }
@@ -186,9 +170,9 @@ export class AccountService {
   // ----- input helpers ---------------------------------------------------------------------
 
   private homeCurrency(country: string): WalletCurrency {
-    const c = HOME_CURRENCY[country];
+    const c = homeCurrency(country);
     if (!c) throw new ApiProblem(400, 'UNSUPPORTED_COUNTRY', 'Your country is not supported yet');
-    return c;
+    return this.currency(c);
   }
   private currency(v: unknown): WalletCurrency {
     if (typeof v !== 'string' || !(WALLET_CURRENCIES as readonly string[]).includes(v))
