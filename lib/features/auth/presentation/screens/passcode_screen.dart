@@ -25,11 +25,7 @@ enum PasscodeMode { set, confirm }
 /// passcode against [PasscodePolicy] (set mode) or against the originally
 /// entered code (confirm mode).
 class PasscodeScreen extends StatefulWidget {
-  const PasscodeScreen({
-    super.key,
-    required this.mode,
-    this.expectedCode,
-  });
+  const PasscodeScreen({super.key, required this.mode, this.expectedCode});
 
   static const String setRoutePath = '/auth/set-passcode';
   static const String confirmRoutePath = '/auth/confirm-passcode';
@@ -65,10 +61,7 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
       PasscodePolicy.length,
       (_) => TextEditingController(),
     );
-    _focusNodes = List.generate(
-      PasscodePolicy.length,
-      (_) => FocusNode(),
-    );
+    _focusNodes = List.generate(PasscodePolicy.length, (_) => FocusNode());
     for (final c in _controllers) {
       c.addListener(_onAnyChange);
     }
@@ -135,10 +128,11 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
         return;
       }
       Get.to<void>(
-        () => PasscodeScreen(
-          mode: PasscodeMode.confirm,
-          expectedCode: code,
-        ),
+        () => PasscodeScreen(mode: PasscodeMode.confirm, expectedCode: code),
+        // The confirm step is the same widget type as the current route, and
+        // GetX names closure routes by runtimeType, so the default
+        // preventDuplicates would swallow this push silently.
+        preventDuplicates: false,
       );
       return;
     }
@@ -169,7 +163,9 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
       case Success():
         await _enrollBiometricThenAdvance();
       case Failure(:final error):
-        setState(() => _error = authErrorText(AppLocalizations.of(context), error));
+        setState(
+          () => _error = authErrorText(AppLocalizations.of(context), error),
+        );
         _clearAndRefocus();
     }
   }
@@ -351,7 +347,8 @@ class _PasscodeScreenState extends State<PasscodeScreen> {
 // Pieces
 // ---------------------------------------------------------------------------
 
-/// Centered row of 6 small square passcode boxes (48dp, 8dp gaps).
+/// Centered row of 6 passcode boxes, sized to match the OTP boxes on the
+/// verify-phone screen (56dp wide, 12dp taller, 8dp gaps).
 class _PasscodeBoxes extends StatelessWidget {
   const _PasscodeBoxes({
     required this.controllers,
@@ -364,11 +361,10 @@ class _PasscodeBoxes extends StatelessWidget {
   final List<FocusNode> focusNodes;
   final void Function(int index, String value) onChanged;
   final KeyEventResult Function(int index, FocusNode node, KeyEvent event)
-      onKey;
+  onKey;
 
-  /// Preferred box size / gap; shrinks (never overflows) on narrow phones
-  /// (6 x 48 + 5 x 8 = 328dp does not fit a 320dp-wide screen).
-  static const double _maxBox = 48;
+  /// Preferred box size / gap; shrinks (never overflows) on narrow phones.
+  static const double _maxBox = 56;
   static const double _gap = 8;
 
   @override
@@ -377,7 +373,7 @@ class _PasscodeBoxes extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final fit = (constraints.maxWidth - _gap * (n - 1)) / n;
-        final box = fit.clamp(34.0, _maxBox);
+        final box = fit.clamp(36.0, _maxBox);
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(n, (i) {
@@ -385,7 +381,7 @@ class _PasscodeBoxes extends StatelessWidget {
               padding: EdgeInsets.only(right: i == n - 1 ? 0 : _gap),
               child: SizedBox(
                 width: box,
-                height: box,
+                height: box + 12,
                 child: _PasscodeBox(
                   controller: controllers[i],
                   focusNode: focusNodes[i],
@@ -433,29 +429,25 @@ class _PasscodeBox extends StatelessWidget {
         enableIMEPersonalizedLearning: false,
         enableSuggestions: false,
         autocorrect: false,
-        style: AppTextStyles.numeric(AppTextStyles.sectionTitle),
-        inputFormatters: [
-          FilteringTextInputFormatter.digitsOnly,
-        ],
+        style: AppTextStyles.numeric(AppTextStyles.identityName),
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         onChanged: onChanged,
         decoration: InputDecoration(
           counterText: '',
           hintText: '*',
-          hintStyle: AppTextStyles.sectionTitle.copyWith(
+          hintStyle: AppTextStyles.identityName.copyWith(
             color: Colors.white.withValues(alpha: 0.40),
           ),
           filled: true,
           fillColor: Colors.white.withValues(alpha: 0.06),
-          contentPadding: EdgeInsets.zero,
+          contentPadding: const EdgeInsets.symmetric(vertical: 20),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide:
-                BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide:
-                BorderSide(color: Colors.white.withValues(alpha: 0.32)),
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.32)),
           ),
         ),
       ),

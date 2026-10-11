@@ -39,13 +39,23 @@ String countryDisplayName(SupportedCountry country, AppLocalizations l10n) {
   }
 }
 
+/// Which copy and cross-link the phone-entry screen shows. Both modes run the
+/// same passwordless flow (phone → confirm → one-time code); only the wording
+/// and the link to the other mode differ.
+enum PhoneEntryMode { createAccount, login }
+
 /// Phone-number registration screen.
 ///
 /// One-field signup: country code chip + national-number input. The Create
 /// Account button stays disabled until the entered number is a valid E.164
 /// phone for the chosen country.
 class CreateAccountScreen extends StatefulWidget {
-  const CreateAccountScreen({super.key});
+  const CreateAccountScreen({
+    super.key,
+    this.mode = PhoneEntryMode.createAccount,
+  });
+
+  final PhoneEntryMode mode;
 
   static const String routePath = '/auth/create-account';
   static const String routeName = 'create_account';
@@ -91,9 +101,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   }
 
   static IsoCode _isoOf(SupportedCountry country) =>
-      IsoCode.values.firstWhere(
-        (c) => c.name.toUpperCase() == country.isoCode,
-      );
+      IsoCode.values.firstWhere((c) => c.name.toUpperCase() == country.isoCode);
 
   /// Returns the entered phone formatted as international `+228 90 89 75 36`.
   /// Falls back to `+[dial] [raw]` if parsing fails.
@@ -135,10 +143,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       ),
       builder: (context) => _ConfirmNumberSheet(
         country: _country,
-        formattedNumber: _formatInternational(
-          _phoneController.text,
-          _country,
-        ),
+        formattedNumber: _formatInternational(_phoneController.text, _country),
       ),
     );
     if (!mounted || confirmed != true || _sending) return;
@@ -161,9 +166,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
           ),
         );
       case Failure(:final error):
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(authErrorText(l10n, error))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(authErrorText(l10n, error))));
     }
   }
 
@@ -177,13 +182,25 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     }
   }
 
-  void _goToLogin() {
-    // TODO: replace with LoginScreen once it exists.
+  /// Swaps to the other mode (`Get.off`, so the two never stack).
+  void _switchMode() {
+    if (widget.mode == PhoneEntryMode.login) {
+      Get.off<void>(
+        () => const CreateAccountScreen(),
+        routeName: CreateAccountScreen.routeName,
+      );
+    } else {
+      Get.off<void>(
+        () => const LoginScreen(),
+        routeName: LoginScreen.routeName,
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final isLogin = widget.mode == PhoneEntryMode.login;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -206,15 +223,13 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
                   // --- Header ---
                   Text(
-                    l10n.createAccountTitle,
+                    isLogin ? l10n.loginTitle : l10n.createAccountTitle,
                     textAlign: TextAlign.center,
-                    style: AppTextStyles.heroAuth.copyWith(
-                      letterSpacing: 0.2,
-                    ),
+                    style: AppTextStyles.heroAuth.copyWith(letterSpacing: 0.2),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    l10n.createAccountSubtitle,
+                    isLogin ? l10n.loginSubtitle : l10n.createAccountSubtitle,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: AppColors.onBrandMuted,
@@ -228,10 +243,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   // --- Country chip + phone input ---
                   Row(
                     children: [
-                      _CountryChip(
-                        country: _country,
-                        onTap: _pickCountry,
-                      ),
+                      _CountryChip(country: _country, onTap: _pickCountry),
                       const SizedBox(width: 12),
                       Expanded(
                         child: _PhoneField(
@@ -245,7 +257,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
                   const SizedBox(height: 16),
 
-                  // --- "Already have an account ? Login" inline link ---
+                  // --- Cross-link: "Already have an account ? Login" on
+                  // sign-up, "Don't have an account ? Create one" on login ---
                   // Wrap (not Row) so the link drops to a second line on
                   // 360dp viewports with FR copy ("Vous avez déjà un
                   // compte ? Se connecter" is ~325dp at 14sp, > the
@@ -256,7 +269,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text(
-                        l10n.createAccountAlreadyHaveAccount,
+                        isLogin
+                            ? l10n.loginNoAccount
+                            : l10n.createAccountAlreadyHaveAccount,
                         style: const TextStyle(
                           color: AppColors.onBrandMuted,
                           fontSize: 14,
@@ -264,8 +279,10 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                         ),
                       ),
                       _InlineLink(
-                        label: l10n.createAccountLoginLink,
-                        onTap: _goToLogin,
+                        label: isLogin
+                            ? l10n.loginCreateLink
+                            : l10n.createAccountLoginLink,
+                        onTap: _switchMode,
                       ),
                     ],
                   ),
@@ -274,7 +291,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
                   // --- Primary CTA ---
                   _PrimaryPillButton(
-                    label: l10n.createAccountCta,
+                    label: isLogin ? l10n.loginCta : l10n.createAccountCta,
                     enabled: _isValid && !_sending,
                     onPressed: _submit,
                   ),
@@ -288,6 +305,22 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       ),
     );
   }
+}
+
+/// Login screen: the phone-entry flow in [PhoneEntryMode.login].
+///
+/// Sign-in is passwordless — the same phone + one-time-code steps as account
+/// creation. A returning user (passcode already set) goes straight to the app
+/// after the code is verified.
+class LoginScreen extends StatelessWidget {
+  const LoginScreen({super.key});
+
+  static const String routePath = '/auth/login';
+  static const String routeName = 'login';
+
+  @override
+  Widget build(BuildContext context) =>
+      const CreateAccountScreen(mode: PhoneEntryMode.login);
 }
 
 // ---------------------------------------------------------------------------
@@ -320,11 +353,7 @@ class _CountryChip extends StatelessWidget {
             children: [
               CountryFlag.fromCountryCode(
                 country.isoCode,
-                theme: const ImageTheme(
-                  width: 28,
-                  height: 28,
-                  shape: Circle(),
-                ),
+                theme: const ImageTheme(width: 28, height: 28, shape: Circle()),
               ),
               const SizedBox(width: 8),
               Text(
@@ -384,8 +413,10 @@ class _PhoneField extends StatelessWidget {
         ),
         filled: true,
         fillColor: AppColors.surfaceDark,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         suffixIcon: ValueListenableBuilder<TextEditingValue>(
           valueListenable: controller,
           builder: (context, value, _) {
@@ -436,9 +467,7 @@ class _InlineLink extends StatelessWidget {
       onTap: onTap,
       child: Text(
         label,
-        style: AppTextStyles.bodyLink.copyWith(
-          color: AppColors.actionPurple,
-        ),
+        style: AppTextStyles.bodyLink.copyWith(color: AppColors.actionPurple),
       ),
     );
   }
@@ -610,9 +639,7 @@ class _ConfirmNumberSheet extends StatelessWidget {
             Text(
               l10n.createAccountConfirmSheetTitle,
               textAlign: TextAlign.center,
-              style: AppTextStyles.sectionTitle.copyWith(
-                letterSpacing: 0.2,
-              ),
+              style: AppTextStyles.sectionTitle.copyWith(letterSpacing: 0.2),
             ),
             const SizedBox(height: 8),
             Text(
@@ -628,14 +655,11 @@ class _ConfirmNumberSheet extends StatelessWidget {
 
             // Number row: round flag + formatted E.164.
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
                 color: AppColors.surfaceDark,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.10),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
               ),
               child: Row(
                 children: [
@@ -676,9 +700,7 @@ class _ConfirmNumberSheet extends StatelessWidget {
               child: Material(
                 color: Colors.transparent,
                 shape: StadiumBorder(
-                  side: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.18),
-                  ),
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.18)),
                 ),
                 child: InkWell(
                   customBorder: const StadiumBorder(),

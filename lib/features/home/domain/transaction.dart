@@ -34,6 +34,7 @@ class Transaction {
     required this.kind,
     required this.when,
     required this.amount,
+    required this.currencyCode,
     required this.status,
     required this.counterparty,
     required this.counterpartyPhone,
@@ -55,6 +56,10 @@ class Transaction {
   /// model lands this will become a numeric type so we can run real
   /// formatting / FX conversion on it.
   final String amount;
+
+  /// Display code of the currency [amount] and [fee] are in (`GHS` shows as
+  /// the app's legacy `GHC`).
+  final String currencyCode;
 
   /// Provider-side fee, same formatting rules as [amount]. Defaults
   /// to `'0'` for `received` transfers (the recipient never pays a
@@ -93,10 +98,13 @@ class Transaction {
   /// back to [amount] alone if either component fails to parse — we
   /// never want a malformed mock to crash the detail screen.
   String get total {
-    final a = int.tryParse(amount);
-    final f = int.tryParse(fee);
+    final a = num.tryParse(amount);
+    final f = num.tryParse(fee);
     if (a == null || f == null) return amount;
-    return (a + f).toString();
+    final sum = a + f;
+    return sum == sum.roundToDouble()
+        ? sum.toInt().toString()
+        : sum.toStringAsFixed(2);
   }
 
   /// Display timestamp, e.g. `Jun 12, 2025 - 10:25 AM`. Single

@@ -1214,4 +1214,36 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rampTryAgainCta => 'Try again';
+
+  @override
+  String get loginTitle => 'Welcome back';
+
+  @override
+  String get loginSubtitle =>
+      'Enter your phone number and we\'ll send you a code.';
+
+  @override
+  String get loginCta => 'Log in';
+
+  @override
+  String get loginNoAccount => 'Don\'t have an account ? ';
+
+  @override
+  String get loginCreateLink => 'Create one';
+
+  @override
+  String get commonTryAgain => 'Try again';
+
+  @override
+  String get homeBalanceLoadError =>
+      'Couldn\'t load your balance. Tap to retry.';
+
+  @override
+  String get homeTransactionsLoadError => 'Couldn\'t load your transactions.';
+
+  @override
+  String get homeNoTransactions => 'No transactions yet.';
+
+  @override
+  String get transactionsLoadError => 'Couldn\'t load your transactions.';
 }

@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 
 import '../../../core/format/money_format.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../account/data/account_controller.dart';
 import '../../transfer/presentation/widgets/transfer_outcome_scaffold.dart';
 import '../data/ramp_dtos.dart';
 import '../data/ramp_order_tracker.dart';
@@ -50,6 +51,7 @@ class _RampStatusScreenState extends State<RampStatusScreen> {
     _sub = tracker.watch(_order.direction, _order.id).listen(
       (o) {
         if (mounted) setState(() => _order = o);
+        if (o.isTerminal) _refreshAccount();
       },
       onError: (Object _) {
         if (mounted) setState(() => _failedToTrack = true);
@@ -68,7 +70,17 @@ class _RampStatusScreenState extends State<RampStatusScreen> {
 
   String _amount(String amount, String wire) => '${MoneyFormat.fromString(amount)} ${RampMapping.displayCurrency(wire)}';
 
-  void _home() => Get.until((r) => r.isFirst);
+  /// A finished order changes the balance and the history: reload both.
+  void _refreshAccount() {
+    if (Get.isRegistered<AccountController>()) {
+      Get.find<AccountController>().refresh();
+    }
+  }
+
+  void _home() {
+    _refreshAccount(); // covers leaving before the order was seen finishing
+    Get.until((r) => r.isFirst);
+  }
 
   @override
   Widget build(BuildContext context) {

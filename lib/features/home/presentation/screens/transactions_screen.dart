@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/locale/locale_controller.dart';
 import '../../../../core/logging/app_logger.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../account/data/account_controller.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../../main.dart' show LocaleScope;
@@ -48,9 +49,6 @@ class TransactionsScreen extends StatefulWidget {
 }
 
 class _TransactionsScreenState extends State<TransactionsScreen> {
-  static const String _userName = 'John Doe';
-  static const String _currencyCode = 'GHC';
-
   /// Currently selected filter; `null` means "All". Single-select on
   /// purpose — combining filters (e.g., Sent + Failed) gets ambiguous
   /// fast and the design doesn't suggest multi-select.
@@ -80,131 +78,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   /// already correct before the user scrolls.
   int _currentGroupIndex = 0;
 
-  // Hardcoded mock data spanning multiple months/years so the
-  // section-header logic actually has something to group. Newest
-  // first; the grouping pass below preserves order within each
-  // group. Will be replaced by a Riverpod-backed provider hitting
-  // `GET /transfers` once the backend lands.
-  // Rotating counterparty pool. Each transaction picks a name by
-  // index modulo this list so the demo data looks plausibly varied
-  // without having to hand-author 35 unique relationships. Mixed
-  // francophone / anglophone West-African names to match our
-  // BCEAO-corridor target market.
-  static const List<String> _counterparties = [
-    'Axel Asamoa',
-    'Maria Diop',
-    'Kwame Nkrumah',
-    'Aminata Traoré',
-    'Chinedu Okafor',
-    'Fatou Sow',
-    'Yao Mensah',
-    'Adjoa Boateng',
-  ];
+  final AccountController _account = Get.find<AccountController>();
+  Worker? _txnWorker;
 
-  // Phone numbers paired 1:1 with [_counterparties]. E.164 format,
-  // mostly Ghanaian (+233) with a couple of Senegalese (+221) and
-  // Ivorian (+225) entries to demo cross-corridor mocks.
-  static const List<String> _counterpartyPhones = [
-    '+233241234567',
-    '+221771234567',
-    '+233244987654',
-    '+223761122334',
-    '+2348012345678',
-    '+221785551122',
-    '+233246778899',
-    '+233247223344',
-  ];
-
-  // Pool of payment-method labels we cycle through. The format
-  // mirrors what we'll show on the confirm screen once the backend
-  // returns method metadata: "<rail> • <provider>".
-  static const List<String> _paymentMethods = [
-    'Mobile Money • MTN MoMo',
-    'Mobile Money • Vodafone Cash',
-    'Mobile Money • Orange Money',
-    'Mobile Money • Wave',
-    'Bank Transfer • Ecobank',
-    'Bank Transfer • GCB Bank',
-    'Mobile Money • Moov Money',
-    'Mobile Money • AirtelTigo Money',
-  ];
-
-  /// Builds a [Transaction] for index `i` of the mock dataset. Pairs
-  /// the index with the counterparty / phone / method pools so each
-  /// row has consistent metadata; the reference id is a deterministic
-  /// 8-char slice (uppercase hex of `i`-padded), and the fee is a
-  /// flat 0.5% with a `50` floor on `sent` rows, `0` on `received`.
-  static Transaction _mock({
-    required int i,
-    required TxnKind kind,
-    required DateTime when,
-    required String amount,
-    required TxnStatus status,
-  }) {
-    final amt = int.tryParse(amount) ?? 0;
-    final fee = kind == TxnKind.received
-        ? '0'
-        : (amt * 5 ~/ 1000).clamp(50, 1 << 30).toString();
-    final ref = 'TX${(i * 0x9E37 + 0x1A2B).toRadixString(16).toUpperCase().padLeft(6, '0').substring(0, 6)}';
-    return Transaction(
-      id: ref,
-      kind: kind,
-      when: when,
-      amount: amount,
-      fee: fee,
-      status: status,
-      counterparty: _counterparties[i % _counterparties.length],
-      counterpartyPhone:
-          _counterpartyPhones[i % _counterpartyPhones.length],
-      paymentMethod: _paymentMethods[i % _paymentMethods.length],
-    );
-  }
-
-  // Hardcoded mock data spanning multiple months/years so the
-  // section-header logic actually has something to group. Newest
-  // first; the grouping pass below preserves order within each
-  // group. Will be replaced by a Riverpod-backed provider hitting
-  // `GET /transfers` once the backend lands.
-  static final List<Transaction> _all = [
-    _mock(i: 0, kind: TxnKind.received, when: DateTime(2025, 6, 12, 10, 25), amount: '13000', status: TxnStatus.success),
-    _mock(i: 1, kind: TxnKind.sent, when: DateTime(2025, 6, 12, 10, 25), amount: '2500', status: TxnStatus.failed),
-    _mock(i: 2, kind: TxnKind.received, when: DateTime(2025, 6, 11, 21, 14), amount: '56300', status: TxnStatus.success),
-    _mock(i: 3, kind: TxnKind.sent, when: DateTime(2025, 6, 11, 18, 02), amount: '4000', status: TxnStatus.pending),
-    _mock(i: 4, kind: TxnKind.received, when: DateTime(2025, 5, 28, 14, 41), amount: '8000', status: TxnStatus.success),
-    _mock(i: 5, kind: TxnKind.sent, when: DateTime(2025, 5, 22, 09, 03), amount: '15000', status: TxnStatus.success),
-    _mock(i: 6, kind: TxnKind.received, when: DateTime(2024, 12, 30, 19, 50), amount: '20000', status: TxnStatus.success),
-    _mock(i: 7, kind: TxnKind.sent, when: DateTime(2024, 12, 11, 11, 22), amount: '6500', status: TxnStatus.failed),
-    _mock(i: 8, kind: TxnKind.sent, when: DateTime(2025, 6, 10, 16, 47), amount: '1200', status: TxnStatus.success),
-    _mock(i: 9, kind: TxnKind.received, when: DateTime(2025, 6, 7, 08, 12), amount: '34500', status: TxnStatus.pending),
-    _mock(i: 10, kind: TxnKind.sent, when: DateTime(2025, 6, 3, 22, 38), amount: '950', status: TxnStatus.success),
-    _mock(i: 11, kind: TxnKind.received, when: DateTime(2025, 5, 18, 12, 04), amount: '7800', status: TxnStatus.success),
-    _mock(i: 12, kind: TxnKind.sent, when: DateTime(2025, 5, 9, 17, 26), amount: '24000', status: TxnStatus.failed),
-    _mock(i: 13, kind: TxnKind.received, when: DateTime(2025, 5, 2, 06, 51), amount: '11200', status: TxnStatus.success),
-    _mock(i: 14, kind: TxnKind.sent, when: DateTime(2025, 4, 27, 13, 33), amount: '5000', status: TxnStatus.pending),
-    _mock(i: 15, kind: TxnKind.received, when: DateTime(2025, 4, 19, 20, 09), amount: '9300', status: TxnStatus.success),
-    _mock(i: 16, kind: TxnKind.sent, when: DateTime(2025, 4, 14, 11, 55), amount: '3200', status: TxnStatus.success),
-    _mock(i: 17, kind: TxnKind.received, when: DateTime(2025, 4, 5, 09, 18), amount: '47500', status: TxnStatus.success),
-    _mock(i: 18, kind: TxnKind.sent, when: DateTime(2025, 3, 24, 19, 02), amount: '1850', status: TxnStatus.failed),
-    _mock(i: 19, kind: TxnKind.received, when: DateTime(2025, 3, 11, 15, 41), amount: '6700', status: TxnStatus.success),
-    _mock(i: 20, kind: TxnKind.sent, when: DateTime(2025, 3, 4, 08, 27), amount: '12500', status: TxnStatus.success),
-    _mock(i: 21, kind: TxnKind.received, when: DateTime(2025, 2, 21, 17, 13), amount: '3400', status: TxnStatus.pending),
-    _mock(i: 22, kind: TxnKind.sent, when: DateTime(2025, 2, 13, 10, 06), amount: '8800', status: TxnStatus.success),
-    _mock(i: 23, kind: TxnKind.received, when: DateTime(2025, 1, 29, 21, 44), amount: '15600', status: TxnStatus.success),
-    _mock(i: 24, kind: TxnKind.sent, when: DateTime(2025, 1, 17, 14, 29), amount: '4200', status: TxnStatus.failed),
-    _mock(i: 25, kind: TxnKind.received, when: DateTime(2025, 1, 6, 07, 35), amount: '29000', status: TxnStatus.success),
-    _mock(i: 26, kind: TxnKind.sent, when: DateTime(2024, 11, 26, 18, 50), amount: '7100', status: TxnStatus.success),
-    _mock(i: 27, kind: TxnKind.received, when: DateTime(2024, 11, 14, 12, 22), amount: '52800', status: TxnStatus.success),
-    _mock(i: 28, kind: TxnKind.sent, when: DateTime(2024, 11, 3, 09, 47), amount: '2300', status: TxnStatus.pending),
-    _mock(i: 29, kind: TxnKind.received, when: DateTime(2024, 10, 22, 16, 11), amount: '18400', status: TxnStatus.success),
-    _mock(i: 30, kind: TxnKind.sent, when: DateTime(2024, 10, 8, 20, 03), amount: '6900', status: TxnStatus.failed),
-    _mock(i: 31, kind: TxnKind.received, when: DateTime(2024, 9, 30, 11, 38), amount: '4100', status: TxnStatus.success),
-    _mock(i: 32, kind: TxnKind.sent, when: DateTime(2024, 9, 12, 15, 24), amount: '13700', status: TxnStatus.success),
-    _mock(i: 33, kind: TxnKind.received, when: DateTime(2024, 8, 19, 19, 09), amount: '8500', status: TxnStatus.success),
-    _mock(i: 34, kind: TxnKind.sent, when: DateTime(2024, 7, 7, 13, 52), amount: '21000', status: TxnStatus.success),
-    _mock(i: 35, kind: TxnKind.received, when: DateTime(2023, 12, 28, 22, 16), amount: '36200', status: TxnStatus.success),
-    _mock(i: 36, kind: TxnKind.sent, when: DateTime(2023, 11, 15, 10, 41), amount: '5400', status: TxnStatus.failed),
-    _mock(i: 37, kind: TxnKind.received, when: DateTime(2023, 8, 4, 17, 08), amount: '14800', status: TxnStatus.success),
-  ];
+  /// Newest first, as the API returns them; the grouping pass below relies on it.
+  List<Transaction> get _all => _account.transactions;
 
   List<Transaction> get _filtered {
     final f = _activeFilter;
@@ -258,10 +136,15 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     super.initState();
     _scrollController = ScrollController()..addListener(_onScroll);
     _rebuildGroups();
+    // Regroup whenever the list changes (first load, refresh, next page).
+    _txnWorker = ever(_account.transactions, (_) {
+      if (mounted) setState(_rebuildGroups);
+    });
   }
 
   @override
   void dispose() {
+    _txnWorker?.dispose();
     _scrollController
       ..removeListener(_onScroll)
       ..dispose();
@@ -291,6 +174,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     if (!_scrollController.hasClients) return;
 
     final offset = _scrollController.offset;
+    if (offset >= _scrollController.position.maxScrollExtent - 300) {
+      _account.loadMore(); // no-op when there is no further page
+    }
     int leading = 0;
     for (var i = 0; i < _groupKeys.length; i++) {
       final ctx = _groupKeys[i].currentContext;
@@ -339,20 +225,19 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   void _onProfileTap() {
     Get.to<void>(() => const ProfileScreen());
   }
+
   void _onLanguageTap() {
     // Flip app-wide locale; the InheritedNotifier surfaces the
     // change to every screen that reads from LocaleScope. Fire-and-
     // forget — persistence happens inside the controller.
     LocaleScope.of(context, listen: false).toggle();
   }
+
   void _onNotificationsTap() => showNotificationsSheet(context);
   void _onExportTap() => AppLogger.i('transactions.export.tap', const {});
   void _onTxnTap(Transaction t) {
     Get.to<void>(
-      () => TransactionDetailScreen(
-        txn: t,
-        currencyCode: _currencyCode,
-      ),
+      () => TransactionDetailScreen(txn: t, currencyCode: t.currencyCode),
     );
   }
 
@@ -361,6 +246,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     // Active locale tag drives `intl`'s month-name table (en/fr).
     // Reading via LocaleScope ensures the screen rebuilds on toggle.
     final localeTag = LocaleScope.of(context).current.tag;
+    final l10n = AppLocalizations.of(context);
     final groups = _groups;
     final currentYear = DateTime.now().year;
     final hasGroups = groups.isNotEmpty;
@@ -386,7 +272,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               HomeHeader(
-                userName: _userName,
+                userName: _account.userLabel,
                 // Mirror the app-wide locale so the flag pill matches
                 // the home tab without each tab keeping its own copy
                 // of the language state.
@@ -400,10 +286,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               const SizedBox(height: 24),
               _TitleRow(onExportTap: _onExportTap),
               const SizedBox(height: 20),
-              _FilterRow(
-                active: _activeFilter,
-                onToggle: _toggleFilter,
-              ),
+              _FilterRow(active: _activeFilter, onToggle: _toggleFilter),
               // Static month-year label sitting between the filter
               // chips and the scrollable list. It mirrors whichever
               // group is currently leading the viewport — replaced
@@ -425,52 +308,70 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               ],
               const SizedBox(height: 8),
               Expanded(
-                child: !hasGroups
-                    ? const _EmptyState()
-                    : CustomScrollView(
-                        controller: _scrollController,
-                        slivers: [
-                          for (var gi = 0; gi < groups.length; gi++)
-                            SliverList.separated(
-                              itemCount: groups[gi].items.length,
-                              separatorBuilder: (_, _) => Divider(
-                                color: Colors.white.withValues(alpha: 0.06),
-                                height: 1,
+                child: Obx(() {
+                  final loaded = _account.transactionsState.value;
+                  if (_account.transactions.isEmpty &&
+                      loaded != LoadState.ready) {
+                    return _LoadPlaceholder(
+                      loading: loaded != LoadState.error,
+                      onRetry: _account.reloadTransactions,
+                    );
+                  }
+                  if (_account.transactions.isEmpty) {
+                    return _EmptyState(message: l10n.homeNoTransactions);
+                  }
+                  return !hasGroups
+                      ? const _EmptyState()
+                      : RefreshIndicator(
+                          onRefresh: _account.refresh,
+                          child: CustomScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            controller: _scrollController,
+                            slivers: [
+                              for (var gi = 0; gi < groups.length; gi++)
+                                SliverList.separated(
+                                  itemCount: groups[gi].items.length,
+                                  separatorBuilder: (_, _) => Divider(
+                                    color: Colors.white.withValues(alpha: 0.06),
+                                    height: 1,
+                                  ),
+                                  itemBuilder: (_, i) => _TransactionTile(
+                                    // First row of each group carries
+                                    // the group's GlobalKey so we can
+                                    // probe its position in `_onScroll`.
+                                    key: i == 0 ? _groupKeys[gi] : null,
+                                    txn: groups[gi].items[i],
+                                    currencyCode:
+                                        groups[gi].items[i].currencyCode,
+                                    onTap: () => _onTxnTap(groups[gi].items[i]),
+                                  ),
+                                ),
+                              // Tail spacer that clears the bottom nav
+                              // *and* the floating voice FAB.
+                              //
+                              // Geometry: bottom nav is 64dp tall, the
+                              // voice FAB halo is 100dp centered on the
+                              // nav, so it overhangs the nav top by ~50dp.
+                              // The Scaffold has `extendBody: true`, so
+                              // intermediate rows scroll *behind* the
+                              // nav by design — but the *last* row needs
+                              // to settle high enough to clear the FAB
+                              // halo, otherwise it sits permanently
+                              // covered. Add a small breathing margin
+                              // so the row isn't kissing the halo edge.
+                              SliverToBoxAdapter(
+                                child: SizedBox(
+                                  height:
+                                      64 + // nav height
+                                      50 + // FAB halo overhang above nav
+                                      MediaQuery.viewPaddingOf(context).bottom +
+                                      16, // breathing room
+                                ),
                               ),
-                              itemBuilder: (_, i) => _TransactionTile(
-                                // First row of each group carries
-                                // the group's GlobalKey so we can
-                                // probe its position in `_onScroll`.
-                                key: i == 0 ? _groupKeys[gi] : null,
-                                txn: groups[gi].items[i],
-                                currencyCode: _currencyCode,
-                                onTap: () => _onTxnTap(groups[gi].items[i]),
-                              ),
-                            ),
-                          // Tail spacer that clears the bottom nav
-                          // *and* the floating voice FAB.
-                          //
-                          // Geometry: bottom nav is 64dp tall, the
-                          // voice FAB halo is 100dp centered on the
-                          // nav, so it overhangs the nav top by ~50dp.
-                          // The Scaffold has `extendBody: true`, so
-                          // intermediate rows scroll *behind* the
-                          // nav by design — but the *last* row needs
-                          // to settle high enough to clear the FAB
-                          // halo, otherwise it sits permanently
-                          // covered. Add a small breathing margin
-                          // so the row isn't kissing the halo edge.
-                          SliverToBoxAdapter(
-                            child: SizedBox(
-                              height:
-                                  64 + // nav height
-                                  50 + // FAB halo overhang above nav
-                                  MediaQuery.viewPaddingOf(context).bottom +
-                                  16, // breathing room
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
+                        );
+                }),
               ),
             ],
           ),
@@ -524,10 +425,7 @@ class _TitleRow extends StatelessWidget {
     return Stack(
       alignment: Alignment.center,
       children: [
-        Text(
-          l10n.transactionsTitle,
-          style: AppTextStyles.sectionTitle,
-        ),
+        Text(l10n.transactionsTitle, style: AppTextStyles.sectionTitle),
         Align(
           alignment: Alignment.centerRight,
           child: HomeIconButton(
@@ -726,35 +624,20 @@ class _TransactionTile extends StatelessWidget {
   ({IconData icon, Color color}) get _glyph {
     switch (txn.kind) {
       case TxnKind.received:
-        return (
-          icon: Icons.south_west_rounded,
-          color: const Color(0xFF22C55E),
-        );
+        return (icon: Icons.south_west_rounded, color: const Color(0xFF22C55E));
       case TxnKind.sent:
-        return (
-          icon: Icons.north_east_rounded,
-          color: const Color(0xFFF97316),
-        );
+        return (icon: Icons.north_east_rounded, color: const Color(0xFFF97316));
     }
   }
 
   ({Color color, String label}) _statusBadge(AppLocalizations l10n) {
     switch (txn.status) {
       case TxnStatus.success:
-        return (
-          color: const Color(0xFF22C55E),
-          label: l10n.txnStatusSuccess,
-        );
+        return (color: const Color(0xFF22C55E), label: l10n.txnStatusSuccess);
       case TxnStatus.pending:
-        return (
-          color: const Color(0xFFF5A524),
-          label: l10n.txnStatusPending,
-        );
+        return (color: const Color(0xFFF5A524), label: l10n.txnStatusPending);
       case TxnStatus.failed:
-        return (
-          color: const Color(0xFFEF4444),
-          label: l10n.txnStatusFailed,
-        );
+        return (color: const Color(0xFFEF4444), label: l10n.txnStatusFailed);
     }
   }
 
@@ -795,15 +678,9 @@ class _TransactionTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    directionLabel,
-                    style: AppTextStyles.listTitle,
-                  ),
+                  Text(directionLabel, style: AppTextStyles.listTitle),
                   const SizedBox(height: 2),
-                  Text(
-                    txn.timestamp,
-                    style: AppTextStyles.microNumeric,
-                  ),
+                  Text(txn.timestamp, style: AppTextStyles.microNumeric),
                 ],
               ),
             ),
@@ -833,8 +710,49 @@ class _TransactionTile extends StatelessWidget {
   }
 }
 
+/// First-load spinner, or an error message with a retry button.
+class _LoadPlaceholder extends StatelessWidget {
+  const _LoadPlaceholder({required this.loading, required this.onRetry});
+
+  final bool loading;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (loading) {
+      return const Center(
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            l10n.transactionsLoadError,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.55),
+              fontSize: 14,
+            ),
+          ),
+          TextButton(onPressed: onRetry, child: Text(l10n.commonTryAgain)),
+        ],
+      ),
+    );
+  }
+}
+
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState({this.message});
+
+  /// Defaults to the "no transaction matches this filter" copy.
+  final String? message;
 
   @override
   Widget build(BuildContext context) {
@@ -843,7 +761,7 @@ class _EmptyState extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Text(
-          l10n.transactionsEmpty,
+          message ?? l10n.transactionsEmpty,
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.55),

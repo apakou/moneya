@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/format/money_format.dart';
 import '../../../../core/locale/locale_controller.dart';
 import '../../../../core/logging/app_logger.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../../main.dart' show LocaleScope;
+import '../../../account/data/account_controller.dart';
 import '../../../auth/domain/supported_country.dart';
 import '../../../favorites/data/favorites_service.dart';
 import '../../../favorites/domain/favorite.dart';
@@ -41,38 +43,25 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _balanceVisible = true;
-  // Default to Ghanaian Cedi to match the mock; the picker lets the
-  // user switch to any of the SupportedCurrency entries.
-  SupportedCurrency _currency = SupportedCurrency.ghs;
+  final AccountController _account = Get.find<AccountController>();
 
-  // Hardcoded mock data. ---------------------------------------------------
-  static const String _userName = 'John Doe';
+  /// Currency whose balance is on screen; starts as the user's home currency.
+  SupportedCurrency get _currency => _account.currency.value;
 
-  // Mock balance — single source of truth for the displayed amount
-  // AND the withdraw flow's insufficient-balance guard. Stored as
-  // `num` (major units of the active currency) so callers can do
-  // arithmetic without re-parsing a localized string. Display formats
-  // with `NumberFormat.decimalPattern()` via the `,` grouping in
-  // `_balanceDisplay`. When the backend lands this becomes a Riverpod
-  // provider; until then mutating this in `setState` is good enough.
-  num _balanceMinor = 13000;
+  /// Spendable balance in [_currency], used by the withdraw flow's
+  /// insufficient-balance guard. Zero until the balance has loaded.
+  num get _balanceMinor => _account.wallet.value?.availableNum ?? 0;
 
-  /// Display string for the balance card (e.g. `'13,000'`).
-  ///
-  /// Uses a thousands-grouped int representation. We deliberately do
-  /// NOT convert across currencies on switch — the mock-faithful
-  /// behaviour is to relabel the unit and keep the digit untouched.
+  /// Text for the balance card: everything the user holds expressed in the
+  /// selected currency (`≈` when part of it was converted), or a placeholder
+  /// while the balance is loading / unavailable.
   String get _balanceDisplay {
-    final n = _balanceMinor.toInt();
-    final s = n.toString();
-    // Insert thousands separators without pulling in intl just for
-    // this one helper.
-    final b = StringBuffer();
-    for (var i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) b.write(',');
-      b.write(s[i]);
+    final w = _account.wallet.value;
+    if (w != null) {
+      final amount = MoneyFormat.fromString(w.equivalentBalance);
+      return w.isConverted ? '≈ $amount' : amount;
     }
-    return b.toString();
+    return _account.walletState.value == LoadState.error ? '—' : '…';
   }
 
   static const List<_Favorite> _favoritesFallback = [
@@ -133,72 +122,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Recent-transactions seed for the home dashboard.
-  //
-  // Now uses the public [Transaction] model (same shape as the
-  // dedicated Transactions tab + detail screen) so taps can push
-  // straight into [TransactionDetailScreen] without an intermediate
-  // adapter. Once the backend lands this becomes a Riverpod provider
-  // backed by `GET /transfers?limit=4`.
-  //
-  // Mock identifiers (`TX…`), counterparty names, phones, and
-  // payment-method labels are intentionally aligned with the
-  // patterns used in `transactions_screen.dart` so the detail
-  // screen feels populated regardless of which list the user
-  // tapped through from. `when` uses a fixed timestamp on a
-  // `static const`-incompatible field, so the list is built lazily
-  // in [_recentTransactions] (`DateTime` literals aren't `const`).
-  static final List<Transaction> _transactions = [
-    Transaction(
-      id: 'TX10A2B3',
-      kind: TxnKind.received,
-      when: DateTime(2025, 6, 12, 10, 25),
-      amount: '13000',
-      fee: '0',
-      status: TxnStatus.success,
-      counterparty: 'Axel Asamoa',
-      counterpartyPhone: '+233241234567',
-      paymentMethod: 'Mobile Money • MTN MoMo',
-    ),
-    Transaction(
-      id: 'TX20C4D5',
-      kind: TxnKind.sent,
-      when: DateTime(2025, 6, 12, 10, 25),
-      amount: '2500',
-      fee: '50',
-      status: TxnStatus.failed,
-      counterparty: 'Maria Diop',
-      counterpartyPhone: '+221771234567',
-      paymentMethod: 'Mobile Money • Wave',
-    ),
-    Transaction(
-      id: 'TX30E6F7',
-      kind: TxnKind.sent,
-      when: DateTime(2025, 6, 12, 10, 25),
-      amount: '56300',
-      fee: '281',
-      status: TxnStatus.success,
-      counterparty: 'Kwame Nkrumah',
-      counterpartyPhone: '+233244987654',
-      paymentMethod: 'Bank Transfer • Ecobank',
-    ),
-    Transaction(
-      id: 'TX40A8B9',
-      kind: TxnKind.received,
-      when: DateTime(2025, 6, 12, 10, 25),
-      amount: '56300',
-      fee: '0',
-      status: TxnStatus.success,
-      counterparty: 'Aminata Traoré',
-      counterpartyPhone: '+223761122334',
-      paymentMethod: 'Mobile Money • Orange Money',
-    ),
-  ];
-
   // Tap handlers (all stubs). ---------------------------------------------
   void _onProfileTap() {
     Get.to<void>(() => const ProfileScreen());
   }
+
   Future<void> _onLanguageTap() async {
     // Flip the app-wide locale via the InheritedNotifier handle. Every
     // descendant of MaterialApp that reads AppLocalizations.of(context)
@@ -214,10 +142,9 @@ class _HomeScreenState extends State<HomeScreen> {
       selected: _currency,
     );
     if (picked == null || picked == _currency) return;
-    setState(() => _currency = picked);
-    AppLogger.i('home.currency.switched', {'currency': _currency.code});
-    // TODO: re-fetch the displayed balance in the new currency once we
-    // have an FX/balance backend. The hardcoded "13,000" stays for now.
+    AppLogger.i('home.currency.switched', {'currency': picked.code});
+    // Balances are per currency (no conversion): load the one for [picked].
+    await _account.selectCurrency(picked);
   }
 
   void _toggleBalance() => setState(() => _balanceVisible = !_balanceVisible);
@@ -250,6 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
   void _onSmartRate() => AppLogger.i('home.smart_rate.tap', const {});
   void _onTrustScore() => AppLogger.i('home.trust_score.tap', const {});
   void _onFavoritesViewAll() {
@@ -272,23 +200,78 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
   void _onTransactionsViewAll() {
     // Switch the parent HomeShell to the Transactions tab (index 1)
     // rather than pushing a new route — keeps the bottom-nav state
     // selection in sync with what's on screen.
     HomeShell.of(context)?.selectTab(1);
   }
+
   void _onTransactionTap(Transaction t) {
     // Push the shared detail screen with the same currency context
     // the home dashboard is currently displaying. The Transactions
     // tab routes through the same widget; both call sites stay in
     // sync because they share the [Transaction] model.
     Get.to<void>(
-      () => TransactionDetailScreen(
-        txn: t,
-        currencyCode: _currency.code,
-      ),
+      () => TransactionDetailScreen(txn: t, currencyCode: t.currencyCode),
     );
+  }
+
+  /// The four newest transactions, or a loading / empty / error placeholder.
+  List<Widget> _recentTransactions(AppLocalizations l10n) {
+    final items = _account.transactions;
+    if (items.isNotEmpty) {
+      return [
+        for (final t in items.take(4))
+          _TransactionTile(
+            txn: t,
+            currencyCode: t.currencyCode,
+            onTap: () => _onTransactionTap(t),
+          ),
+      ];
+    }
+    final muted = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.copyWith(color: AppColors.onBrandMuted);
+    switch (_account.transactionsState.value) {
+      case LoadState.idle:
+      case LoadState.loading:
+        return const [
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          ),
+        ];
+      case LoadState.error:
+        return [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              children: [
+                Text(l10n.homeTransactionsLoadError, style: muted),
+                TextButton(
+                  onPressed: _account.reloadTransactions,
+                  child: Text(l10n.commonTryAgain),
+                ),
+              ],
+            ),
+          ),
+        ];
+      case LoadState.ready:
+        return [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: Text(l10n.homeNoTransactions, style: muted)),
+          ),
+        ];
+    }
   }
 
   @override
@@ -306,87 +289,100 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: const BoxDecoration(gradient: AppColors.brandGradient),
       child: SafeArea(
         bottom: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 120),
-          children: [
-            HomeHeader(
-              userName: _userName,
-              language: pillLanguage,
-              onProfileTap: _onProfileTap,
-              onLanguageTap: _onLanguageTap,
-              onNotificationsTap: _onNotificationsTap,
+        child: Obx(
+          () => RefreshIndicator(
+            onRefresh: _account.refresh,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 120),
+              children: [
+                HomeHeader(
+                  userName: _account.userLabel,
+                  language: pillLanguage,
+                  onProfileTap: _onProfileTap,
+                  onLanguageTap: _onLanguageTap,
+                  onNotificationsTap: _onNotificationsTap,
+                ),
+                const SizedBox(height: 28),
+                Center(
+                  child: _CurrencyPill(
+                    currency: _currency.code,
+                    onTap: _onCurrencyTap,
+                  ),
+                ),
+                const SizedBox(height: 28),
+                _Balance(
+                  currency: _currency.code,
+                  amount: _balanceDisplay,
+                  visible: _balanceVisible,
+                  onToggle: _toggleBalance,
+                ),
+                if (_account.walletState.value == LoadState.error &&
+                    _account.wallet.value == null)
+                  Center(
+                    child: TextButton(
+                      onPressed: _account.reloadWallet,
+                      child: Text(l10n.homeBalanceLoadError),
+                    ),
+                  ),
+                const SizedBox(height: 36),
+                _PrimaryActions(
+                  onSend: _onSend,
+                  onReceive: _onReceive,
+                  onLoad: _onLoad,
+                  onWithdraw: _onWithdraw,
+                ),
+                const SizedBox(height: 36),
+                _SectionHeader(
+                  icon: Icons.auto_awesome_rounded,
+                  title: l10n.homeSectionAiInsights,
+                ),
+                const SizedBox(height: 12),
+                _InsightsStrip(
+                  currencyCode: _currency.code,
+                  onSmartRate: _onSmartRate,
+                  onTrustScore: _onTrustScore,
+                ),
+                const SizedBox(height: 28),
+                _SectionHeader(
+                  icon: Icons.favorite_rounded,
+                  title: l10n.homeSectionFavorites,
+                  trailing: _ViewAllButton(onTap: _onFavoritesViewAll),
+                ),
+                const SizedBox(height: 16),
+                ListenableBuilder(
+                  // Strip rebuilds whenever the in-memory FavoritesService
+                  // mutates — covers add-from-success-screen, remove +
+                  // undo from FavoritesScreen, and tests overriding the
+                  // singleton via `debugSetInstance`. Capped to the 6
+                  // newest entries to keep the horizontal scroll short on
+                  // a phone; FavoritesScreen shows the full list.
+                  listenable: FavoritesService.instance,
+                  builder: (context, _) {
+                    final live = FavoritesService.instance.favorites;
+                    final source = live.isEmpty
+                        ? _favoritesFallback
+                        : live
+                              .take(6)
+                              .map(_toFavoriteVM)
+                              .toList(growable: false);
+                    return _FavoritesStrip(
+                      favorites: source,
+                      onTap: _onFavoriteTap,
+                    );
+                  },
+                ),
+                const SizedBox(height: 28),
+                _SectionHeader(
+                  icon: Icons.history_rounded,
+                  title: l10n.homeSectionRecentTransactions,
+                  trailing: _ViewAllButton(onTap: _onTransactionsViewAll),
+                ),
+                const SizedBox(height: 8),
+                ..._recentTransactions(l10n),
+              ],
             ),
-            const SizedBox(height: 28),
-            Center(
-              child: _CurrencyPill(
-                currency: _currency.code,
-                onTap: _onCurrencyTap,
-              ),
-            ),
-            const SizedBox(height: 28),
-            _Balance(
-              currency: _currency.code,
-              amount: _balanceDisplay,
-              visible: _balanceVisible,
-              onToggle: _toggleBalance,
-            ),
-            const SizedBox(height: 36),
-            _PrimaryActions(
-              onSend: _onSend,
-              onReceive: _onReceive,
-              onLoad: _onLoad,
-              onWithdraw: _onWithdraw,
-            ),
-            const SizedBox(height: 36),
-            _SectionHeader(
-              icon: Icons.auto_awesome_rounded,
-              title: l10n.homeSectionAiInsights,
-            ),
-            const SizedBox(height: 12),
-            _InsightsStrip(
-              currencyCode: _currency.code,
-              onSmartRate: _onSmartRate,
-              onTrustScore: _onTrustScore,
-            ),
-            const SizedBox(height: 28),
-            _SectionHeader(
-              icon: Icons.favorite_rounded,
-              title: l10n.homeSectionFavorites,
-              trailing: _ViewAllButton(onTap: _onFavoritesViewAll),
-            ),
-            const SizedBox(height: 16),
-            ListenableBuilder(
-              // Strip rebuilds whenever the in-memory FavoritesService
-              // mutates — covers add-from-success-screen, remove +
-              // undo from FavoritesScreen, and tests overriding the
-              // singleton via `debugSetInstance`. Capped to the 6
-              // newest entries to keep the horizontal scroll short on
-              // a phone; FavoritesScreen shows the full list.
-              listenable: FavoritesService.instance,
-              builder: (context, _) {
-                final live = FavoritesService.instance.favorites;
-                final source = live.isEmpty ? _favoritesFallback :
-                    live.take(6).map(_toFavoriteVM).toList(growable: false);
-                return _FavoritesStrip(
-                  favorites: source,
-                  onTap: _onFavoriteTap,
-                );
-              },
-            ),
-            const SizedBox(height: 28),
-            _SectionHeader(
-              icon: Icons.history_rounded,
-              title: l10n.homeSectionRecentTransactions,
-              trailing: _ViewAllButton(onTap: _onTransactionsViewAll),
-            ),
-            const SizedBox(height: 8),
-            for (final t in _transactions)
-              _TransactionTile(
-                txn: t,
-                currencyCode: _currency.code,
-                onTap: () => _onTransactionTap(t),
-              ),
-          ],
+          ),
         ),
       ),
     );
@@ -670,11 +666,7 @@ class _RoundActionButton extends StatelessWidget {
                 color: background,
               ),
               alignment: Alignment.center,
-              child: Icon(
-                icon,
-                color: foreground,
-                size: 24,
-              ),
+              child: Icon(icon, color: foreground, size: 24),
             ),
             const SizedBox(height: 8),
             Text(
@@ -715,10 +707,7 @@ class _SectionHeader extends StatelessWidget {
       children: [
         Icon(icon, color: AppColors.onBrand, size: 22),
         const SizedBox(width: 10),
-        Text(
-          title,
-          style: AppTextStyles.subsectionTitle,
-        ),
+        Text(title, style: AppTextStyles.subsectionTitle),
         const Spacer(),
         ?trailing,
       ],
@@ -1222,18 +1211,12 @@ class _TransactionTile extends StatelessWidget {
     // Transactions tab + detail screen so the design language stays
     // consistent across all three surfaces.
     final (statusColor, statusLabel) = switch (txn.status) {
-      TxnStatus.success => (
-          const Color(0xFF22C55E),
-          l10n.txnStatusSuccess,
-        ),
+      TxnStatus.success => (const Color(0xFF22C55E), l10n.txnStatusSuccess),
       TxnStatus.pending => (
-          const Color(0xFFD97706),
-          l10n.txnDetailStatusPending,
-        ),
-      TxnStatus.failed => (
-          const Color(0xFFEF4444),
-          l10n.txnStatusFailed,
-        ),
+        const Color(0xFFD97706),
+        l10n.txnDetailStatusPending,
+      ),
+      TxnStatus.failed => (const Color(0xFFEF4444), l10n.txnStatusFailed),
     };
 
     // Tile-row label is derived from the kind enum so the active
@@ -1267,15 +1250,9 @@ class _TransactionTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    kindLabel,
-                    style: AppTextStyles.listTitle,
-                  ),
+                  Text(kindLabel, style: AppTextStyles.listTitle),
                   const SizedBox(height: 2),
-                  Text(
-                    txn.timestamp,
-                    style: AppTextStyles.microNumeric,
-                  ),
+                  Text(txn.timestamp, style: AppTextStyles.microNumeric),
                 ],
               ),
             ),

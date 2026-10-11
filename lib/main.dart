@@ -17,6 +17,7 @@ import 'core/session/session_store.dart';
 import 'core/session/step_up_controller.dart';
 import 'core/storage/secure_storage.dart';
 import 'core/theme/app_colors.dart';
+import 'features/account/data/account_controller.dart';
 import 'features/auth/data/auth_flow.dart';
 import 'features/home/presentation/screens/home_shell.dart';
 import 'features/splash/presentation/screens/splash_screen.dart';
@@ -93,6 +94,7 @@ Future<void> main() async {
   Get.put<ApiClient>(api, permanent: true);
   Get.put<StepUpController>(StepUpController(api), permanent: true);
   Get.put<AuthFlow>(AuthFlow(), permanent: true);
+  Get.put<AccountController>(AccountController(), permanent: true);
   // --------------------------------------------------------------------
 
   runApp(MoneyaApp(localeController: localeController));

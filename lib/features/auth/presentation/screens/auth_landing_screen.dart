@@ -20,9 +20,11 @@ class AuthLandingScreen extends StatelessWidget {
   static const String routeName = 'auth_landing';
 
   /// Sign-in is passwordless: the same phone + one-time-code flow as account
-  /// creation. The server creates the account on first verification and a
-  /// returning user (passcode already set) goes straight to the app.
-  void _goToLogin(BuildContext context) => _goToCreateAccount(context);
+  /// creation, with login wording. A returning user (passcode already set)
+  /// goes straight to the app after verification.
+  void _goToLogin(BuildContext context) {
+    Get.to<void>(() => const LoginScreen(), routeName: LoginScreen.routeName);
+  }
 
   void _goToCreateAccount(BuildContext context) {
     Get.to<void>(

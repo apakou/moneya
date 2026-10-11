@@ -1563,5 +1563,45 @@
   "rampBackHomeCta": "Go back home",
   "@rampBackHomeCta": { "description": "Return home." },
   "rampTryAgainCta": "Try again",
-  "@rampTryAgainCta": { "description": "Retry after a failure." }
+  "@rampTryAgainCta": { "description": "Retry after a failure." },
+  "loginTitle": "Welcome back",
+  "@loginTitle": {
+    "description": "Hero title on the login screen."
+  },
+  "loginSubtitle": "Enter your phone number and we'll send you a code.",
+  "@loginSubtitle": {
+    "description": "Subtitle under the login hero title; explains passwordless sign-in."
+  },
+  "loginCta": "Log in",
+  "@loginCta": {
+    "description": "Primary CTA pill on the login screen."
+  },
+  "loginNoAccount": "Don't have an account ? ",
+  "@loginNoAccount": {
+    "description": "Inline prompt before the Create link on the login screen. The trailing space is intentional."
+  },
+  "loginCreateLink": "Create one",
+  "@loginCreateLink": {
+    "description": "Inline link label that takes new users from login to account creation."
+  },
+  "commonTryAgain": "Try again",
+  "@commonTryAgain": {
+    "description": "Generic retry button after a failed load."
+  },
+  "homeBalanceLoadError": "Couldn't load your balance. Tap to retry.",
+  "@homeBalanceLoadError": {
+    "description": "Shown under the balance card when the balance request fails; tapping retries."
+  },
+  "homeTransactionsLoadError": "Couldn't load your transactions.",
+  "@homeTransactionsLoadError": {
+    "description": "Shown in the recent-transactions section when the request fails."
+  },
+  "homeNoTransactions": "No transactions yet.",
+  "@homeNoTransactions": {
+    "description": "Empty state of the recent-transactions section for a user with no activity."
+  },
+  "transactionsLoadError": "Couldn't load your transactions.",
+  "@transactionsLoadError": {
+    "description": "Shown on the Transactions tab when the request fails."
+  }
 }

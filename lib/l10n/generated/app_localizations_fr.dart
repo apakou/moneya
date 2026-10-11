@@ -1226,4 +1226,37 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get rampTryAgainCta => 'Réessayer';
+
+  @override
+  String get loginTitle => 'Bon retour';
+
+  @override
+  String get loginSubtitle =>
+      'Entrez votre numéro de téléphone, nous vous enverrons un code.';
+
+  @override
+  String get loginCta => 'Se connecter';
+
+  @override
+  String get loginNoAccount => 'Vous n\'avez pas de compte ? ';
+
+  @override
+  String get loginCreateLink => 'En créer un';
+
+  @override
+  String get commonTryAgain => 'Réessayer';
+
+  @override
+  String get homeBalanceLoadError =>
+      'Impossible de charger votre solde. Touchez pour réessayer.';
+
+  @override
+  String get homeTransactionsLoadError =>
+      'Impossible de charger vos transactions.';
+
+  @override
+  String get homeNoTransactions => 'Aucune transaction pour le moment.';
+
+  @override
+  String get transactionsLoadError => 'Impossible de charger vos transactions.';
 }

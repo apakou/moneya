@@ -2233,6 +2233,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Try again'**
   String get rampTryAgainCta;
+
+  /// Hero title on the login screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back'**
+  String get loginTitle;
+
+  /// Subtitle under the login hero title; explains passwordless sign-in.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your phone number and we\'ll send you a code.'**
+  String get loginSubtitle;
+
+  /// Primary CTA pill on the login screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in'**
+  String get loginCta;
+
+  /// Inline prompt before the Create link on the login screen. The trailing space is intentional.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t have an account ? '**
+  String get loginNoAccount;
+
+  /// Inline link label that takes new users from login to account creation.
+  ///
+  /// In en, this message translates to:
+  /// **'Create one'**
+  String get loginCreateLink;
+
+  /// Generic retry button after a failed load.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get commonTryAgain;
+
+  /// Shown under the balance card when the balance request fails; tapping retries.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your balance. Tap to retry.'**
+  String get homeBalanceLoadError;
+
+  /// Shown in the recent-transactions section when the request fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your transactions.'**
+  String get homeTransactionsLoadError;
+
+  /// Empty state of the recent-transactions section for a user with no activity.
+  ///
+  /// In en, this message translates to:
+  /// **'No transactions yet.'**
+  String get homeNoTransactions;
+
+  /// Shown on the Transactions tab when the request fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your transactions.'**
+  String get transactionsLoadError;
 }
 
 class _AppLocalizationsDelegate

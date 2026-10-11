@@ -99,4 +99,37 @@ void main() {
     expect(flow.saved, ['482916']);
     expect(find.byType(PasscodeScreen), findsNothing);
   });
+
+  // Regression: both steps are the same widget type, and GetX names closure
+  // routes by runtimeType, so `Get.to` used to drop the push as a "duplicate"
+  // and Next did nothing after setting the passcode.
+  testWidgets('set → Next opens the confirm step', (tester) async {
+    tester.view.physicalSize = const Size(360 * 3, 800 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(GetMaterialApp(
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: const Locale('en'),
+      home: Builder(
+        builder: (context) => TextButton(
+          onPressed: () => Get.off<void>(() => const PasscodeScreen(mode: PasscodeMode.set)),
+          child: const Text('go'),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('go'));
+    await tester.pumpAndSettle();
+    expect(find.text('Set a passcode'), findsOneWidget);
+
+    await type(tester, '482916');
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    expect(find.text('Confirm the passcode'), findsOneWidget);
+  });
 }

@@ -400,5 +400,15 @@
   "rampSlowNote": "C'est plus long que d'habitude. Vous pouvez quitter cet écran — nous vous préviendrons.",
   "rampDoneCta": "Terminé",
   "rampBackHomeCta": "Retour à l'accueil",
-  "rampTryAgainCta": "Réessayer"
+  "rampTryAgainCta": "Réessayer",
+  "loginTitle": "Bon retour",
+  "loginSubtitle": "Entrez votre numéro de téléphone, nous vous enverrons un code.",
+  "loginCta": "Se connecter",
+  "loginNoAccount": "Vous n'avez pas de compte ? ",
+  "loginCreateLink": "En créer un",
+  "commonTryAgain": "Réessayer",
+  "homeBalanceLoadError": "Impossible de charger votre solde. Touchez pour réessayer.",
+  "homeTransactionsLoadError": "Impossible de charger vos transactions.",
+  "homeNoTransactions": "Aucune transaction pour le moment.",
+  "transactionsLoadError": "Impossible de charger vos transactions."
 }

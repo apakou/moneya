@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../account/data/account_controller.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import 'home_screen.dart';
 import 'settings_screen.dart';
@@ -36,9 +38,15 @@ abstract class HomeShellController {
   void selectTab(int index);
 }
 
-class _HomeShellState extends State<HomeShell>
-    implements HomeShellController {
+class _HomeShellState extends State<HomeShell> implements HomeShellController {
   int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Balance + history for the signed-in user (no-op if already loaded).
+    Get.find<AccountController>().ensureLoaded();
+  }
 
   /// Programmatic tab switch — used by `View all` actions on the Home tab.
   @override
@@ -139,8 +147,7 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color =
-        selected ? AppColors.actionPurple : AppColors.onBrandMuted;
+    final color = selected ? AppColors.actionPurple : AppColors.onBrandMuted;
     return InkResponse(
       onTap: onTap,
       radius: 36,
