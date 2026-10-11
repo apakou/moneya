@@ -16,6 +16,9 @@ import '../../../transfer/domain/transfer_recipient_prefill.dart';
 import '../../../transfer/presentation/screens/transfer_money_screen.dart';
 import '../../../receive/presentation/screens/receive_screen.dart';
 import '../../../withdraw/presentation/screens/withdraw_provider_screen.dart';
+import '../../../../core/format/money_format.dart';
+import '../../../../core/session/session_controller.dart';
+import '../../../wallet/data/wallet_controller.dart';
 import '../../domain/supported_currency.dart';
 import '../../domain/transaction.dart';
 import '../widgets/currency_picker_sheet.dart';
@@ -39,14 +42,63 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _balanceVisible = true;
+
+  // Live data (signed in) vs the old mock (dev bypass / no session). ----------
+  bool get _live =>
+      Get.isRegistered<WalletController>() &&
+      Get.isRegistered<SessionController>() &&
+      Get.find<SessionController>().hasSession;
+
+  WalletController get _wallet => Get.find<WalletController>();
+
+  @override
+  void initState() {
+    super.initState();
+    if (_live) {
+      WidgetsBinding.instance.addObserver(this);
+      _wallet.addListener(_onWalletChanged);
+      _syncFromWallet();
+      _wallet.refresh();
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_live) {
+      WidgetsBinding.instance.removeObserver(this);
+      _wallet.removeListener(_onWalletChanged);
+    }
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _live) _wallet.refresh();
+  }
+
+  void _onWalletChanged() {
+    if (!mounted) return;
+    setState(_syncFromWallet);
+  }
+
+  /// Mirrors the server wallet into the fields the existing flows read (currency, withdraw guard).
+  void _syncFromWallet() {
+    final w = _wallet.wallet;
+    if (w == null) return;
+    final cur = SupportedCurrency.values.where((c) => c.code == (w.currency == 'GHS' ? 'GHC' : w.currency));
+    if (cur.isNotEmpty) _currency = cur.first;
+    _balanceMinor = num.tryParse(w.balance) ?? 0;
+  }
+
   // Default to Ghanaian Cedi to match the mock; the picker lets the
   // user switch to any of the SupportedCurrency entries.
   SupportedCurrency _currency = SupportedCurrency.ghs;
 
   // Hardcoded mock data. ---------------------------------------------------
-  static const String _userName = 'John Doe';
+  static const String _mockUserName = 'John Doe';
+  String get _userName => _live ? _wallet.displayName : _mockUserName;
 
   // Mock balance — single source of truth for the displayed amount
   // AND the withdraw flow's insufficient-balance guard. Stored as
@@ -63,6 +115,11 @@ class _HomeScreenState extends State<HomeScreen> {
   /// NOT convert across currencies on switch — the mock-faithful
   /// behaviour is to relabel the unit and keep the digit untouched.
   String get _balanceDisplay {
+    if (_live) {
+      final w = _wallet.wallet;
+      // Real money is a decimal string from the server; never an int/double round trip.
+      return w == null ? '—' : MoneyFormat.fromString(w.balance);
+    }
     final n = _balanceMinor.toInt();
     final s = n.toString();
     // Insert thousands separators without pulling in intl just for
@@ -209,6 +266,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onNotificationsTap() => showNotificationsSheet(context);
   Future<void> _onCurrencyTap() async {
+    // The server wallet is in the user's home currency; relabelling it as another currency would
+    // misstate their money, so the picker only applies to the demo (mock) data.
+    if (_live) return;
     final picked = await showCurrencyPickerSheet(
       context: context,
       selected: _currency,
@@ -306,7 +366,10 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: const BoxDecoration(gradient: AppColors.brandGradient),
       child: SafeArea(
         bottom: false,
-        child: ListView(
+        child: RefreshIndicator(
+          onRefresh: () => _live ? _wallet.refresh() : Future<void>.value(),
+          child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 120),
           children: [
             HomeHeader(
@@ -380,13 +443,14 @@ class _HomeScreenState extends State<HomeScreen> {
               trailing: _ViewAllButton(onTap: _onTransactionsViewAll),
             ),
             const SizedBox(height: 8),
-            for (final t in _transactions)
+            for (final t in (_live ? _wallet.recent : _transactions))
               _TransactionTile(
                 txn: t,
                 currencyCode: _currency.code,
                 onTap: () => _onTransactionTap(t),
               ),
           ],
+        ),
         ),
       ),
     );
@@ -1284,7 +1348,7 @@ class _TransactionTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '$currencyCode ${txn.amount}',
+                  '$currencyCode ${MoneyFormat.fromString(txn.amount)}',
                   style: AppTextStyles.numeric(AppTextStyles.listTitle),
                 ),
                 const SizedBox(height: 2),

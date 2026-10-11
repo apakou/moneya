@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import '../../../core/format/money_format.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../transfer/presentation/widgets/transfer_outcome_scaffold.dart';
+import '../../wallet/data/wallet_controller.dart';
 import '../data/ramp_dtos.dart';
 import '../data/ramp_order_tracker.dart';
 import '../domain/ramp_mapping.dart';
@@ -45,11 +46,15 @@ class _RampStatusScreenState extends State<RampStatusScreen> {
   @override
   void initState() {
     super.initState();
-    if (_order.isTerminal) return;
+    if (_order.isTerminal) {
+      _refreshWallet();
+      return;
+    }
     final tracker = widget.tracker ?? RampOrderTracker();
     _sub = tracker.watch(_order.direction, _order.id).listen(
       (o) {
         if (mounted) setState(() => _order = o);
+        if (o.isTerminal) _refreshWallet(); // the balance and history just changed
       },
       onError: (Object _) {
         if (mounted) setState(() => _failedToTrack = true);
@@ -60,6 +65,11 @@ class _RampStatusScreenState extends State<RampStatusScreen> {
     );
   }
 
+  /// The order changed the user's money; ask the server for the new balance + history.
+  void _refreshWallet() {
+    if (Get.isRegistered<WalletController>()) Get.find<WalletController>().refresh();
+  }
+
   @override
   void dispose() {
     _sub?.cancel();
@@ -68,7 +78,10 @@ class _RampStatusScreenState extends State<RampStatusScreen> {
 
   String _amount(String amount, String wire) => '${MoneyFormat.fromString(amount)} ${RampMapping.displayCurrency(wire)}';
 
-  void _home() => Get.until((r) => r.isFirst);
+  void _home() {
+    _refreshWallet();
+    Get.until((r) => r.isFirst);
+  }
 
   @override
   Widget build(BuildContext context) {

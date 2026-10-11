@@ -1,3 +1,5 @@
+import '../../../core/session/auth_session.dart';
+
 /// Lightweight user profile model used by the Profile / Edit-Profile
 /// screens. Mock-era fields only; once the backend lands this becomes
 /// a freezed `User` aggregate fetched via `usersMeProvider`.
@@ -29,9 +31,31 @@ class UserProfile {
   final bool dobVerified;
   final bool kycVerified;
 
+  /// Profile from the signed-in session. Only what the server knows is filled in: the phone is verified
+  /// (the one-time code proved it); email / address / date of birth are not collected yet, and the
+  /// identity check is only "verified" once the account has moved past the first KYC tier.
+  factory UserProfile.fromSession(AuthSession s) {
+    final name = s.fullName?.trim();
+    return UserProfile(
+      fullName: (name == null || name.isEmpty) ? 'MoneyA' : name,
+      phone: s.phone,
+      email: '',
+      address: '',
+      dateOfBirth: '',
+      kycDocLabel: '',
+      phoneVerified: true,
+      emailVerified: false,
+      addressVerified: false,
+      dobVerified: false,
+      kycVerified: s.kycTier != KycTier.tier0,
+    );
+  }
+
   /// Two-letter initials for the avatar placeholder ("John Amoako" → "JA").
   String get initials {
-    final parts = fullName.trim().split(RegExp(r'\s+'));
+    final trimmed = fullName.trim();
+    if (trimmed.isEmpty) return '?';
+    final parts = trimmed.split(RegExp(r'\s+'));
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
     return (parts.first.substring(0, 1) + parts.last.substring(0, 1))

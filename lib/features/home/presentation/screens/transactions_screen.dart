@@ -9,6 +9,9 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../../main.dart' show LocaleScope;
+import '../../../../core/format/money_format.dart';
+import '../../../../core/session/session_controller.dart';
+import '../../../wallet/data/wallet_controller.dart';
 import '../../domain/transaction.dart';
 import '../widgets/home_header.dart';
 import '../widgets/notifications_sheet.dart';
@@ -48,8 +51,25 @@ class TransactionsScreen extends StatefulWidget {
 }
 
 class _TransactionsScreenState extends State<TransactionsScreen> {
-  static const String _userName = 'John Doe';
-  static const String _currencyCode = 'GHC';
+  static const String _mockUserName = 'John Doe';
+
+  // Live (signed in) data comes from the server; the mock list below is the dev-bypass fallback.
+  bool get _live =>
+      Get.isRegistered<WalletController>() &&
+      Get.isRegistered<SessionController>() &&
+      Get.find<SessionController>().hasSession;
+
+  WalletController get _wallet => Get.find<WalletController>();
+
+  String get _userName => _live ? _wallet.displayName : _mockUserName;
+
+  String get _currencyCode {
+    final w = _live ? _wallet.wallet : null;
+    if (w == null) return 'GHC';
+    return w.currency == 'GHS' ? 'GHC' : w.currency;
+  }
+
+  List<Transaction> get _source => _live ? _wallet.transactions : _all;
 
   /// Currently selected filter; `null` means "All". Single-select on
   /// purpose — combining filters (e.g., Sent + Failed) gets ambiguous
@@ -208,8 +228,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   List<Transaction> get _filtered {
     final f = _activeFilter;
-    if (f == null) return _all;
-    return _all.where((t) {
+    final all = _source;
+    if (f == null) return all;
+    return all.where((t) {
       switch (f) {
         case _TxnFilter.sent:
           return t.kind == TxnKind.sent;
@@ -258,10 +279,20 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     super.initState();
     _scrollController = ScrollController()..addListener(_onScroll);
     _rebuildGroups();
+    if (_live) {
+      _wallet.addListener(_onWalletChanged);
+      _wallet.refresh();
+    }
+  }
+
+  void _onWalletChanged() {
+    if (!mounted) return;
+    setState(_rebuildGroups);
   }
 
   @override
   void dispose() {
+    if (_live) _wallet.removeListener(_onWalletChanged);
     _scrollController
       ..removeListener(_onScroll)
       ..dispose();
@@ -812,7 +843,7 @@ class _TransactionTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '$currencyCode ${txn.amount}',
+                  '$currencyCode ${MoneyFormat.fromString(txn.amount)}',
                   style: AppTextStyles.numeric(AppTextStyles.listTitle),
                 ),
                 const SizedBox(height: 2),

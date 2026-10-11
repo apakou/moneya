@@ -89,14 +89,24 @@ class Transaction {
         TxnKind.received => 'From',
       };
 
-  /// `amount + fee` as a string, computed only for display. Falls
-  /// back to [amount] alone if either component fails to parse — we
-  /// never want a malformed mock to crash the detail screen.
+  /// `amount + fee` as a string, computed only for display, with exact decimal arithmetic (amounts
+  /// are decimal strings like `98.5`, never doubles). Falls back to [amount] alone if either
+  /// component is not a plain decimal — a malformed value must never crash the detail screen.
   String get total {
-    final a = int.tryParse(amount);
-    final f = int.tryParse(fee);
+    final a = _micro(amount);
+    final f = _micro(fee);
     if (a == null || f == null) return amount;
-    return (a + f).toString();
+    final sum = a + f;
+    final whole = sum ~/ 1000000;
+    final frac = (sum % 1000000).toString().padLeft(6, '0').replaceFirst(RegExp(r'0+$'), '');
+    return frac.isEmpty ? '$whole' : '$whole.$frac';
+  }
+
+  /// Micro-units (6 decimals) of a plain non-negative decimal string, or null.
+  static int? _micro(String v) {
+    final m = RegExp(r'^(\d+)(?:\.(\d{1,6}))?$').firstMatch(v);
+    if (m == null) return null;
+    return int.parse(m.group(1)!) * 1000000 + int.parse((m.group(2) ?? '').padRight(6, '0'));
   }
 
   /// Display timestamp, e.g. `Jun 12, 2025 - 10:25 AM`. Single
